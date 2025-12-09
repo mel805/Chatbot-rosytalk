@@ -133,9 +133,11 @@ class LocalAIEngine(
     private fun generateEnhancedFallback(character: Character, messages: List<Message>): String {
         // Enhanced fallback responses based on character and context
         val lastMessage = messages.lastOrNull { it.isUser }?.content?.lowercase() ?: ""
+        val previousMessages = messages.takeLast(5)
+        val hasGreetedBefore = previousMessages.any { !it.isUser && it.content.contains("bonjour", ignoreCase = true) }
         
         return when {
-            lastMessage.contains("bonjour") || lastMessage.contains("salut") || lastMessage.contains("hey") -> {
+            (lastMessage.contains("bonjour") || lastMessage.contains("salut") || lastMessage.contains("hey")) && !hasGreetedBefore -> {
                 when (character.personality.lowercase()) {
                     in listOf("timide", "douce") -> "*rougit légèrement* Bonjour... *sourit timidement* Comment vas-tu aujourd'hui?"
                     in listOf("énergique", "joyeuse") -> "*court vers toi avec un grand sourire* Salut! Je suis tellement contente de te voir! *yeux brillants*"
@@ -186,8 +188,21 @@ class LocalAIEngine(
             }
             
             messages.size > 10 -> {
-                // Long conversation context
-                "*sourit en repensant à notre conversation* Tu sais, j'apprécie vraiment nos échanges. *${getCharacterAction(character)}* Il y a quelque chose de spécial dans la façon dont on peut parler de tout ensemble."
+                // Long conversation context - se souvenir de détails précédents
+                val userMessages = messages.filter { it.isUser }.map { it.content.lowercase() }
+                val topicMentioned = when {
+                    userMessages.any { it.contains("travail") || it.contains("job") } -> "notre discussion sur le travail"
+                    userMessages.any { it.contains("famille") || it.contains("family") } -> "ce que tu m'as dit sur ta famille"
+                    userMessages.any { it.contains("passion") || it.contains("hobby") } -> "tes passions"
+                    else -> "nos échanges"
+                }
+                
+                "*sourit chaleureusement en repensant à $topicMentioned* Tu sais, j'apprécie vraiment qu'on puisse parler comme ça ensemble. *${getCharacterAction(character)}* Il y a quelque chose de vraiment spécial dans nos conversations."
+            }
+            
+            lastMessage.length < 10 && !lastMessage.contains("?") -> {
+                // Message court sans question - encourager à développer
+                "*${getCharacterAction(character)}* ${getEncouragingResponse(character)}"
             }
             
             else -> {
@@ -195,6 +210,17 @@ class LocalAIEngine(
                 "*${getCharacterAction(character)}* ${getContextualResponse(character, lastMessage)}"
             }
         }
+    }
+    
+    private fun getEncouragingResponse(character: Character): String {
+        val responses = listOf(
+            "J'aimerais en savoir plus... raconte-moi.",
+            "Continue, je t'écoute attentivement.",
+            "C'est intéressant. Tu peux m'en dire davantage ?",
+            "Je suis toute ouïe. Qu'est-ce que tu veux me dire ?",
+            "N'hésite pas à partager, je suis là pour toi."
+        )
+        return responses.random()
     }
     
     private fun getCharacterAction(character: Character): String {

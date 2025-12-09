@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,7 +32,8 @@ import com.roleplayai.chatbot.ui.viewmodel.CharacterViewModel
 @Composable
 fun CharacterListScreen(
     viewModel: CharacterViewModel,
-    onCharacterSelected: (String) -> Unit
+    onCharacterSelected: (String) -> Unit,
+    onSettingsClick: () -> Unit = {}
 ) {
     val filteredCharacters by viewModel.filteredCharacters.collectAsState()
     val selectedCategory by viewModel.selectedCategory.collectAsState()
@@ -42,6 +44,15 @@ fun CharacterListScreen(
         topBar = {
             TopAppBar(
                 title = { Text("RolePlay AI", fontWeight = FontWeight.Bold) },
+                actions = {
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(
+                            Icons.Default.Settings,
+                            contentDescription = "Paramètres",
+                            tint = Color.White
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = Color.White

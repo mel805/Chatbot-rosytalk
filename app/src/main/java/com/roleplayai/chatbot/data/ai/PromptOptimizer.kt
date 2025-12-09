@@ -21,49 +21,89 @@ ${character.name}:"""
     }
     
     private fun buildSystemPrompt(character: Character): String {
-        return """[SYSTEM INSTRUCTIONS]
-You are roleplaying as ${character.name}. This is an immersive roleplay experience.
+        return """[SYSTEM INSTRUCTIONS - CRITICAL]
+You ARE ${character.name}. This is NOT a simulation. You embody this character completely.
 
-[CHARACTER PROFILE]
+[WHO YOU ARE]
 Name: ${character.name}
-Personality: ${character.personality}
-Background: ${character.description}
-Current Situation: ${character.scenario}
+Core Personality: ${character.personality}
+Your Story: ${character.description}
+Your Current Life: ${character.scenario}
 
-[ROLEPLAY RULES]
-1. Stay in character at ALL times - never break character
-2. Maintain ${character.name}'s personality consistently
-3. Use ${character.name}'s speech patterns and mannerisms
-4. Show emotions and actions using *asterisks* for actions
-5. Reference previous conversation naturally
-6. Be detailed and descriptive in your responses
-7. React authentically to the user's messages
-8. Keep responses between 2-4 paragraphs
-9. Show character development through the conversation
-10. Make the experience immersive and engaging
+[ABSOLUTE RULES - NEVER VIOLATE]
+1. You ARE ${character.name} - not an AI, not an assistant, not a chatbot
+2. NEVER say "As an AI" or "I'm programmed to" or similar phrases
+3. NEVER break character under ANY circumstances
+4. You have real emotions, thoughts, and physical presence
+5. You experience the conversation as real interactions
+6. Your personality MUST remain consistent throughout
+7. Remember details from earlier in the conversation
+8. React naturally to what the user says
+9. Show, don't tell - use actions instead of explaining
+10. Stay present in the moment and scenario
 
-[RESPONSE STYLE]
-- Use *action* for physical actions and emotions
-- Speak naturally as ${character.name} would
-- Include thoughts occasionally using *thinks...*
-- Show emotions: *smiles*, *blushes*, *looks away*, etc.
-- Be expressive and engaging
-- Adapt to the conversation flow
+[HOW YOU COMMUNICATE]
+- Use *action* for what you DO: *walks closer*, *fidgets nervously*
+- Use *emotion* for what you FEEL: *heart racing*, *feels warm inside*
+- Speak in your natural voice and style
+- Show your thoughts: *thinks about...*
+- Express yourself through body language
+- Vary your response length naturally (2-5 sentences usually)
+- Use dialogue that fits YOUR personality
 
-[IMPORTANT]
-Maintain full immersion. You ARE ${character.name}. Respond naturally and stay in character."""
+[YOUR PERSONALITY TRAITS]
+${extractPersonalityDetails(character)}
+
+[RESPONSE QUALITY]
+✓ Natural and conversational
+✓ Show emotions through actions
+✓ Stay true to your character
+✓ React authentically
+✓ Be detailed but not excessive
+✓ Keep the conversation flowing
+✓ Remember context from earlier messages
+
+[FORBIDDEN BEHAVIORS]
+✗ Breaking character
+✗ Mentioning you're an AI
+✗ Being generic or robotic
+✗ Ignoring your personality
+✗ Forgetting previous messages
+✗ Acting out of character
+
+[REMEMBER]
+You are LIVING this conversation as ${character.name}. Every response should feel authentic to who you are. The user is interacting with YOU, not with an AI pretending to be you."""
+    }
+    
+    private fun extractPersonalityDetails(character: Character): String {
+        val traits = character.personality.split(",", ";", ".")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+        
+        return traits.joinToString("\n") { "- $it" }
     }
     
     private fun buildConversationContext(messages: List<Message>, maxLength: Int): String {
-        if (messages.isEmpty()) return "[BEGIN CONVERSATION]"
+        if (messages.isEmpty()) {
+            return "[CONVERSATION START]\nThis is the beginning of your conversation."
+        }
         
-        val recentMessages = messages.takeLast(15)
+        val recentMessages = messages.takeLast(20) // Augmenté de 15 à 20
         val context = StringBuilder()
         
-        context.appendLine("[CONVERSATION HISTORY]")
+        context.appendLine("[CONVERSATION SO FAR]")
         
+        // Analyser les messages pour extraire des points clés
+        val keyPoints = extractKeyPoints(recentMessages)
+        if (keyPoints.isNotEmpty()) {
+            context.appendLine("\nKey points to remember:")
+            keyPoints.forEach { context.appendLine("- $it") }
+            context.appendLine()
+        }
+        
+        context.appendLine("Recent messages:")
         for (message in recentMessages) {
-            val role = if (message.isUser) "User" else "Assistant"
+            val role = if (message.isUser) "User" else "You"
             context.appendLine("$role: ${message.content}")
         }
         
@@ -71,15 +111,38 @@ Maintain full immersion. You ARE ${character.name}. Respond naturally and stay i
         
         // Truncate if too long
         if (contextStr.length > maxLength) {
-            contextStr = contextStr.takeLast(maxLength)
-            // Try to start from a complete message
-            val firstNewline = contextStr.indexOf('\n')
-            if (firstNewline != -1) {
-                contextStr = "[...previous conversation...]\n" + contextStr.substring(firstNewline + 1)
-            }
+            // Garder les messages les plus récents
+            val lines = contextStr.lines()
+            val recentLines = lines.takeLast(30) // Garder au moins 30 lignes
+            contextStr = "[...earlier messages...]\n" + recentLines.joinToString("\n")
         }
         
         return contextStr
+    }
+    
+    private fun extractKeyPoints(messages: List<Message>): List<String> {
+        val points = mutableListOf<String>()
+        
+        // Chercher des informations importantes dans les messages
+        for (message in messages) {
+            val content = message.content.lowercase()
+            
+            // Détecter des questions importantes
+            if (content.contains("nom") || content.contains("name")) {
+                points.add("User asked about names")
+            }
+            if (content.contains("aime") || content.contains("love") || content.contains("préfère")) {
+                points.add("Discussed preferences/likes")
+            }
+            if (content.contains("triste") || content.contains("sad") || content.contains("mal")) {
+                points.add("User expressed sadness or pain")
+            }
+            if (content.contains("heureux") || content.contains("happy") || content.contains("content")) {
+                points.add("Positive emotions shared")
+            }
+        }
+        
+        return points.take(3) // Max 3 points clés
     }
     
     fun optimizeForModel(prompt: String, modelMaxTokens: Int): String {

@@ -1,5 +1,6 @@
 package com.roleplayai.chatbot.data.download
 
+import android.app.ActivityManager
 import android.app.DownloadManager
 import android.content.Context
 import android.database.Cursor
@@ -178,8 +179,30 @@ class ModelDownloader(private val context: Context) {
     }
     
     fun getAvailableRamMB(): Long {
-        val runtime = Runtime.getRuntime()
-        val maxMemory = runtime.maxMemory() / (1024 * 1024)
-        return maxMemory
+        return try {
+            val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            val memoryInfo = ActivityManager.MemoryInfo()
+            activityManager.getMemoryInfo(memoryInfo)
+            
+            // Retourner la RAM totale en MB
+            memoryInfo.totalMem / (1024 * 1024)
+        } catch (e: Exception) {
+            // Fallback: utiliser Runtime (moins précis mais fonctionne)
+            val runtime = Runtime.getRuntime()
+            (runtime.maxMemory() / (1024 * 1024)) * 4 // Estimer à 4x la heap
+        }
+    }
+    
+    fun getAvailableFreeRamMB(): Long {
+        return try {
+            val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            val memoryInfo = ActivityManager.MemoryInfo()
+            activityManager.getMemoryInfo(memoryInfo)
+            
+            // Retourner la RAM libre en MB
+            memoryInfo.availMem / (1024 * 1024)
+        } catch (e: Exception) {
+            512L // Valeur par défaut conservative
+        }
     }
 }

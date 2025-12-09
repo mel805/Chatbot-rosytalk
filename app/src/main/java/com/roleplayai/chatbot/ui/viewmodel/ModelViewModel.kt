@@ -7,16 +7,19 @@ import com.roleplayai.chatbot.data.download.ModelDownloader
 import com.roleplayai.chatbot.data.model.DownloadProgress
 import com.roleplayai.chatbot.data.model.ModelConfig
 import com.roleplayai.chatbot.data.model.ModelState
+import com.roleplayai.chatbot.data.preferences.PreferencesManager
 import com.roleplayai.chatbot.data.repository.ModelRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class ModelViewModel(application: Application) : AndroidViewModel(application) {
     
     private val modelRepository = ModelRepository()
     private val modelDownloader = ModelDownloader(application)
+    private val preferencesManager = PreferencesManager(application)
     
     private val _availableModels = MutableStateFlow<List<ModelConfig>>(emptyList())
     val availableModels: StateFlow<List<ModelConfig>> = _availableModels.asStateFlow()
@@ -39,21 +42,52 @@ class ModelViewModel(application: Application) : AndroidViewModel(application) {
     init {
         loadModels()
         checkSystemResources()
+        loadSavedModel()
     }
     
     private fun loadModels() {
         viewModelScope.launch {
             _availableModels.value = modelRepository.getAvailableModels()
+        }
+    }
+    
+    private fun loadSavedModel() {
+        viewModelScope.launch {
+            val savedModelId = preferencesManager.selectedModelId.first()
             
-            // Auto-select recommended model if none selected
-            if (_selectedModel.value == null) {
-                val recommended = modelRepository.getRecommendedModel(_availableRam.value)
-                _selectedModel.value = recommended
-                
-                // Check if already downloaded
-                if (modelDownloader.isModelDownloaded(recommended)) {
-                    _modelState.value = ModelState.Downloaded
+            if (savedModelId != null) {
+                // Charger le modèle sauvegardé
+                val model = modelRepository.getModelById(savedModelId)
+                if (model != null) {
+                    _selectedModel.value = model
+                    
+                    // Vérifier si téléchargé
+                    if (modelDownloader.isModelDownloaded(model)) {
+                        _modelState.value = ModelState.Downloaded
+                    } else {
+                        _modelState.value = ModelState.NotDownloaded
+                    }
+                } else {
+                    // Modèle sauvegardé introuvable, sélectionner recommandé
+                    selectRecommendedModel()
                 }
+            } else {
+                // Première installation, sélectionner recommandé
+                selectRecommendedModel()
+            }
+        }
+    }
+    
+    private fun selectRecommendedModel() {
+        viewModelScope.launch {
+            val recommended = modelRepository.getRecommendedModel(_availableRam.value)
+            _selectedModel.value = recommended
+            
+            // Check if already downloaded
+            if (modelDownloader.isModelDownloaded(recommended)) {
+                _modelState.value = ModelState.Downloaded
+            } else {
+                _modelState.value = ModelState.NotDownloaded
             }
         }
     }
@@ -64,13 +98,22 @@ class ModelViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     fun selectModel(model: ModelConfig) {
-        _selectedModel.value = model
-        
-        // Check if model is already downloaded
-        if (modelDownloader.isModelDownloaded(model)) {
-            _modelState.value = ModelState.Downloaded
-        } else {
-            _modelState.value = ModelState.NotDownloaded
+        viewModelScope.launch {
+            _selectedModel.value = model
+            
+            // Sauvegarder la sélection
+            preferencesManager.setSelectedModel(model.id, model.name)
+            
+            // Check if model is already downloaded
+            if (modelDownloader.isModelDownloaded(model)) {
+                _modelState.value = ModelState.Downloaded
+                val path = modelDownloader.getModelPath(model)
+                if (path != null) {
+                    preferencesManager.setModelPath(path)
+                }
+            } else {
+                _modelState.value = ModelState.NotDownloaded
+            }
         }
     }
     
@@ -87,6 +130,12 @@ class ModelViewModel(application: Application) : AndroidViewModel(application) {
                     
                     if (progress.percentage >= 100f) {
                         _modelState.value = ModelState.Downloaded
+                        preferencesManager.setModelDownloaded(true)
+                        
+                        val path = modelDownloader.getModelPath(model)
+                        if (path != null) {
+                            preferencesManager.setModelPath(path)
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -101,12 +150,25 @@ class ModelViewModel(application: Application) : AndroidViewModel(application) {
                 val deleted = modelDownloader.deleteModel(model)
                 if (deleted) {
                     _modelState.value = ModelState.NotDownloaded
+                    preferencesManager.setModelDownloaded(false)
                     checkSystemResources()
                 }
             } catch (e: Exception) {
                 _modelState.value = ModelState.Error(e.message ?: "Erreur de suppression")
             }
         }
+    }
+    
+    suspend fun isFirstLaunch(): Boolean {
+        return preferencesManager.isFirstLaunch.first()
+    }
+    
+    suspend fun isModelDownloaded(): Boolean {
+        return preferencesManager.isModelDownloaded.first()
+    }
+    
+    suspend fun setFirstLaunchCompleted() {
+        preferencesManager.setFirstLaunchCompleted()
     }
     
     fun loadModel() {
