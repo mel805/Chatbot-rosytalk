@@ -53,6 +53,35 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+    
+    // NDK configuration for llama.cpp
+    ndkVersion = "26.1.10909125"
+    
+    externalNativeBuild {
+        cmake {
+            path = file("CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
+    
+    defaultConfig {
+        // ... other configs ...
+        
+        ndk {
+            // Support for ARM and x86
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+        }
+        
+        externalNativeBuild {
+            cmake {
+                arguments += listOf(
+                    "-DANDROID_STL=c++_shared",
+                    "-DANDROID_PLATFORM=android-24"
+                )
+                cppFlags += listOf("-std=c++17", "-frtti", "-fexceptions")
+            }
+        }
+    }
 }
 
 dependencies {

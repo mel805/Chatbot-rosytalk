@@ -4,7 +4,9 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.roleplayai.chatbot.data.ai.AIEngine
+import com.roleplayai.chatbot.data.ai.LocalAIEngine
 import com.roleplayai.chatbot.data.model.Chat
+import com.roleplayai.chatbot.data.model.InferenceConfig
 import com.roleplayai.chatbot.data.model.Message
 import com.roleplayai.chatbot.data.repository.CharacterRepository
 import com.roleplayai.chatbot.data.repository.ChatRepository
@@ -18,6 +20,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val chatRepository = ChatRepository()
     private val characterRepository = CharacterRepository()
     private val aiEngine = AIEngine(application)
+    private var localAIEngine: LocalAIEngine? = null
+    private var useLocalEngine = false
     
     private val _currentChat = MutableStateFlow<Chat?>(null)
     val currentChat: StateFlow<Chat?> = _currentChat.asStateFlow()
@@ -87,7 +91,13 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     ?: throw IllegalArgumentException("Character not found")
                 
                 val updatedChat = chatRepository.getChatById(chat.id)!!
-                val response = aiEngine.generateResponse(character, updatedChat.messages)
+                
+                // Use local AI engine if available, otherwise fall back to online API
+                val response = if (useLocalEngine && localAIEngine != null) {
+                    localAIEngine!!.generateResponse(character, updatedChat.messages)
+                } else {
+                    aiEngine.generateResponse(character, updatedChat.messages)
+                }
                 
                 // Add AI response
                 chatRepository.addMessage(
@@ -133,5 +143,29 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     
     fun setUseLocalAPI(use: Boolean, endpoint: String = "http://localhost:8080/v1/chat/completions") {
         aiEngine.setUseLocalAPI(use, endpoint)
+    }
+    
+    fun initializeLocalAI(modelPath: String, config: InferenceConfig = InferenceConfig()) {
+        viewModelScope.launch {
+            try {
+                localAIEngine = LocalAIEngine(
+                    context = getApplication(),
+                    modelPath = modelPath,
+                    config = config
+                )
+                
+                val loaded = localAIEngine?.loadModel() ?: false
+                if (loaded) {
+                    useLocalEngine = true
+                }
+            } catch (e: Exception) {
+                _error.value = "Erreur d'initialisation de l'IA locale: ${e.message}"
+            }
+        }
+    }
+    
+    override fun onCleared() {
+        super.onCleared()
+        localAIEngine?.unloadModel()
     }
 }

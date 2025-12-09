@@ -30,6 +30,8 @@ class AIEngine(private val context: Context) {
     private var useLocalAPI = false
     private var localAPIEndpoint = "http://localhost:8080/v1/chat/completions"
     
+    private val promptOptimizer = PromptOptimizer()
+    
     suspend fun generateResponse(
         character: Character,
         messages: List<Message>
@@ -161,33 +163,8 @@ class AIEngine(private val context: Context) {
     }
     
     private fun buildPrompt(character: Character, messages: List<Message>): String {
-        val systemPrompt = """
-            Tu es ${character.name}.
-            Description: ${character.description}
-            Personnalité: ${character.personality}
-            Scénario: ${character.scenario}
-            
-            Tu dois répondre en restant dans le personnage à tout moment.
-            Sois naturel, engageant et cohérent avec ta personnalité.
-            N'utilise pas d'émojis excessifs, reste authentique.
-        """.trimIndent()
-        
-        val conversationHistory = messages.takeLast(10).joinToString("\n") { msg ->
-            if (msg.isUser) {
-                "Utilisateur: ${msg.content}"
-            } else {
-                "${character.name}: ${msg.content}"
-            }
-        }
-        
-        return """
-            $systemPrompt
-            
-            Conversation:
-            $conversationHistory
-            
-            ${character.name}:
-        """.trimIndent()
+        // Use enhanced prompt optimizer
+        return promptOptimizer.buildEnhancedPrompt(character, messages)
     }
     
     private fun buildChatMessages(

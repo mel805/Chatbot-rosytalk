@@ -8,12 +8,15 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.roleplayai.chatbot.ui.screen.CharacterListScreen
 import com.roleplayai.chatbot.ui.screen.ChatScreen
+import com.roleplayai.chatbot.ui.screen.ModelSelectionScreen
 import com.roleplayai.chatbot.ui.screen.SplashScreen
 import com.roleplayai.chatbot.ui.viewmodel.CharacterViewModel
 import com.roleplayai.chatbot.ui.viewmodel.ChatViewModel
+import com.roleplayai.chatbot.ui.viewmodel.ModelViewModel
 
 sealed class Screen(val route: String) {
     object Splash : Screen("splash")
+    object ModelSelection : Screen("model_selection")
     object CharacterList : Screen("character_list")
     object Chat : Screen("chat/{characterId}") {
         fun createRoute(characterId: String) = "chat/$characterId"
@@ -24,7 +27,8 @@ sealed class Screen(val route: String) {
 fun AppNavigation(
     navController: NavHostController = rememberNavController(),
     characterViewModel: CharacterViewModel = viewModel(),
-    chatViewModel: ChatViewModel = viewModel()
+    chatViewModel: ChatViewModel = viewModel(),
+    modelViewModel: ModelViewModel = viewModel()
 ) {
     NavHost(
         navController = navController,
@@ -33,8 +37,19 @@ fun AppNavigation(
         composable(Screen.Splash.route) {
             SplashScreen(
                 onLoadingComplete = {
-                    navController.navigate(Screen.CharacterList.route) {
+                    navController.navigate(Screen.ModelSelection.route) {
                         popUpTo(Screen.Splash.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+        
+        composable(Screen.ModelSelection.route) {
+            ModelSelectionScreen(
+                viewModel = modelViewModel,
+                onModelReady = {
+                    navController.navigate(Screen.CharacterList.route) {
+                        popUpTo(Screen.ModelSelection.route) { inclusive = true }
                     }
                 }
             )
