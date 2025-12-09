@@ -25,6 +25,8 @@ class LocalAIEngine(
     private val promptOptimizer = PromptOptimizer()
     private val responseValidator = ResponseValidator()
     private val intelligentGenerator = IntelligentResponseGenerator()
+    private val coherentSystem = CoherentResponseSystem()
+    private val contextManager = ConversationContext()
     private var isModelLoaded = false
     private var contextSize = config.contextLength
     
@@ -104,12 +106,22 @@ class LocalAIEngine(
             )
             */
             
-            // Utiliser le générateur intelligent pour des réponses plus cohérentes
+            // Utiliser le système cohérent pour des réponses déterministes
             val lastUserMessage = messages.lastOrNull { it.isUser }?.content ?: ""
-            val intelligentResponse = intelligentGenerator.generateResponse(
-                message = lastUserMessage,
+            
+            // Analyser le contexte complet
+            val context = contextManager.analyzeContext(messages, character)
+            
+            // Détecter l'intention
+            val intent = contextManager.detectIntent(lastUserMessage)
+            
+            // Générer une réponse cohérente et déterministe
+            val intelligentResponse = coherentSystem.generateCoherentResponse(
+                userMessage = lastUserMessage,
                 character = character,
-                messages = messages
+                messages = messages,
+                intent = intent,
+                context = context
             )
             
             // Post-process response
