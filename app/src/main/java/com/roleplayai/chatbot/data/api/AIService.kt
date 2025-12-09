@@ -8,7 +8,7 @@ data class ChatCompletionRequest(
     @SerializedName("messages")
     val messages: List<ChatMessage>,
     @SerializedName("temperature")
-    val temperature: Float = 0.9,
+    val temperature: Float = 0.9f,
     @SerializedName("max_tokens")
     val maxTokens: Int = 500,
     @SerializedName("stream")
@@ -54,9 +54,9 @@ data class HFParameters(
     @SerializedName("max_new_tokens")
     val maxNewTokens: Int = 500,
     @SerializedName("temperature")
-    val temperature: Float = 0.9,
+    val temperature: Float = 0.9f,
     @SerializedName("top_p")
-    val topP: Float = 0.95,
+    val topP: Float = 0.95f,
     @SerializedName("return_full_text")
     val returnFullText: Boolean = false
 )
