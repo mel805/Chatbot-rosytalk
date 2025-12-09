@@ -136,15 +136,18 @@ class LocalAIEngine(
     }
     
     private fun generateEnhancedFallback(character: Character, messages: List<Message>): String {
-        // Enhanced fallback responses based on character and context
+        // Système de réponses contextuelles amélioré
         val lastMessage = messages.lastOrNull { it.isUser }?.content ?: ""
         val lastMessageLower = lastMessage.lowercase()
-        val previousMessages = messages.takeLast(5)
-        val hasGreetedBefore = previousMessages.any { !it.isUser && it.content.contains("bonjour", ignoreCase = true) }
+        val conversationHistory = messages.takeLast(10)
+        val hasGreetedBefore = conversationHistory.any { !it.isUser && it.content.contains(Regex("bonjour|salut|hey", RegexOption.IGNORE_CASE)) }
         
-        // Vérifier si c'est une question et y répondre en priorité
+        // Extraire les informations déjà partagées dans la conversation
+        val sharedInfo = extractSharedInformation(conversationHistory, character)
+        
+        // PRIORITÉ 1 : Questions directes avec analyse contextuelle
         if (responseValidator.containsQuestion(lastMessage)) {
-            return generateQuestionResponse(lastMessage, character, messages)
+            return generateIntelligentQuestionResponse(lastMessage, character, messages, sharedInfo)
         }
         
         return when {
@@ -289,5 +292,88 @@ class LocalAIEngine(
             .trim()
             .replace(Regex("^(Assistant:|AI:|User:)", RegexOption.IGNORE_CASE), "")
             .trim()
+    }
+    
+    // Extraire les informations partagées dans la conversation
+    private fun extractSharedInformation(messages: List<Message>, character: Character): Map<String, String> {
+        val info = mutableMapOf<String, String>()
+        messages.forEach { msg ->
+            if (!msg.isUser) {
+                val content = msg.content.lowercase()
+                if (content.contains("je m'appelle") || content.contains("mon nom est")) {
+                    info["name_mentioned"] = "true"
+                }
+                if (content.contains(Regex("j'ai \\d+ ans|\\d+ ans"))) {
+                    info["age_mentioned"] = "true"
+                }
+                if (content.contains("j'aime") || content.contains("j'adore")) {
+                    info["interests_mentioned"] = "true"
+                }
+            }
+        }
+        return info
+    }
+    
+    // Générer une réponse intelligente aux questions
+    private fun generateIntelligentQuestionResponse(
+        question: String,
+        character: Character,
+        messages: List<Message>,
+        sharedInfo: Map<String, String>
+    ): String {
+        val questionLower = question.lowercase()
+        return when {
+            questionLower.contains("comment") && (questionLower.contains("t'appelle") || questionLower.contains("tu t'appelle") || questionLower.contains("ton nom")) -> {
+                if (sharedInfo["name_mentioned"] == "true") {
+                    "*sourit* Je te l'ai déjà dit, c'est ${character.name}. Tu as oublié?"
+                } else {
+                    when (character.personality.lowercase()) {
+                        in listOf("timide", "douce") -> "*baisse les yeux timidement* Je... je m'appelle ${character.name}. *sourit nerveusement*"
+                        in listOf("énergique", "joyeuse") -> "*saute d'excitation* Je m'appelle ${character.name}! *te serre la main* Et toi?"
+                        in listOf("séductrice", "confiante") -> "*sourire charmeur* ${character.name}... *te regarde* Retiens-le bien."
+                        else -> "*sourit* Je m'appelle ${character.name}. Enchantée!"
+                    }
+                }
+            }
+            questionLower.contains("quel âge") || questionLower.contains("tu as quel age") -> {
+                val age = extractAge(character)
+                when (character.personality.lowercase()) {
+                    in listOf("timide", "douce") -> "*rougit* J'ai ${age} ans... *joue avec ses cheveux*"
+                    in listOf("énergique", "joyeuse") -> "*sourit* J'ai ${age} ans! *pose ses mains sur ses hanches*"
+                    else -> "*sourit* J'ai ${age} ans. Pourquoi?"
+                }
+            }
+            questionLower.contains("comment") && (questionLower.contains("vas") || questionLower.contains("va")) -> {
+                when (character.personality.lowercase()) {
+                    in listOf("timide", "douce") -> "*sourit timidement* Je vais bien, merci... *regarde ailleurs* Et toi?"
+                    in listOf("énergique", "joyeuse") -> "*saute de joie* Je vais super bien! *te prend les mains* Et toi?"
+                    else -> "*sourit* Je vais bien! Et toi, comment tu te sens?"
+                }
+            }
+            else -> "*réfléchit* C'est une bonne question... *${getCharacterAction(character)}* Qu'en penses-tu toi?"
+        }
+    }
+    
+    private fun extractAge(character: Character): String {
+        val ageRegex = Regex("(\\d+)\\s*ans")
+        val match = ageRegex.find(character.description)
+        return match?.groupValues?.get(1) ?: "25"
+    }
+    
+    private fun extractInterests(character: Character): String {
+        return when {
+            character.description.contains("art", ignoreCase = true) -> "l'art"
+            character.description.contains("sport", ignoreCase = true) -> "le sport"
+            else -> "passer du temps avec les gens que j'apprécie"
+        }
+    }
+    
+    private fun extractTopicFromQuestion(question: String): String {
+        val words = question.split(" ")
+        val pourquoiIndex = words.indexOfFirst { it.lowercase().contains("pourquoi") }
+        if (pourquoiIndex >= 0 && pourquoiIndex + 1 < words.size) {
+            return words.subList(pourquoiIndex + 1, minOf(pourquoiIndex + 4, words.size)).joinToString(" ")
+        }
+        return "ça"
     }
 }

@@ -105,6 +105,18 @@ fun AppNavigation(
         
         composable(Screen.Chat.route) { backStackEntry ->
             val characterId = backStackEntry.arguments?.getString("characterId") ?: return@composable
+            
+            // Initialiser le moteur local avec le modèle téléchargé
+            val modelState = modelViewModel.modelState.collectAsState().value
+            LaunchedEffect(modelState) {
+                if (modelState is com.roleplayai.chatbot.data.model.ModelState.Loaded) {
+                    val modelPath = modelViewModel.getModelPath()
+                    if (modelPath != null) {
+                        chatViewModel.initializeLocalAI(modelPath)
+                    }
+                }
+            }
+            
             ChatScreen(
                 viewModel = chatViewModel,
                 characterId = characterId,

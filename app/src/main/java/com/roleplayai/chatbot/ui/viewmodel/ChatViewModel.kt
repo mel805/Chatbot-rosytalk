@@ -92,11 +92,12 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 
                 val updatedChat = chatRepository.getChatById(chat.id)!!
                 
-                // Use local AI engine if available, otherwise fall back to online API
-                val response = if (useLocalEngine && localAIEngine != null) {
+                // UTILISER UNIQUEMENT LE MOTEUR LOCAL (modèles téléchargés)
+                val response = if (localAIEngine != null) {
                     localAIEngine!!.generateResponse(character, updatedChat.messages)
                 } else {
-                    aiEngine.generateResponse(character, updatedChat.messages)
+                    // Si pas de modèle chargé, erreur claire
+                    throw IllegalStateException("Aucun modèle IA n'est chargé. Veuillez télécharger un modèle dans les paramètres.")
                 }
                 
                 // Add AI response
