@@ -199,4 +199,23 @@ class ModelViewModel(application: Application) : AndroidViewModel(application) {
         val model = _selectedModel.value ?: return null
         return modelDownloader.getModelPath(model)
     }
+    
+    fun isModelDownloaded(model: ModelConfig): Boolean {
+        return modelDownloader.isModelDownloaded(model)
+    }
+    
+    fun refreshModelState() {
+        val model = _selectedModel.value ?: return
+        viewModelScope.launch {
+            if (modelDownloader.isModelDownloaded(model)) {
+                _modelState.value = ModelState.Downloaded
+                val path = modelDownloader.getModelPath(model)
+                if (path != null) {
+                    preferencesManager.setModelPath(path)
+                }
+            } else {
+                _modelState.value = ModelState.NotDownloaded
+            }
+        }
+    }
 }

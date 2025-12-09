@@ -131,7 +131,8 @@ class ModelDownloader(private val context: Context) {
     fun isModelDownloaded(model: ModelConfig): Boolean {
         val modelsDir = getModelsDirectory()
         val modelFile = File(modelsDir, model.fileName)
-        return modelFile.exists() && modelFile.length() == model.size
+        // Vérifier si le fichier existe et a une taille raisonnable (au moins 90% de la taille attendue)
+        return modelFile.exists() && modelFile.length() > (model.size * 0.9)
     }
     
     fun getModelPath(model: ModelConfig): String? {

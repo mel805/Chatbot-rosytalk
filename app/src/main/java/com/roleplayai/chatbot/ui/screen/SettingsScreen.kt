@@ -243,11 +243,16 @@ fun SettingsScreen(
                 ) {
                     items(availableModels) { model ->
                         val isCompatible = model.requiredRam <= availableRam
+                        val isDownloaded = viewModel.isModelDownloaded(model)
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .then(if (isCompatible) Modifier.clickable {
                                     viewModel.selectModel(model)
+                                    if (!isDownloaded) {
+                                        // Lancer le téléchargement
+                                        viewModel.downloadSelectedModel()
+                                    }
                                     showModelSelection = false
                                 } else Modifier),
                             colors = CardDefaults.cardColors(
@@ -261,20 +266,36 @@ fun SettingsScreen(
                             )
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
-                                Text(
-                                    model.name,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    "${formatBytes(model.size)} • RAM: ${model.requiredRam} MB",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = if (isCompatible) {
-                                        MaterialTheme.colorScheme.onSurface
-                                    } else {
-                                        MaterialTheme.colorScheme.error
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            model.name,
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            "${formatBytes(model.size)} • RAM: ${model.requiredRam} MB",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = if (isCompatible) {
+                                                MaterialTheme.colorScheme.onSurface
+                                            } else {
+                                                MaterialTheme.colorScheme.error
+                                            }
+                                        )
                                     }
-                                )
+                                    if (isDownloaded) {
+                                        Icon(
+                                            Icons.Default.CheckCircle,
+                                            "Téléchargé",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
