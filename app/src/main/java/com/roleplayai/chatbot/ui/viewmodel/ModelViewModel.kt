@@ -18,7 +18,7 @@ import kotlinx.coroutines.launch
 class ModelViewModel(application: Application) : AndroidViewModel(application) {
     
     private val modelRepository = ModelRepository()
-    private val modelDownloader = ModelDownloader(application)
+    val modelDownloader = ModelDownloader(application) // Rendu public pour accès dans Navigation
     private val preferencesManager = PreferencesManager(application)
     
     private val _availableModels = MutableStateFlow<List<ModelConfig>>(emptyList())
@@ -197,7 +197,19 @@ class ModelViewModel(application: Application) : AndroidViewModel(application) {
     
     fun getModelPath(): String? {
         val model = _selectedModel.value ?: return null
-        return modelDownloader.getModelPath(model)
+        val path = modelDownloader.getModelPath(model)
+        
+        // Si le modèle est téléchargé mais pas encore marqué comme "Downloaded", le marquer
+        if (path != null && _modelState.value == ModelState.NotDownloaded) {
+            _modelState.value = ModelState.Downloaded
+        }
+        
+        return path
+    }
+    
+    // Obtenir le modèle sélectionné
+    fun getSelectedModel(): ModelConfig? {
+        return _selectedModel.value
     }
     
     fun isModelDownloaded(model: ModelConfig): Boolean {
