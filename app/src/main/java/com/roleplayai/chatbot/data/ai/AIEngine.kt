@@ -31,20 +31,28 @@ class AIEngine(private val context: Context) {
     private var localAPIEndpoint = "http://localhost:8080/v1/chat/completions"
     
     private val promptOptimizer = PromptOptimizer()
+    private val responseValidator = ResponseValidator()
     
     suspend fun generateResponse(
         character: Character,
         messages: List<Message>
     ): String = withContext(Dispatchers.IO) {
         try {
-            if (useLocalAPI) {
-                return@withContext generateWithLocalAPI(character, messages)
+            val response = if (useLocalAPI) {
+                generateWithLocalAPI(character, messages)
             } else {
-                return@withContext generateWithHuggingFace(character, messages)
+                generateWithHuggingFace(character, messages)
             }
+            
+            // Valider et améliorer la réponse
+            val userMessage = messages.lastOrNull { it.isUser }?.content ?: ""
+            val validatedResponse = responseValidator.improveResponse(userMessage, response, character)
+            
+            return@withContext validatedResponse
         } catch (e: Exception) {
             Log.e("AIEngine", "Error generating response", e)
-            return@withContext generateFallbackResponse(character)
+            val userMessage = messages.lastOrNull { it.isUser }?.content ?: ""
+            return@withContext responseValidator.generateFallbackResponse(userMessage, character)
         }
     }
     

@@ -23,6 +23,7 @@ class LocalAIEngine(
 ) {
     
     private val promptOptimizer = PromptOptimizer()
+    private val responseValidator = ResponseValidator()
     private var isModelLoaded = false
     private var contextSize = config.contextLength
     
@@ -107,7 +108,11 @@ class LocalAIEngine(
             
             // Post-process response
             val cleaned = cleanResponse(response)
-            val enhanced = promptOptimizer.enhanceResponseCoherence(character, messages, cleaned)
+            
+            // Valider et améliorer la cohérence
+            val userMessage = messages.lastOrNull { it.isUser }?.content ?: ""
+            val validated = responseValidator.improveResponse(userMessage, cleaned, character)
+            val enhanced = promptOptimizer.enhanceResponseCoherence(character, messages, validated)
             
             Log.d("LocalAIEngine", "Response generated: ${enhanced.take(50)}...")
             enhanced
@@ -132,12 +137,18 @@ class LocalAIEngine(
     
     private fun generateEnhancedFallback(character: Character, messages: List<Message>): String {
         // Enhanced fallback responses based on character and context
-        val lastMessage = messages.lastOrNull { it.isUser }?.content?.lowercase() ?: ""
+        val lastMessage = messages.lastOrNull { it.isUser }?.content ?: ""
+        val lastMessageLower = lastMessage.lowercase()
         val previousMessages = messages.takeLast(5)
         val hasGreetedBefore = previousMessages.any { !it.isUser && it.content.contains("bonjour", ignoreCase = true) }
         
+        // Vérifier si c'est une question et y répondre en priorité
+        if (responseValidator.containsQuestion(lastMessage)) {
+            return generateQuestionResponse(lastMessage, character, messages)
+        }
+        
         return when {
-            (lastMessage.contains("bonjour") || lastMessage.contains("salut") || lastMessage.contains("hey")) && !hasGreetedBefore -> {
+            (lastMessageLower.contains("bonjour") || lastMessageLower.contains("salut") || lastMessageLower.contains("hey")) && !hasGreetedBefore -> {
                 when (character.personality.lowercase()) {
                     in listOf("timide", "douce") -> "*rougit légèrement* Bonjour... *sourit timidement* Comment vas-tu aujourd'hui?"
                     in listOf("énergique", "joyeuse") -> "*court vers toi avec un grand sourire* Salut! Je suis tellement contente de te voir! *yeux brillants*"
