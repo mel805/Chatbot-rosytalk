@@ -24,6 +24,7 @@ class LocalAIEngine(
     
     private val promptOptimizer = PromptOptimizer()
     private val responseValidator = ResponseValidator()
+    private val intelligentGenerator = IntelligentResponseGenerator()
     private var isModelLoaded = false
     private var contextSize = config.contextLength
     
@@ -103,11 +104,16 @@ class LocalAIEngine(
             )
             */
             
-            // Simulate generation with enhanced fallback
-            val response = generateEnhancedFallback(character, messages)
+            // Utiliser le générateur intelligent pour des réponses plus cohérentes
+            val lastUserMessage = messages.lastOrNull { it.isUser }?.content ?: ""
+            val intelligentResponse = intelligentGenerator.generateResponse(
+                message = lastUserMessage,
+                character = character,
+                messages = messages
+            )
             
             // Post-process response
-            val cleaned = cleanResponse(response)
+            val cleaned = cleanResponse(intelligentResponse)
             
             // Valider et améliorer la cohérence
             val userMessage = messages.lastOrNull { it.isUser }?.content ?: ""
