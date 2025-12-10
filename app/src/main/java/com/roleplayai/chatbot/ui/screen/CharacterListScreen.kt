@@ -139,7 +139,10 @@ fun CharacterListScreen(
                         CharacterCard(
                             character = character,
                             onClick = { onCharacterSelected(character.id) },
-                            onProfileClick = { onCharacterProfileClick(character.id) }
+                            onProfileClick = { 
+                                android.util.Log.d("CharacterList", "Clic profil pour: ${character.id}")
+                                onCharacterProfileClick(character.id) 
+                            }
                         )
                     }
                 }
