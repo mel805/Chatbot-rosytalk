@@ -13,6 +13,7 @@ import com.roleplayai.chatbot.ui.screen.CharacterListScreen
 import com.roleplayai.chatbot.ui.screen.CharacterProfileScreen
 import com.roleplayai.chatbot.ui.screen.ChatScreen
 import com.roleplayai.chatbot.ui.screen.LoginScreen
+import com.roleplayai.chatbot.ui.screen.MainScreen
 import com.roleplayai.chatbot.ui.screen.ModelSelectionScreen
 import com.roleplayai.chatbot.ui.screen.ProfileScreen
 import com.roleplayai.chatbot.ui.screen.SettingsScreen
@@ -27,6 +28,7 @@ sealed class Screen(val route: String) {
     object Splash : Screen("splash")
     object Login : Screen("login")
     object ModelSelection : Screen("model_selection")
+    object Main : Screen("main")
     object CharacterList : Screen("character_list")
     object Settings : Screen("settings")
     object Profile : Screen("user_profile")
@@ -80,8 +82,8 @@ fun AppNavigation(
                             popUpTo(Screen.Splash.route) { inclusive = true }
                         }
                     } else {
-                        // Lancement normal : aller directement vers la liste
-                        navController.navigate(Screen.CharacterList.route) {
+                        // Lancement normal : aller directement vers l'écran principal
+                        navController.navigate(Screen.Main.route) {
                             popUpTo(Screen.Splash.route) { inclusive = true }
                         }
                     }
@@ -104,7 +106,7 @@ fun AppNavigation(
             ModelSelectionScreen(
                 viewModel = modelViewModel,
                 onModelReady = {
-                    navController.navigate(Screen.CharacterList.route) {
+                    navController.navigate(Screen.Main.route) {
                         popUpTo(Screen.ModelSelection.route) { inclusive = true }
                     }
                 }
@@ -118,6 +120,25 @@ fun AppNavigation(
             }
         }
         
+        composable(Screen.Main.route) {
+            MainScreen(
+                onCharacterClick = { characterId ->
+                    navController.navigate(Screen.Chat.createRoute(characterId))
+                },
+                onCharacterProfileClick = { characterId ->
+                    navController.navigate(Screen.CharacterProfile.createRoute(characterId))
+                },
+                onChatClick = { characterId ->
+                    // Naviguer vers le chat du personnage
+                    navController.navigate(Screen.Chat.createRoute(characterId))
+                },
+                onNavigateToProfile = {
+                    navController.navigate(Screen.Profile.route)
+                }
+            )
+        }
+        
+        // Garder CharacterList pour compatibilité (optionnel)
         composable(Screen.CharacterList.route) {
             CharacterListScreen(
                 viewModel = characterViewModel,
@@ -128,7 +149,7 @@ fun AppNavigation(
                     navController.navigate(Screen.CharacterProfile.createRoute(characterId))
                 },
                 onSettingsClick = {
-                    navController.navigate(Screen.Settings.route)
+                    navController.navigate(Screen.Main.route)
                 }
             )
         }
@@ -142,18 +163,8 @@ fun AppNavigation(
                 onBack = { navController.popBackStack() },
                 onStartChat = {
                     navController.navigate(Screen.Chat.createRoute(characterId)) {
-                        popUpTo(Screen.CharacterList.route)
+                        popUpTo(Screen.Main.route)
                     }
-                }
-            )
-        }
-        
-        composable(Screen.Settings.route) {
-            SettingsScreen(
-                viewModel = modelViewModel,
-                onBack = { navController.popBackStack() },
-                onNavigateToProfile = {
-                    navController.navigate(Screen.Profile.route)
                 }
             )
         }
