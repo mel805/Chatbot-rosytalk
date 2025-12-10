@@ -20,6 +20,12 @@ class PreferencesManager(private val context: Context) {
         private val FIRST_LAUNCH = booleanPreferencesKey("first_launch")
         private val SELECTED_MODEL_NAME = stringPreferencesKey("selected_model_name")
         private val MODEL_PATH = stringPreferencesKey("model_path")
+        
+        // Groq API settings
+        private val GROQ_API_KEY = stringPreferencesKey("groq_api_key")
+        private val GROQ_MODEL_ID = stringPreferencesKey("groq_model_id")
+        private val NSFW_MODE_ENABLED = booleanPreferencesKey("nsfw_mode_enabled")
+        private val USE_GROQ_API = booleanPreferencesKey("use_groq_api")
     }
     
     val selectedModelId: Flow<String?> = context.dataStore.data.map { preferences ->
@@ -74,5 +80,46 @@ class PreferencesManager(private val context: Context) {
             preferences.remove(SELECTED_MODEL_NAME)
             preferences.remove(MODEL_PATH)
         }
+    }
+    
+    // Groq API settings
+    suspend fun setGroqApiKey(apiKey: String) {
+        context.dataStore.edit { preferences ->
+            preferences[GROQ_API_KEY] = apiKey
+        }
+    }
+    
+    val groqApiKey: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[GROQ_API_KEY] ?: ""
+    }
+    
+    suspend fun setGroqModelId(modelId: String) {
+        context.dataStore.edit { preferences ->
+            preferences[GROQ_MODEL_ID] = modelId
+        }
+    }
+    
+    val groqModelId: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[GROQ_MODEL_ID] ?: "llama-3.1-70b-versatile"
+    }
+    
+    suspend fun setNsfwMode(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[NSFW_MODE_ENABLED] = enabled
+        }
+    }
+    
+    val nsfwMode: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[NSFW_MODE_ENABLED] ?: false
+    }
+    
+    suspend fun setUseGroqApi(use: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[USE_GROQ_API] = use
+        }
+    }
+    
+    val useGroqApi: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[USE_GROQ_API] ?: false
     }
 }

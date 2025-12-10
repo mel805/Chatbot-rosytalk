@@ -5,22 +5,27 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.roleplayai.chatbot.data.ai.AIEngine
 import com.roleplayai.chatbot.data.ai.LocalAIEngine
+import com.roleplayai.chatbot.data.ai.GroqAIEngine
 import com.roleplayai.chatbot.data.model.Chat
 import com.roleplayai.chatbot.data.model.InferenceConfig
 import com.roleplayai.chatbot.data.model.Message
+import com.roleplayai.chatbot.data.preferences.PreferencesManager
 import com.roleplayai.chatbot.data.repository.CharacterRepository
 import com.roleplayai.chatbot.data.repository.ChatRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class ChatViewModel(application: Application) : AndroidViewModel(application) {
     
     private val chatRepository = ChatRepository()
     private val characterRepository = CharacterRepository()
+    private val preferencesManager = PreferencesManager(application)
     private val aiEngine = AIEngine(application)
     private var localAIEngine: LocalAIEngine? = null
+    private var groqAIEngine: GroqAIEngine? = null
     private var useLocalEngine = false
     
     private val _currentChat = MutableStateFlow<Chat?>(null)
@@ -92,12 +97,22 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 
                 val updatedChat = chatRepository.getChatById(chat.id)!!
                 
-                // UTILISER UNIQUEMENT LE MOTEUR LOCAL (modèles téléchargés)
-                val response = if (localAIEngine != null) {
+                // Vérifier si Groq API est activée
+                val useGroq = preferencesManager.useGroqApi.first()
+                
+                val response = if (useGroq) {
+                    // Utiliser Groq API (priorité)
+                    if (groqAIEngine == null) {
+                        initializeGroqEngine()
+                    }
+                    groqAIEngine?.generateResponse(character, updatedChat.messages)
+                        ?: "Erreur : Groq API non configurée. Ajoutez votre clé API dans Paramètres."
+                } else if (localAIEngine != null) {
+                    // Utiliser le moteur local
                     localAIEngine!!.generateResponse(character, updatedChat.messages)
                 } else {
-                    // Si pas de modèle chargé, erreur claire
-                    throw IllegalStateException("Aucun modèle IA n'est chargé. Veuillez télécharger un modèle dans les paramètres.")
+                    // Aucun moteur disponible
+                    "Aucune IA configurée. Activez Groq API dans Paramètres ou téléchargez un modèle local."
                 }
                 
                 // Add AI response
@@ -162,6 +177,27 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             } catch (e: Exception) {
                 _error.value = "Erreur d'initialisation de l'IA locale: ${e.message}"
             }
+        }
+    }
+    
+    private suspend fun initializeGroqEngine() {
+        try {
+            val apiKey = preferencesManager.groqApiKey.first()
+            val modelId = preferencesManager.groqModelId.first()
+            val nsfwMode = preferencesManager.nsfwMode.first()
+            
+            if (apiKey.isBlank()) {
+                _error.value = "Clé API Groq manquante. Configurez-la dans Paramètres."
+                return
+            }
+            
+            groqAIEngine = GroqAIEngine(
+                apiKey = apiKey,
+                model = modelId,
+                nsfwMode = nsfwMode
+            )
+        } catch (e: Exception) {
+            _error.value = "Erreur d'initialisation de Groq: ${e.message}"
         }
     }
     
