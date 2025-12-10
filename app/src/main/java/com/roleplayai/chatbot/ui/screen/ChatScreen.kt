@@ -67,21 +67,22 @@ fun ChatScreen(
             AsyncImage(
                 model = currentChat.characterImageUrl,
                 contentDescription = "${currentChat.characterName} background",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-                alpha = 0.15f // Transparence pour ne pas gêner la lecture
+                modifier = Modifier
+                    .fillMaxSize()
+                    .alpha(0.3f), // Transparence pour ne pas gêner la lecture
+                contentScale = ContentScale.Crop
             )
             
-            // Gradient overlay pour améliorer la lisibilité
+            // Gradient overlay léger pour améliorer la lisibilité
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
-                                MaterialTheme.colorScheme.background.copy(alpha = 0.85f),
-                                MaterialTheme.colorScheme.background.copy(alpha = 0.95f),
-                                MaterialTheme.colorScheme.background.copy(alpha = 0.98f)
+                                MaterialTheme.colorScheme.background.copy(alpha = 0.5f),
+                                MaterialTheme.colorScheme.background.copy(alpha = 0.7f),
+                                MaterialTheme.colorScheme.background.copy(alpha = 0.85f)
                             )
                         )
                     )
