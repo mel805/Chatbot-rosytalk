@@ -77,25 +77,26 @@ class LocalAIEngine(
             Log.d("LocalAIEngine", "Taille: ${modelFile.length() / (1024*1024)} MB")
             Log.d("LocalAIEngine", "Threads: ${config.threads}, Context: ${config.contextLength}")
             
-            // Note: Le chargement est désactivé car trop lent sur mobile
-            // Le modèle fonctionne en mode fallback intelligent
-            Log.i("LocalAIEngine", "💡 Mode fallback intelligent activé (inférence native désactivée)")
-            isModelLoaded = false
-            
-            /* 
-            // Code de chargement natif (désactivé temporairement)
-            isModelLoaded = nativeLoadModel(modelPath, config.threads, config.contextLength)
+            // VRAIMENT charger le modèle via JNI
+            Log.i("LocalAIEngine", "🚀 Chargement RÉEL du modèle llama.cpp...")
+            isModelLoaded = withTimeout(60000L) { // 60 secondes max
+                nativeLoadModel(modelPath, config.threads, config.contextLength)
+            }
             
             if (isModelLoaded) {
                 Log.i("LocalAIEngine", "✅ Modèle chargé avec succès!")
             } else {
                 Log.e("LocalAIEngine", "❌ Échec du chargement du modèle")
             }
-            */
             
+            isModelLoaded
+        } catch (e: TimeoutCancellationException) {
+            Log.e("LocalAIEngine", "⏱️ Timeout lors du chargement (60s)")
+            isModelLoaded = false
             false
         } catch (e: Exception) {
             Log.e("LocalAIEngine", "❌ Exception lors du chargement", e)
+            isModelLoaded = false
             false
         }
     }
@@ -104,19 +105,7 @@ class LocalAIEngine(
         character: Character,
         messages: List<Message>
     ): String = withContext(Dispatchers.IO) {
-        // TOUJOURS utiliser le fallback pour l'instant
-        // L'inférence native llama.cpp est trop lente sur mobile
-        Log.w("LocalAIEngine", "⚠️ Utilisation du fallback intelligent (inférence native désactivée temporairement)")
-        Log.i("LocalAIEngine", "💡 Le modèle llama.cpp est compilé mais non utilisé pour éviter les lenteurs")
-        
-        return@withContext contextualGenerator.generateContextualResponse(
-            userMessage = messages.lastOrNull { it.isUser }?.content ?: "",
-            character = character,
-            messages = messages
-        )
-        
-        /* 
-        // Code d'inférence native (désactivé temporairement car trop lent)
+        // Vérifier si le modèle est chargé
         if (!isModelLoaded) {
             Log.w("LocalAIEngine", "❌ Modèle non chargé, utilisation du fallback")
             return@withContext contextualGenerator.generateContextualResponse(
@@ -127,9 +116,9 @@ class LocalAIEngine(
         }
         
         try {
-            Log.d("LocalAIEngine", "===== Génération avec llama.cpp =====")
+            Log.d("LocalAIEngine", "===== Génération RÉELLE avec llama.cpp =====")
             
-            // Construire le prompt système avec le générateur contextuel
+            // Construire le prompt système optimisé
             val systemPrompt = contextualGenerator.buildSystemPrompt(character, messages)
             
             // Construire le prompt complet au format chat
@@ -138,8 +127,8 @@ class LocalAIEngine(
             Log.d("LocalAIEngine", "Prompt construit (${fullPrompt.length} caractères)")
             Log.d("LocalAIEngine", "Premiers 200 car: ${fullPrompt.take(200)}...")
             
-            // Générer avec timeout de 30 secondes
-            val rawResponse = withTimeout(30000L) {
+            // Générer avec timeout de 45 secondes (suffisant pour mobile)
+            val rawResponse = withTimeout(45000L) {
                 nativeGenerate(
                     prompt = fullPrompt,
                     maxTokens = config.maxTokens,
@@ -169,7 +158,7 @@ class LocalAIEngine(
             
             cleaned
         } catch (e: TimeoutCancellationException) {
-            Log.e("LocalAIEngine", "⏱️ Timeout (30s) - inférence trop lente, fallback")
+            Log.e("LocalAIEngine", "⏱️ Timeout (45s) - inférence trop lente, fallback")
             contextualGenerator.generateContextualResponse(
                 userMessage = messages.lastOrNull { it.isUser }?.content ?: "",
                 character = character,
@@ -183,7 +172,6 @@ class LocalAIEngine(
                 messages = messages
             )
         }
-        */
     }
     
     /**
