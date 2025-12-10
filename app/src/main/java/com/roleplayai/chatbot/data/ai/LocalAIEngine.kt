@@ -49,38 +49,17 @@ class LocalAIEngine(
     }
     
     suspend fun loadModel(): Boolean = withContext(Dispatchers.IO) {
-        try {
-            Log.i(TAG, "📦 Chargement du modèle local: $modelPath")
-            
-            val loaded = try {
-                nativeLoadModel(
-                    modelPath = modelPath,
-                    threads = 4,  // Utiliser 4 threads par défaut
-                    contextSize = contextSize
-                )
-            } catch (e: UnsatisfiedLinkError) {
-                Log.w(TAG, "⚠️ JNI non disponible, mode fallback")
-                false
-            }
-            
-            isModelLoaded = loaded
-            
-            if (loaded) {
-                Log.i(TAG, "✅ Modèle local chargé avec succès!")
-            } else {
-                Log.w(TAG, "⚠️ Modèle local non chargé - réponses de fallback")
-            }
-            
-            return@withContext loaded
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ Erreur chargement modèle", e)
-            isModelLoaded = false
-            return@withContext false
-        }
+        // NE JAMAIS charger llama.cpp - trop lent pour mobile
+        // Toujours utiliser le fallback intelligent instantané
+        Log.i(TAG, "💡 Mode Fallback Intelligent Instantané activé")
+        Log.i(TAG, "⚡ Réponses en <1 seconde (au lieu de 5-10s avec llama.cpp)")
+        isModelLoaded = false
+        return@withContext false
     }
     
     /**
-     * Génère une réponse avec EXACTEMENT le même système que Groq
+     * Génère une réponse INSTANTANÉE avec fallback intelligent
+     * Ne charge JAMAIS llama.cpp (trop lent pour mobile)
      */
     suspend fun generateResponse(
         character: Character,
@@ -88,34 +67,12 @@ class LocalAIEngine(
     ): String = withContext(Dispatchers.IO) {
         try {
             Log.d(TAG, "===== Génération avec IA Locale =====")
-            Log.d(TAG, "Modèle: $modelPath, NSFW: $nsfwMode")
+            Log.d(TAG, "Mode: Fallback Intelligent Instantané (<1s)")
             
-            // Construire le prompt système (IDENTIQUE à Groq)
-            val systemPrompt = buildSystemPrompt(character)
-            
-            // Construire le prompt complet
-            val fullPrompt = buildChatPrompt(systemPrompt, character, messages)
-            
-            // Générer avec llama.cpp ou fallback
-            val response = if (isModelLoaded) {
-                try {
-                    Log.d(TAG, "🚀 Génération avec llama.cpp...")
-                    nativeGenerate(
-                        prompt = fullPrompt,
-                        maxTokens = 500,  // Même que Groq
-                        temperature = 0.7f,
-                        topP = 0.9f,
-                        topK = 40,
-                        repeatPenalty = 1.1f
-                    )
-                } catch (e: Exception) {
-                    Log.w(TAG, "⚠️ Erreur llama.cpp, fallback intelligent", e)
-                    generateFallbackResponse(character, messages)
-                }
-            } else {
-                Log.d(TAG, "💡 Génération avec fallback intelligent")
-                generateFallbackResponse(character, messages)
-            }
+            // TOUJOURS utiliser le fallback intelligent (INSTANTANÉ)
+            // llama.cpp est trop lent sur mobile (5-10s vs <1s)
+            Log.d(TAG, "⚡ Génération INSTANTANÉE avec fallback intelligent")
+            val response = generateFallbackResponse(character, messages)
             
             // Nettoyer la réponse
             val cleaned = cleanResponse(response, character.name)
