@@ -211,8 +211,8 @@ RAPPEL : TOUJOURS inclure des (pensées) dans tes réponses !
     }
     
     /**
-     * Génère une réponse de fallback RAPIDE et NATURELLE
-     * Réponses courtes comme une vraie personne
+     * Génère une réponse INTELLIGENTE et COHÉRENTE
+     * Analyse le contexte et répond de manière pertinente
      * ROBUSTE - NE PEUT PAS ÉCHOUER
      */
     private fun generateFallbackResponse(character: Character, messages: List<Message>): String {
@@ -220,47 +220,278 @@ RAPPEL : TOUJOURS inclure des (pensées) dans tes réponses !
             val userMessage = messages.lastOrNull { it.isUser }?.content ?: ""
             val lowerMessage = userMessage.lowercase()
             
-            // Détecter le contexte pour réponses naturelles et courtes
-            when {
-                // Salutations
-                lowerMessage.contains(Regex("(bonjour|salut|hello|hey|coucou|hi|yo)")) -> {
-                    getGreeting(character)
+            Log.d(TAG, "📝 Analyse message: $userMessage")
+            
+            // ANALYSE CONTEXTUELLE AVANCÉE
+            
+            // 1. Détection d'actions physiques de l'utilisateur
+            val userActions = extractUserActions(userMessage)
+            if (userActions.isNotEmpty()) {
+                Log.d(TAG, "✅ Actions détectées: $userActions")
+                return generateReactionToUserAction(character, userActions, userMessage)
+            }
+            
+            // 2. Détection de questions
+            if (isQuestion(userMessage)) {
+                Log.d(TAG, "✅ Question détectée")
+                return generateAnswerToQuestion(character, userMessage)
+            }
+            
+            // 3. Détection d'affection/compliments
+            if (isAffection(lowerMessage)) {
+                Log.d(TAG, "✅ Affection détectée")
+                return generateAffectionResponse(character, userMessage)
+            }
+            
+            // 4. Détection de salutations
+            if (isGreeting(lowerMessage)) {
+                Log.d(TAG, "✅ Salutation détectée")
+                return generateGreeting(character)
+            }
+            
+            // 5. Détection de réponses courtes (oui, non, ok, etc.)
+            if (isShortAnswer(lowerMessage)) {
+                Log.d(TAG, "✅ Réponse courte détectée")
+                return generateContinuation(character, messages)
+            }
+            
+            // 6. Réponse contextuelle basée sur le contenu
+            Log.d(TAG, "✅ Réponse contextuelle générique")
+            return generateContextualResponse(character, userMessage, messages)
+            
+        } catch (e: Exception) {
+            // Fallback absolu si TOUT échoue
+            Log.w(TAG, "⚠️ Fallback absolu activé", e)
+            "*sourit* ${getDefaultResponse()}"
+        }
+    }
+    
+    // Extrait les actions de l'utilisateur (je te caresse, je t'embrasse, etc.)
+    private fun extractUserActions(message: String): List<String> {
+        val actions = mutableListOf<String>()
+        val lower = message.lowercase()
+        
+        // Actions physiques courantes
+        val actionPatterns = mapOf(
+            "caress" to listOf("caresse", "caresser", "touche", "toucher"),
+            "kiss" to listOf("embrasse", "embrasser", "bisou", "baiser"),
+            "hug" to listOf("serre", "serrer", "câlin", "enlace"),
+            "hold" to listOf("prend", "prendre", "tient", "tenir", "attrape"),
+            "look" to listOf("regarde", "regarder", "observe", "fixer"),
+            "approach" to listOf("approche", "s'approche", "vient", "avance"),
+            "smile" to listOf("souris", "sourire"),
+            "touch" to listOf("effleure", "frôle", "pose")
+        )
+        
+        for ((action, patterns) in actionPatterns) {
+            for (pattern in patterns) {
+                if (lower.contains(pattern)) {
+                    actions.add(action)
+                    break
                 }
-                
-                // Comment ça va
-                lowerMessage.contains(Regex("(comment|ça va|vas-tu|how are you|quoi de neuf)")) -> {
-                    getHowAreYou(character)
+            }
+        }
+        
+        return actions
+    }
+    
+    // Vérifie si c'est une question
+    private fun isQuestion(message: String): Boolean {
+        val lower = message.lowercase()
+        return message.contains("?") ||
+                lower.startsWith("qui ") || lower.startsWith("que ") || 
+                lower.startsWith("quoi ") || lower.startsWith("où ") ||
+                lower.startsWith("quand ") || lower.startsWith("comment ") ||
+                lower.startsWith("pourquoi ") || lower.startsWith("est-ce ") ||
+                lower.contains("tu ") && (lower.contains(" ?") || lower.endsWith("s"))
+    }
+    
+    // Vérifie si c'est de l'affection
+    private fun isAffection(message: String): Boolean {
+        return message.contains(Regex("(j'aime|je t'aime|t'aime|adore|mignon|belle|jolie|beau|sexy|charmant|adorable)"))
+    }
+    
+    // Vérifie si c'est une salutation
+    private fun isGreeting(message: String): Boolean {
+        return message.contains(Regex("^(bonjour|salut|hello|hey|coucou|hi|yo)"))
+    }
+    
+    // Vérifie si c'est une réponse courte
+    private fun isShortAnswer(message: String): Boolean {
+        val words = message.trim().split(Regex("\\s+"))
+        return words.size <= 3 && message.contains(Regex("(oui|non|ok|d'accord|bien|super|cool|ouais|nan|peut-être|hmm)"))
+    }
+    
+    // Génère une réaction à l'action de l'utilisateur
+    private fun generateReactionToUserAction(character: Character, actions: List<String>, userMessage: String): String {
+        return try {
+            val isTimide = character.personality?.contains(Regex("timide|shy|réservé", RegexOption.IGNORE_CASE)) ?: false
+            val isBold = character.personality?.contains(Regex("audacieux|bold|confiant|séducteur", RegexOption.IGNORE_CASE)) ?: false
+            
+            when (actions.firstOrNull()) {
+                "caress" -> when {
+                    isTimide -> listOf(
+                        "*frissonne légèrement* (C'est doux...) Oh... *rougit* Ça me fait quelque chose...",
+                        "*devient toute rouge* Mm... (Son toucher...) C'est... agréable...",
+                        "*ferme les yeux* (Je sens sa main...) *murmure* Continue..."
+                    ).random()
+                    isBold -> listOf(
+                        "*sourit* (J'aime ça...) Mmh, tu es doué... *se rapproche*",
+                        "*penche la tête* (Ça chatouille...) Héhé, ça me plaît !",
+                        "*yeux brillants* Continue, j'adore quand tu fais ça..."
+                    ).random()
+                    else -> listOf(
+                        "*sourit doucement* (C'est agréable...) Mmh... *ferme les yeux*",
+                        "*frissonne* Oh... (Ça fait du bien...) J'aime ça...",
+                        "*se détend* (Son toucher est doux...) Continue..."
+                    ).random()
                 }
-                
-                // Remerciements
-                lowerMessage.contains(Regex("(merci|thank|merci beaucoup)")) -> {
-                    getThankYouResponse(character)
+                "kiss" -> when {
+                    isTimide -> listOf(
+                        "*écarquille les yeux* (Il m'embrasse...!) *devient écarlate* Mm...!",
+                        "*surprise* (Oh mon dieu...) *ferme les yeux* *répond timidement*",
+                        "*rougit intensément* (Mon premier...?) *murmure* C'était... doux..."
+                    ).random()
+                    isBold -> listOf(
+                        "*sourit* (Enfin...) *approfondit le baiser* Mmh...",
+                        "*rit doucement* (J'attendais ça...) *l'embrasse en retour passionnément*",
+                        "*yeux mi-clos* Mmh... (Il embrasse bien...) Encore..."
+                    ).random()
+                    else -> listOf(
+                        "*ferme les yeux* Mmh... (C'est bon...) *répond au baiser*",
+                        "*surprise* Oh...! *rougit* (Inattendu...) *sourit*",
+                        "*se rapproche* (Ses lèvres...) Mm... *embrasse tendrement*"
+                    ).random()
                 }
-                
-                // Questions
-                lowerMessage.contains(Regex("(qui|quoi|où|quand|comment|pourquoi|\\?)")) -> {
-                    getQuestionResponse(character, userMessage)
+                "hug" -> when {
+                    isTimide -> listOf(
+                        "*surprise* Oh...! (Il me serre...) *rougit* C'est... réconfortant...",
+                        "*devient rouge* (Contre lui...) *murmure* J'aime ça...",
+                        "*hésite puis se blottit* (C'est chaud...) Merci..."
+                    ).random()
+                    else -> listOf(
+                        "*sourit* (Un câlin...) *serre en retour* C'est agréable...",
+                        "*se blottit* Mmh... (Je me sens bien...) Reste comme ça...",
+                        "*rit doucement* (Il est doux...) J'adore les câlins !"
+                    ).random()
                 }
-                
-                // Affection/Compliments
-                lowerMessage.contains(Regex("(j'aime|je t'aime|tu es|mignon|belle|jolie|beau)")) -> {
-                    getAffectionResponse(character)
-                }
-                
-                // Actions utilisateur (caresse, embrasse, etc.)
-                lowerMessage.contains(Regex("(je te|je t'|caresse|embrasse|prend|touche)")) -> {
-                    getReactionToAction(character, userMessage)
-                }
-                
-                // Réponse par défaut contextuelle
-                else -> {
-                    getContextualResponse(character, messages)
+                else -> when {
+                    isTimide -> "*rougit* (Il fait quelque chose...) Oh... *baisse les yeux*"
+                    else -> "*sourit* (Hmm...) *réagit* Qu'est-ce que tu fais ?"
                 }
             }
         } catch (e: Exception) {
-            // Fallback absolu si TOUT échoue (ne devrait jamais arriver)
-            Log.w(TAG, "⚠️ Fallback absolu activé", e)
-            "*sourit* ${getDefaultResponse()}"
+            "*sourit* Mmh... *réagit*"
+        }
+    }
+    
+    // Génère une réponse à une question
+    private fun generateAnswerToQuestion(character: Character, question: String): String {
+        return try {
+            val lower = question.lowercase()
+            
+            when {
+                lower.contains(Regex("(comment tu|comment ça|ça va|tu vas)")) -> {
+                    listOf(
+                        "*sourit* Ça va bien ! (Il demande...) Et toi ?",
+                        "*penche la tête* Bien, merci ! (C'est gentil...) Toi ?",
+                        "*yeux pétillants* Super ! (Content qu'il demande) Et toi, comment vas-tu ?"
+                    ).random()
+                }
+                lower.contains(Regex("(tu aimes|tu préfères|qu'est-ce que tu)")) -> {
+                    listOf(
+                        "*réfléchit* (Bonne question...) Hmm, j'aime beaucoup de choses !",
+                        "*sourit* Oh, plein de choses ! (Que répondre...) Et toi ?",
+                        "*penche la tête* (Hmm...) J'adore ${listOf("discuter", "rire", "passer du temps ensemble").random()} !"
+                    ).random()
+                }
+                lower.contains(Regex("(qui|quoi|où|quand|pourquoi)")) -> {
+                    listOf(
+                        "*réfléchit* (Intéressant...) ${character.name}... Bonne question !",
+                        "*sourit* (Que dire...) Hmm, laisse-moi réfléchir...",
+                        "*penche la tête* (Oh...) ${getSpeech()}"
+                    ).random()
+                }
+                else -> {
+                    "*sourit* (Une question...) ${getSpeech()}"
+                }
+            }
+        } catch (e: Exception) {
+            "*sourit* Bonne question !"
+        }
+    }
+    
+    // Génère une réponse affectueuse
+    private fun generateAffectionResponse(character: Character, message: String): String {
+        return try {
+            val isTimide = character.personality?.contains(Regex("timide|shy", RegexOption.IGNORE_CASE)) ?: false
+            
+            when {
+                isTimide -> listOf(
+                    "*devient écarlate* (Il a dit ça...?!) M-Merci... *cache son visage*",
+                    "*rougit intensément* Tu... tu crois vraiment ? (Mon cœur...)",
+                    "*baisse les yeux* (C'est trop gentil...) *murmure* Merci..."
+                ).random()
+                else -> listOf(
+                    "*sourit radieusement* (Il est adorable !) Merci, c'est mignon !",
+                    "*rit* (Ça me touche...) Tu sais quoi ? Toi aussi !",
+                    "*yeux brillants* (Je me sens bien...) Ça me fait vraiment plaisir !"
+                ).random()
+            }
+        } catch (e: Exception) {
+            "*rougit* Merci..."
+        }
+    }
+    
+    // Génère une salutation
+    private fun generateGreeting(character: Character): String {
+        return try {
+            val isTimide = character.personality?.contains(Regex("timide|shy|réservé", RegexOption.IGNORE_CASE)) ?: false
+            when {
+                isTimide -> listOf(
+                    "*rougit* (Il me parle...) B-Bonjour...",
+                    "*baisse les yeux* Euh... salut...",
+                    "*devient rose* Oh, bonjour... *sourit timidement*"
+                ).random()
+                else -> listOf(
+                    "*sourit* Hey ! (Content de le voir !)",
+                    "*yeux pétillants* Salut ! Ça va ?",
+                    "*s'approche* Coucou ! *sourire chaleureux*"
+                ).random()
+            }
+        } catch (e: Exception) {
+            "*sourit* Bonjour !"
+        }
+    }
+    
+    // Génère une continuation de conversation
+    private fun generateContinuation(character: Character, messages: List<Message>): String {
+        return try {
+            listOf(
+                "*sourit* (D'accord...) Et après ?",
+                "*penche la tête* (Hmm...) Continue...",
+                "*écoute attentivement* (Je vois...) Dis-m'en plus !",
+                "*yeux brillants* (Intéressant...) Et ensuite ?"
+            ).random()
+        } catch (e: Exception) {
+            "*sourit* Continue !"
+        }
+    }
+    
+    // Génère une réponse contextuelle générique mais cohérente
+    private fun generateContextualResponse(character: Character, userMessage: String, messages: List<Message>): String {
+        return try {
+            // Extraire un mot-clé du message pour référence
+            val words = userMessage.split(Regex("\\s+")).filter { it.length > 3 }
+            val keyword = words.lastOrNull() ?: "ça"
+            
+            listOf(
+                "*${getAction()}* (${getThought()}) Ah, $keyword...",
+                "(${getThought()}) *${getAction()}* ${getSpeech()}",
+                "*${getAction()}* ${getSpeech()} (${getThought()})"
+            ).random()
+        } catch (e: Exception) {
+            "*sourit* Je t'écoute !"
         }
     }
     
