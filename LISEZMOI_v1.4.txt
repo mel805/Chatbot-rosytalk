@@ -1,0 +1,344 @@
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                                                                           ║
+║              🚀 ROLEPLAY AI v1.4 - IA LOCALE UNIQUEMENT 🚀               ║
+║                                                                           ║
+║           ✅ UTILISE SEULEMENT LES MODÈLES TÉLÉCHARGÉS ✅                ║
+║                    ❌ PLUS DE HUGGINGFACE ❌                              ║
+║                                                                           ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 CHANGEMENT MAJEUR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+                  🔥 HUGGINGFACE COMPLÈTEMENT SUPPRIMÉ 🔥
+
+L'application utilise maintenant **UNIQUEMENT** les modèles IA locaux que vous 
+téléchargez. Plus aucun appel à HuggingFace ou autre API externe !
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ CE QUI A CHANGÉ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. ❌ **HuggingFace Supprimé**
+   → Plus aucun appel à l'API HuggingFace
+   → Toutes les références supprimées du code
+   → Application 100% locale maintenant
+
+2. ✅ **IA Locale Obligatoire**
+   → Utilise SEULEMENT les modèles téléchargés (TinyLlama, Phi-2, etc.)
+   → Si aucun modèle n'est chargé → Erreur claire
+   → Message: "Aucun modèle IA n'est chargé. Veuillez télécharger un modèle."
+
+3. 🧠 **Cohérence Améliorée**
+   → Système de réponses contextuelles intelligent
+   → Mémoire de conversation (10 derniers messages)
+   → Détection automatique des questions
+   → Réponses adaptées à la personnalité du personnage
+   → Se souvient des informations déjà partagées
+
+4. 📝 **Réponses Intelligentes aux Questions**
+   → Questions sur le nom → Répond avec son nom
+   → Questions sur l'âge → Répond avec son âge
+   → Questions "comment vas-tu" → Réponse personnalisée
+   → Questions sur les passions → Extrait des infos de description
+   → Se souvient si déjà répondu (évite répétitions)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 EXEMPLES DE CONVERSATIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📌 **Exemple 1 : Question sur le nom**
+
+User: Comment tu t'appelles ?
+Sakura: *baisse les yeux timidement* Je... je m'appelle Sakura. 
+        *sourit nerveusement* C'est joli de faire ta connaissance...
+
+User: Et c'est quoi ton nom déjà ?
+Sakura: *sourit* Je te l'ai déjà dit, c'est Sakura. Tu as oublié?
+
+✅ SE SOUVIENT des informations déjà partagées !
+
+---
+
+📌 **Exemple 2 : Question sur l'âge**
+
+User: Quel âge as-tu ?
+Emma: *sourit largement* J'ai 23 ans! *pose ses mains sur ses hanches* 
+      Et je suis pleine d'énergie!
+
+✅ Extrait l'âge depuis la description du personnage
+
+---
+
+📌 **Exemple 3 : Salutations**
+
+User: Salut!
+Yuki: *court vers toi avec un grand sourire* Salut! Je suis tellement 
+      contente de te voir! *yeux brillants*
+
+✅ Adapté à la personnalité (énergique)
+
+---
+
+📌 **Exemple 4 : Comment vas-tu**
+
+User: Comment tu vas ?
+Luna: *sourit timidement* Je vais bien, merci de demander... 
+      *regarde ailleurs* C'est gentil de t'inquiéter pour moi. Et toi, ça va?
+
+✅ Personnalité timide → Réponse adaptée
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🧠 SYSTÈME DE MÉMOIRE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+L'IA se souvient maintenant de :
+
+✅ Si elle a déjà dit son nom
+✅ Si elle a déjà dit son âge
+✅ Si elle a déjà parlé de ses passions
+✅ Les derniers messages de la conversation (contexte)
+✅ Si elle a déjà salué
+
+→ Évite les répétitions
+→ Conversation plus naturelle
+→ Cohérence améliorée
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📱 UTILISATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 **IMPORTANT : VOUS DEVEZ TÉLÉCHARGER UN MODÈLE !**
+
+Au premier lancement :
+1. L'application demande de choisir un modèle
+2. Sélectionner selon votre RAM :
+   - TinyLlama 1.1B : 1 GB RAM (rapide)
+   - Phi-2 2.7B : 2 GB RAM (équilibré)
+   - Gemma 2B : 3 GB RAM (qualité)
+3. Le modèle se télécharge automatiquement
+4. Une fois téléchargé, vous pouvez discuter !
+
+Sans modèle téléchargé :
+→ Message d'erreur : "Aucun modèle IA n'est chargé"
+→ Allez dans Paramètres ⚙️ pour télécharger un modèle
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💡 AVANTAGES IA LOCALE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ **Confidentialité Totale**
+   → Aucune donnée envoyée sur Internet
+   → Vos conversations restent sur votre téléphone
+   → 100% privé
+
+✅ **Fonctionne Hors Ligne**
+   → Une fois le modèle téléchargé
+   → Pas besoin de connexion Internet pour discuter
+   → Idéal pour économiser les données
+
+✅ **Pas de Limites d'API**
+   → Utilisez autant que vous voulez
+   → Pas de quota
+   → Pas de rate limiting
+
+✅ **Performances**
+   → Réponse rapide (selon modèle)
+   → Pas de latence réseau
+   → Contrôle total
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚙️ GESTION DES MODÈLES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📥 **Télécharger un Modèle**
+1. Ouvrir Paramètres ⚙️
+2. Cliquer "Changer de modèle"
+3. Sélectionner un modèle
+4. → Téléchargement automatique ✅
+
+🔄 **Changer de Modèle**
+1. Paramètres ⚙️ → Changer de modèle
+2. Sélectionner un autre modèle
+3. → Se télécharge automatiquement
+4. → Chargé immédiatement
+
+🗑️ **Supprimer un Modèle**
+1. Paramètres ⚙️
+2. "Supprimer le modèle actuel"
+3. Confirmer
+4. → Espace libéré ✅
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎭 PERSONNALITÉS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Chaque personnage a des réponses adaptées à sa personnalité :
+
+😊 **Timide / Douce**
+   → Rougit souvent
+   → Regarde ailleurs
+   → Parle doucement
+   Exemple: "*baisse les yeux timidement* Je... je m'appelle Luna..."
+
+🎉 **Énergique / Joyeuse**
+   → Saute d'excitation
+   → Gestes enthousiastes
+   → Très expressive
+   Exemple: "*saute de joie* Je vais super bien! *te prend les mains*"
+
+😏 **Séductrice / Confiante**
+   → Sourire charmeur
+   → Se rapproche
+   → Regard intense
+   Exemple: "*sourire charmeur* Emma... *te regarde* Retiens-le bien."
+
+❤️ **Maternelle / Bienveillante**
+   → Caresses douces
+   → Ton chaleureux
+   → Protectrice
+   Exemple: "*sourire chaleureux* Je m'appelle Anna, mon chéri."
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 COMPARAISON v1.3.1 vs v1.4
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+╔════════════════════╦════════════════╦════════════════════╗
+║ Aspect             ║ v1.3.1         ║ v1.4               ║
+╠════════════════════╬════════════════╬════════════════════╣
+║ API HuggingFace    ║ ✅ Utilisée    ║ ❌ Supprimée       ║
+║ IA Locale          ║ ❌ Secondaire  ║ ✅ Obligatoire     ║
+║ Confidentialité    ║ ❌ Données API ║ ✅ 100% Privée     ║
+║ Hors ligne         ║ ❌ Non         ║ ✅ Oui             ║
+║ Mémoire conv.      ║ ❌ Basique     ║ ✅ Avancée (10msg) ║
+║ Questions          ║ ❌ Simples     ║ ✅ Intelligentes   ║
+║ Se souvient        ║ ❌ Non         ║ ✅ Oui             ║
+║ Cohérence          ║ ✅ Bonne       ║ ✅ Très bonne      ║
+╚════════════════════╩════════════════╩════════════════════╝
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ NOTES IMPORTANTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. **Modèle Obligatoire**
+   → Vous DEVEZ télécharger un modèle pour utiliser l'application
+   → Sans modèle = Erreur claire
+   → Téléchargement facile depuis l'interface
+
+2. **Espace de Stockage**
+   → TinyLlama : 637 MB
+   → Phi-2 : 1.6 GB
+   → Gemma : 1.7 GB
+   → Vérifiez votre espace disponible !
+
+3. **RAM Nécessaire**
+   → Minimum 1 GB pour TinyLlama
+   → 2-3 GB recommandé pour meilleurs modèles
+   → L'application détecte automatiquement votre RAM
+
+4. **Performance**
+   → Modèles plus gros = Meilleure qualité
+   → Modèles plus petits = Plus rapide
+   → Choisissez selon vos besoins
+
+5. **Connexion Internet**
+   → Nécessaire SEULEMENT pour télécharger le modèle
+   → Ensuite fonctionne 100% hors ligne ✅
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🧪 TESTS RECOMMANDÉS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔬 **Test 1 : Mémoire du Nom**
+1. Demander : "Comment tu t'appelles ?"
+2. Personnage répond avec son nom
+3. Re-demander : "C'est quoi ton nom déjà ?"
+4. Vérifier → Dit "Je te l'ai déjà dit" ✅
+
+🔬 **Test 2 : Questions Variées**
+1. "Quel âge as-tu ?" → Répond âge
+2. "Tu aimes quoi ?" → Répond passions
+3. "Comment vas-tu ?" → Réponse personnalisée
+4. Vérifier → Cohérence ✅
+
+🔬 **Test 3 : Personnalités**
+1. Tester personnage timide → Rougit, yeux baissés
+2. Tester personnage énergique → Saute, enthousiaste
+3. Vérifier → Réponses adaptées ✅
+
+🔬 **Test 4 : Hors Ligne**
+1. Télécharger un modèle
+2. Activer mode avion ✈️
+3. Essayer de discuter
+4. Vérifier → Fonctionne parfaitement ✅
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📥 TÉLÉCHARGEMENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📦 **Fichier** : RolePlayAI-v1.4-local-only.apk
+📏 **Taille**  : 21 MB
+🌐 **Lien**    : GitHub Release v1.4.0
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❓ QUESTIONS FRÉQUENTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q: Pourquoi il n'y a plus HuggingFace ?
+A: Pour la confidentialité ! Maintenant tout est 100% local sur votre téléphone.
+
+Q: Ça fonctionne hors ligne ?
+A: OUI ! Une fois le modèle téléchargé, tout fonctionne hors ligne.
+
+Q: Les conversations sont cohérentes ?
+A: OUI ! Le système de mémoire et les réponses intelligentes assurent la cohérence.
+
+Q: Je dois télécharger un modèle à chaque fois ?
+A: NON ! Une fois téléchargé, le modèle reste sur votre téléphone.
+
+Q: Quel modèle choisir ?
+A: TinyLlama si vous avez peu de RAM/stockage, Phi-2 ou Gemma pour plus de qualité.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🏆 CONCLUSION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                                                                           ║
+║                  ✅ IA 100% LOCALE ET PRIVÉE MAINTENANT ! ✅             ║
+║                                                                           ║
+║   ✓ Plus de HuggingFace                                                  ║
+║   ✓ Confidentialité totale                                               ║
+║   ✓ Fonctionne hors ligne                                                ║
+║   ✓ Mémoire de conversation                                              ║
+║   ✓ Réponses intelligentes                                               ║
+║   ✓ Personnalités adaptées                                               ║
+║                                                                           ║
+║              🚀 L'APPLICATION EST MAINTENANT 100% LOCALE ! 🚀            ║
+║                                                                           ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Version 1.4.0 - Décembre 2025
+IA Locale Uniquement - Confidentialité Totale - Hors Ligne
+
+Merci d'utiliser RolePlay AI ! 🔒
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

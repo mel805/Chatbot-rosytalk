@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RolePlay AI</string>
+    <string name="characters">Personnages</string>
+    <string name="chat">Chat</string>
+    <string name="settings">Paramètres</string>
+    <string name="type_message">Écrivez votre message…</string>
+    <string name="downloading_model">Téléchargement du modèle IA…</string>
+    <string name="loading">Chargement…</string>
+    <string name="error_loading_model">Erreur lors du chargement du modèle</string>
+    <string name="retry">Réessayer</string>
+    <string name="search_characters">Rechercher des personnages…</string>
+    <string name="category_all">Tous</string>
+    <string name="category_anime">Anime/Manga</string>
+    <string name="category_fantasy">Fantasy</string>
+    <string name="category_real">Réel</string>
+    <string name="category_family">Famille</string>
+    <string name="category_friend">Ami(e)</string>
+    <string name="category_neighbor">Voisin(e)</string>
+    <string name="category_milf">MILF</string>
+    <string name="new_chat">Nouveau Chat</string>
+    <string name="delete_chat">Supprimer le chat</string>
+    <string name="clear_history">Effacer l\'historique</string>
+</resources>
