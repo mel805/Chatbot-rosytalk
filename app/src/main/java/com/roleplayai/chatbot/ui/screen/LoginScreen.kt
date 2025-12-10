@@ -1,25 +1,21 @@
 package com.roleplayai.chatbot.ui.screen
 
-import android.app.Activity
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Login
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.common.api.ApiException
 import com.roleplayai.chatbot.ui.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
 
@@ -28,48 +24,12 @@ fun LoginScreen(
     onLoginSuccess: () -> Unit
 ) {
     val authViewModel: AuthViewModel = viewModel()
-    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     
+    var email by remember { mutableStateOf("") }
+    var displayName by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    
-    // Launcher pour Google Sign-In
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-            try {
-                val account = task.getResult(ApiException::class.java)
-                val idToken = account.idToken
-                
-                if (idToken != null) {
-                    scope.launch {
-                        isLoading = true
-                        errorMessage = null
-                        
-                        val authResult = authViewModel.signInWithGoogle(idToken)
-                        
-                        authResult.fold(
-                            onSuccess = {
-                                isLoading = false
-                                onLoginSuccess()
-                            },
-                            onFailure = { error ->
-                                isLoading = false
-                                errorMessage = "Erreur de connexion: ${error.message}"
-                            }
-                        )
-                    }
-                } else {
-                    errorMessage = "Impossible d'obtenir le token Google"
-                }
-            } catch (e: ApiException) {
-                errorMessage = "Erreur Google Sign-In: ${e.message}"
-            }
-        }
-    }
     
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -127,41 +87,81 @@ fun LoginScreen(
                 }
             }
             
-            // Bouton Connexion Google
+            // Champ Email
+            OutlinedTextField(
+                value = email,
+                onValueChange = { 
+                    email = it
+                    errorMessage = null
+                },
+                label = { Text("Email") },
+                leadingIcon = { Icon(Icons.Default.Email, "Email") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                enabled = !isLoading
+            )
+            
+            Spacer(Modifier.height(16.dp))
+            
+            // Champ Nom (optionnel)
+            OutlinedTextField(
+                value = displayName,
+                onValueChange = { displayName = it },
+                label = { Text("Nom (optionnel)") },
+                leadingIcon = { Icon(Icons.Default.Person, "Nom") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                enabled = !isLoading
+            )
+            
+            Spacer(Modifier.height(32.dp))
+            
+            // Bouton Connexion
             Button(
                 onClick = {
-                    val signInIntent = authViewModel.getGoogleSignInClient(context).signInIntent
-                    launcher.launch(signInIntent)
+                    scope.launch {
+                        if (email.isBlank()) {
+                            errorMessage = "Veuillez entrer votre email"
+                            return@launch
+                        }
+                        
+                        isLoading = true
+                        errorMessage = null
+                        
+                        val result = authViewModel.signIn(email.trim(), displayName.trim())
+                        
+                        result.fold(
+                            onSuccess = {
+                                isLoading = false
+                                onLoginSuccess()
+                            },
+                            onFailure = { error ->
+                                isLoading = false
+                                errorMessage = error.message ?: "Erreur de connexion"
+                            }
+                        )
+                    }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
                 enabled = !isLoading,
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White,
-                    contentColor = Color.Black
-                )
+                shape = RoundedCornerShape(12.dp)
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Logo Google (placeholder - en production utilisez l'image officielle)
+                        Icon(Icons.Default.Login, "Connexion")
                         Text(
-                            text = "G",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = "Se connecter avec Google",
+                            text = "Se connecter",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Medium
                         )
@@ -190,10 +190,11 @@ fun LoginScreen(
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        text = "• Connexion sécurisée avec votre compte Google\n" +
-                               "• Vos préférences sont sauvegardées\n" +
+                        text = "• Connexion simple avec votre email\n" +
+                               "• Vos préférences sont sauvegardées localement\n" +
                                "• Vous pouvez activer le mode NSFW\n" +
-                               "• Conversations privées et sécurisées",
+                               "• Conversations privées et sécurisées\n" +
+                               "• Aucune donnée envoyée sur Internet",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
@@ -203,12 +204,21 @@ fun LoginScreen(
             Spacer(Modifier.weight(1f))
             
             // Note admin
-            Text(
-                text = "Admin : douvdouv21@gmail.com a le contrôle total",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                )
+            ) {
+                Text(
+                    text = "👑 Admin : douvdouv21@gmail.com a le contrôle total",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }

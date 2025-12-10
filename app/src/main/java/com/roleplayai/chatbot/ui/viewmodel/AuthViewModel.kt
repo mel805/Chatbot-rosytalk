@@ -1,12 +1,10 @@
 package com.roleplayai.chatbot.ui.viewmodel
 
 import android.app.Application
-import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.android.gms.auth.api.signin.GoogleSignInClient
-import com.google.firebase.auth.FirebaseUser
-import com.roleplayai.chatbot.data.auth.AuthManager
+import com.roleplayai.chatbot.data.auth.LocalAuthManager
+import com.roleplayai.chatbot.data.auth.User
 import com.roleplayai.chatbot.data.auth.UserPreferences
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -15,20 +13,23 @@ import kotlinx.coroutines.launch
 
 class AuthViewModel(application: Application) : AndroidViewModel(application) {
     
-    private val authManager = AuthManager(application)
+    private val authManager = LocalAuthManager(application)
     
-    val currentUser: StateFlow<FirebaseUser?> = authManager.currentUser
+    val currentUser: StateFlow<User?> = authManager.currentUser
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
     
     val isAdmin: StateFlow<Boolean> = authManager.isAdmin
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
     
-    fun getGoogleSignInClient(context: Context): GoogleSignInClient {
-        return authManager.getGoogleSignInClient()
+    init {
+        // Charger l'utilisateur au démarrage
+        viewModelScope.launch {
+            authManager.loadCurrentUser()
+        }
     }
     
-    suspend fun signInWithGoogle(idToken: String): Result<FirebaseUser> {
-        return authManager.signInWithGoogle(idToken)
+    suspend fun signIn(email: String, displayName: String = ""): Result<User> {
+        return authManager.signIn(email, displayName)
     }
     
     fun signOut() {
@@ -41,7 +42,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         return authManager.isAdmin()
     }
     
-    suspend fun getUserPreferences(): UserPreferences? {
+    fun getUserPreferences(): UserPreferences? {
         return authManager.getUserPreferences()
     }
     
@@ -49,5 +50,9 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             authManager.saveUserPreferences(preferences)
         }
+    }
+    
+    suspend fun getAllUsers(): List<User> {
+        return authManager.getAllUsers()
     }
 }
