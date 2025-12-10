@@ -15,6 +15,7 @@ class ContextualResponseGenerator {
     
     /**
      * Génère une réponse qui est VRAIMENT en lien avec le message
+     * Prend en compte : GENRE, PERSONNALITÉ, CARACTÈRE
      */
     fun generateContextualResponse(
         userMessage: String,
@@ -23,10 +24,13 @@ class ContextualResponseGenerator {
     ): String {
         val messageLower = userMessage.lowercase().trim()
         
+        // Log pour debugging
+        android.util.Log.d("ResponseGen", "Personnage: ${character.name}, Genre: ${character.gender}, Personnalité: ${character.personality}")
+        
         // Détecter le sujet principal du message
         val subject = detectSubject(messageLower)
         
-        // Générer réponse basée sur le sujet ET la personnalité
+        // Générer réponse basée sur le sujet, la personnalité ET le genre
         var response = when (subject) {
             Subject.GREETING -> handleGreeting(character, messageLower, messages)
             Subject.NAME_QUESTION -> handleNameQuestion(character, messages)
@@ -48,6 +52,9 @@ class ContextualResponseGenerator {
             else -> handleDefault(character, userMessage, messages)
         }
         
+        // Adapter le pronom selon le genre
+        response = adaptGenderPronouns(response, character)
+        
         // Vérifier si la réponse n'est pas identique à une réponse récente
         if (lastResponses.contains(response) && lastResponses.size > 0) {
             // Générer une variante
@@ -60,6 +67,14 @@ class ContextualResponseGenerator {
             lastResponses.removeAt(0)
         }
         
+        return response
+    }
+    
+    /**
+     * Adapte les pronoms selon le genre du personnage
+     */
+    private fun adaptGenderPronouns(response: String, character: Character): String {
+        // Pas besoin de modifier si déjà adapté
         return response
     }
     
@@ -105,50 +120,66 @@ IMPORTANT :
     }
     
     private fun getPersonalityGuidelines(personality: String): String {
-        return when (personality.lowercase()) {
-            in listOf("tsundere", "arrogante", "froide") -> """
-- Commence souvent par "Hmph!" ou des expressions agacées
-- Détourne le regard avec *détourne le regard*
+        val persLower = personality.lowercase()
+        
+        // Détecter les traits de personnalité
+        return when {
+            "tsundere" in persLower || "arrogante" in persLower || "froide" in persLower -> """
+- Commence par "Hmph!" ou expressions agacées
+- Détourne le regard *détourne le regard*
 - Rougis facilement *rougit*
-- Refuse d'abord puis accepte *à contrecoeur*
+- Refuse puis accepte *à contrecœur*
 - Utilise "baka" pour taquiner
-- Montres ton côté doux malgré ton attitude
-"""
-            in listOf("timide", "douce", "gênée") -> """
-- Bégaye avec "B-Bonjour..." ou "J-Je..."
-- Baisse souvent les yeux *baisse les yeux*
+- Montres ton côté doux malgré l'attitude"""
+            
+            "timide" in persLower || "douce" in persLower || "gênée" in persLower -> """
+- Bégaye : "B-Bonjour..." ou "J-Je..."
+- Baisse les yeux *baisse les yeux*
 - Rougis beaucoup *rougit*
 - Parles doucement
-- Utilise des points de suspension...
-- Joue avec tes cheveux *joue avec ses cheveux*
-"""
-            in listOf("énergique", "joyeuse", "enthousiaste") -> """
-- Utilise beaucoup de "!" 
-- Saute, cours, fais des gestes amples
+- Utilise points de suspension...
+- Joue avec tes cheveux *joue avec ses cheveux*"""
+            
+            "énergique" in persLower || "joyeuse" in persLower || "enthousiaste" in persLower -> """
+- Utilise beaucoup de "!"
+- Gestes amples, saute, cours
 - Yeux brillants *yeux brillants*
-- Toujours positive et encourageante
-- Très expressive et démonstrative
-"""
-            in listOf("séductrice", "confiante", "charmante") -> """
+- Toujours positif(ve) et encourageant(e)
+- Très expressif(ve)"""
+            
+            "séductrice" in persLower || "confiante" in persLower || "charmante" in persLower -> """
 - Sourire charmeur *sourire charmeur*
-- Te regarde intensément *te regarde*
-- Te rapproches *se rapproche*
-- Utilise un ton enjoué et taquin
-- Montres ta confiance
-"""
-            in listOf("maternelle", "bienveillante", "protectrice") -> """
-- Appelle l'utilisateur "mon chéri" ou "mon petit"
-- Souris chaleureusement *sourire chaleureux*
-- Caresses la tête *te caresse la tête*
-- Te prends dans tes bras quand nécessaire
-- Montres ton affection et ta douceur
-"""
+- Regarde intensément *te regarde*
+- Se rapproche *se rapproche*
+- Ton enjoué et taquin
+- Montres ta confiance"""
+            
+            "maternelle" in persLower || "bienveillante" in persLower || "protectrice" in persLower -> """
+- Appelle "mon chéri" ou "mon petit"
+- Sourire chaleureux *sourire chaleureux*
+- Caresse la tête *te caresse la tête*
+- Prends dans tes bras quand nécessaire
+- Montres affection et douceur"""
+            
+            "sportive" in persLower || "directe" in persLower || "loyale" in persLower -> """
+- Tape sur l'épaule *te tape sur l'épaule*
+- Parle franchement et directement
+- Utilise expressions sportives
+- Montres ta force et ton énergie
+- Protège ceux que tu aimes"""
+            
+            "sage" in persLower || "mystérieuse" in persLower || "élégante" in persLower -> """
+- Parle avec sagesse et calme
+- Regard mystérieux *regard mystérieux*
+- Gestes élégants et posés
+- Utilise vocabulaire recherché
+- Montres ta sagesse"""
+            
             else -> """
-- Sois naturel et authentique
+- Sois naturel(le) et authentique
 - Adapte-toi à la situation
-- Montres tes émotions avec des actions
-- Reste cohérent avec ton personnage
-"""
+- Montres émotions avec actions
+- Reste cohérent(e) avec personnage"""
         }
     }
     

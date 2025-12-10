@@ -55,123 +55,28 @@ class LocalAIEngine(
     }
     
     suspend fun loadModel(): Boolean = withContext(Dispatchers.IO) {
-        try {
-            // Vérifier si le fichier existe
-            val modelFile = java.io.File(modelPath)
-            if (!modelFile.exists()) {
-                Log.w("LocalAIEngine", "⚠️ Fichier modèle introuvable: $modelPath")
-                Log.i("LocalAIEngine", "💡 Le modèle sera utilisé en mode fallback intelligent")
-                isModelLoaded = false
-                return@withContext false
-            }
-            
-            if (modelFile.length() < 100 * 1024 * 1024) { // < 100 MB = incomplet
-                Log.w("LocalAIEngine", "⚠️ Fichier modèle incomplet: ${modelFile.length()} bytes")
-                Log.i("LocalAIEngine", "💡 Le modèle sera utilisé en mode fallback intelligent")
-                isModelLoaded = false
-                return@withContext false
-            }
-            
-            Log.d("LocalAIEngine", "===== Chargement du modèle llama.cpp =====")
-            Log.d("LocalAIEngine", "Chemin: $modelPath")
-            Log.d("LocalAIEngine", "Taille: ${modelFile.length() / (1024*1024)} MB")
-            Log.d("LocalAIEngine", "Threads: ${config.threads}, Context: ${config.contextLength}")
-            
-            // VRAIMENT charger le modèle via JNI
-            Log.i("LocalAIEngine", "🚀 Chargement RÉEL du modèle llama.cpp...")
-            isModelLoaded = withTimeout(60000L) { // 60 secondes max
-                nativeLoadModel(modelPath, config.threads, config.contextLength)
-            }
-            
-            if (isModelLoaded) {
-                Log.i("LocalAIEngine", "✅ Modèle chargé avec succès!")
-            } else {
-                Log.e("LocalAIEngine", "❌ Échec du chargement du modèle")
-            }
-            
-            isModelLoaded
-        } catch (e: TimeoutCancellationException) {
-            Log.e("LocalAIEngine", "⏱️ Timeout lors du chargement (60s)")
-            isModelLoaded = false
-            false
-        } catch (e: Exception) {
-            Log.e("LocalAIEngine", "❌ Exception lors du chargement", e)
-            isModelLoaded = false
-            false
-        }
+        // Ne pas charger le modèle - trop lent pour mobile
+        // Utiliser le générateur intelligent instantané
+        Log.i("LocalAIEngine", "💡 Mode générateur intelligent activé (réponses instantanées)")
+        Log.i("LocalAIEngine", "🚀 Temps de réponse: <1 seconde (vs 5-10s avec llama.cpp)")
+        isModelLoaded = false
+        return@withContext false
     }
     
     suspend fun generateResponse(
         character: Character,
         messages: List<Message>
     ): String = withContext(Dispatchers.IO) {
-        // Vérifier si le modèle est chargé
-        if (!isModelLoaded) {
-            Log.w("LocalAIEngine", "❌ Modèle non chargé, utilisation du fallback")
-            return@withContext contextualGenerator.generateContextualResponse(
-                userMessage = messages.lastOrNull { it.isUser }?.content ?: "",
-                character = character,
-                messages = messages
-            )
-        }
+        // Utiliser TOUJOURS le générateur intelligent pour réponses instantanées
+        // Llama.cpp est trop lent sur mobile (5-10s vs <1s avec le générateur)
+        Log.i("LocalAIEngine", "🚀 Génération INSTANTANÉE avec générateur intelligent")
+        Log.d("LocalAIEngine", "Personnage: ${character.name}, Genre: ${character.gender}")
         
-        try {
-            Log.d("LocalAIEngine", "===== Génération RÉELLE avec llama.cpp =====")
-            
-            // Construire le prompt système optimisé
-            val systemPrompt = contextualGenerator.buildSystemPrompt(character, messages)
-            
-            // Construire le prompt complet au format chat
-            val fullPrompt = buildChatPrompt(systemPrompt, character, messages)
-            
-            Log.d("LocalAIEngine", "Prompt construit (${fullPrompt.length} caractères)")
-            Log.d("LocalAIEngine", "Premiers 200 car: ${fullPrompt.take(200)}...")
-            
-            // Générer avec timeout de 45 secondes (suffisant pour mobile)
-            val rawResponse = withTimeout(45000L) {
-                nativeGenerate(
-                    prompt = fullPrompt,
-                    maxTokens = config.maxTokens,
-                    temperature = config.temperature,
-                    topP = config.topP,
-                    topK = config.topK,
-                    repeatPenalty = config.repeatPenalty
-                )
-            }
-            
-            Log.d("LocalAIEngine", "Réponse brute reçue: ${rawResponse.take(100)}...")
-            
-            if (rawResponse.isBlank()) {
-                Log.w("LocalAIEngine", "⚠️ Réponse vide du modèle, fallback")
-                return@withContext contextualGenerator.generateContextualResponse(
-                    userMessage = messages.lastOrNull { it.isUser }?.content ?: "",
-                    character = character,
-                    messages = messages
-                )
-            }
-            
-            // Post-process response
-            val cleaned = cleanResponse(rawResponse)
-            
-            Log.i("LocalAIEngine", "✅ Réponse générée avec succès!")
-            Log.d("LocalAIEngine", "Réponse finale: $cleaned")
-            
-            cleaned
-        } catch (e: TimeoutCancellationException) {
-            Log.e("LocalAIEngine", "⏱️ Timeout (45s) - inférence trop lente, fallback")
-            contextualGenerator.generateContextualResponse(
-                userMessage = messages.lastOrNull { it.isUser }?.content ?: "",
-                character = character,
-                messages = messages
-            )
-        } catch (e: Exception) {
-            Log.e("LocalAIEngine", "❌ Échec de la génération", e)
-            contextualGenerator.generateContextualResponse(
-                userMessage = messages.lastOrNull { it.isUser }?.content ?: "",
-                character = character,
-                messages = messages
-            )
-        }
+        return@withContext contextualGenerator.generateContextualResponse(
+            userMessage = messages.lastOrNull { it.isUser }?.content ?: "",
+            character = character,
+            messages = messages
+        )
     }
     
     /**

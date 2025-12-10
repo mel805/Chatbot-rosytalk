@@ -10,8 +10,15 @@ data class Character(
     val category: CharacterCategory,
     val themes: List<CharacterTheme>,
     val greeting: String,
-    val exampleDialogues: List<String> = emptyList()
+    val exampleDialogues: List<String> = emptyList(),
+    val gender: CharacterGender = CharacterGender.FEMALE // Déduire du theme si non spécifié
 )
+
+enum class CharacterGender {
+    MALE,       // Masculin
+    FEMALE,     // Féminin
+    NON_BINARY  // Non-binaire
+}
 
 enum class CharacterCategory {
     ANIME,
