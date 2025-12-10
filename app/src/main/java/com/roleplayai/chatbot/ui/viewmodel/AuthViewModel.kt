@@ -28,8 +28,12 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
     
-    suspend fun signIn(email: String, displayName: String = ""): Result<User> {
-        return authManager.signIn(email, displayName)
+    suspend fun signIn(email: String, displayName: String = "", username: String = "", bio: String = "", age: String = ""): Result<User> {
+        return authManager.signIn(email, displayName, username, bio, age)
+    }
+    
+    suspend fun updateUserProfile(displayName: String, username: String, bio: String, age: String): Result<User> {
+        return authManager.updateUserProfile(displayName, username, bio, age)
     }
     
     fun signOut() {

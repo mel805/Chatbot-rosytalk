@@ -132,7 +132,8 @@ class GroqAIEngine(
      */
     suspend fun generateResponse(
         character: Character,
-        messages: List<Message>
+        messages: List<Message>,
+        username: String = "Utilisateur"
     ): String = withContext(Dispatchers.IO) {
         if (apiKey.isBlank()) {
             Log.e(TAG, "Clé API Groq manquante")
@@ -144,7 +145,7 @@ class GroqAIEngine(
             Log.d(TAG, "Modèle: $model, NSFW: $nsfwMode")
             
             // Construire le prompt système
-            val systemPrompt = buildSystemPrompt(character)
+            val systemPrompt = buildSystemPrompt(character, username)
             
             // Construire les messages pour l'API
             val apiMessages = buildApiMessages(systemPrompt, character, messages)
@@ -165,7 +166,7 @@ class GroqAIEngine(
     /**
      * Construit le prompt système
      */
-    private fun buildSystemPrompt(character: Character): String {
+    private fun buildSystemPrompt(character: Character, username: String = "Utilisateur"): String {
         val nsfwInstructions = if (nsfwMode) {
             """
             
@@ -194,6 +195,12 @@ IDENTITÉ :
 - Personnalité : ${character.personality}
 - Description : ${character.description}
 - Scénario : ${character.scenario}
+
+UTILISATEUR AVEC QUI TU PARLES :
+- Nom/Pseudo : $username
+- IMPORTANT : Utilise ce prénom "$username" de temps en temps dans tes réponses pour personnaliser l'interaction
+- Exemple : "Hey $username !", "Tu vas bien $username ?", "$username... *rougit*"
+- Ne l'utilise PAS à chaque message, mais de façon naturelle et organique
 
 RÈGLES ABSOLUES POUR UNE IMMERSION MAXIMALE :
 1. TU ES ${character.name.uppercase()} - Parle TOUJOURS en tant que ${character.name}

@@ -14,6 +14,7 @@ import com.roleplayai.chatbot.ui.screen.CharacterProfileScreen
 import com.roleplayai.chatbot.ui.screen.ChatScreen
 import com.roleplayai.chatbot.ui.screen.LoginScreen
 import com.roleplayai.chatbot.ui.screen.ModelSelectionScreen
+import com.roleplayai.chatbot.ui.screen.ProfileScreen
 import com.roleplayai.chatbot.ui.screen.SettingsScreen
 import com.roleplayai.chatbot.ui.screen.SplashScreen
 import com.roleplayai.chatbot.ui.viewmodel.AuthViewModel
@@ -28,6 +29,7 @@ sealed class Screen(val route: String) {
     object ModelSelection : Screen("model_selection")
     object CharacterList : Screen("character_list")
     object Settings : Screen("settings")
+    object Profile : Screen("user_profile")
     object Chat : Screen("chat/{characterId}") {
         fun createRoute(characterId: String) = "chat/$characterId"
     }
@@ -149,6 +151,15 @@ fun AppNavigation(
         composable(Screen.Settings.route) {
             SettingsScreen(
                 viewModel = modelViewModel,
+                onBack = { navController.popBackStack() },
+                onNavigateToProfile = {
+                    navController.navigate(Screen.Profile.route)
+                }
+            )
+        }
+        
+        composable(Screen.Profile.route) {
+            ProfileScreen(
                 onBack = { navController.popBackStack() }
             )
         }

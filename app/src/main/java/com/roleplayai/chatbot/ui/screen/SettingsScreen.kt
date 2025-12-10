@@ -29,7 +29,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun SettingsScreen(
     viewModel: ModelViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onNavigateToProfile: () -> Unit = {}
 ) {
     val settingsViewModel: SettingsViewModel = viewModel()
     val authViewModel: AuthViewModel = viewModel()
@@ -100,7 +101,7 @@ fun SettingsScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column {
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = if (isAdmin) "👑 Compte Admin" else "Compte",
                                     style = MaterialTheme.typography.titleMedium,
@@ -108,11 +109,11 @@ fun SettingsScreen(
                                 )
                                 currentUser?.let { user ->
                                     Text(
-                                        text = user.displayName ?: "Utilisateur",
+                                        text = if (user.username.isNotEmpty()) user.username else user.displayName,
                                         style = MaterialTheme.typography.bodyMedium
                                     )
                                     Text(
-                                        text = user.email ?: "",
+                                        text = user.email,
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -134,6 +135,18 @@ fun SettingsScreen(
                                 Spacer(Modifier.width(8.dp))
                                 Text("Déconnexion")
                             }
+                        }
+                        
+                        Divider(modifier = Modifier.padding(vertical = 12.dp))
+                        
+                        // Bouton vers le profil
+                        OutlinedButton(
+                            onClick = onNavigateToProfile,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Person, "Profil", modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Modifier mon profil")
                         }
                         
                         if (isAdmin) {

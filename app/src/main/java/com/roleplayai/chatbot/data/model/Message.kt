@@ -1,5 +1,8 @@
 package com.roleplayai.chatbot.data.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class Message(
     val id: String,
     val chatId: String,
@@ -8,6 +11,7 @@ data class Message(
     val timestamp: Long = System.currentTimeMillis()
 )
 
+@Serializable
 data class Chat(
     val id: String,
     val characterId: String,

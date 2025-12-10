@@ -91,7 +91,8 @@ class LocalAIEngine(
      */
     suspend fun generateResponse(
         character: Character,
-        messages: List<Message>
+        messages: List<Message>,
+        username: String = "Utilisateur"
     ): String = withContext(Dispatchers.IO) {
         try {
             Log.d(TAG, "===== Génération avec IA Locale =====")
@@ -101,7 +102,7 @@ class LocalAIEngine(
             val response = if (isModelLoaded) {
                 try {
                     Log.d(TAG, "🚀 Génération avec llama.cpp...")
-                    val systemPrompt = buildSystemPrompt(character)
+                    val systemPrompt = buildSystemPrompt(character, username)
                     val fullPrompt = buildChatPrompt(systemPrompt, character, messages)
                     
                     nativeGenerate(
@@ -114,11 +115,11 @@ class LocalAIEngine(
                     )
                 } catch (e: Exception) {
                     Log.w(TAG, "⚠️ Erreur llama.cpp, fallback", e)
-                    generateFallbackResponse(character, messages)
+                    generateFallbackResponse(character, messages, username)
                 }
             } else {
                 Log.d(TAG, "💡 Génération avec fallback intelligent")
-                generateFallbackResponse(character, messages)
+                generateFallbackResponse(character, messages, username)
             }
             
             // Nettoyer la réponse
@@ -135,7 +136,7 @@ class LocalAIEngine(
     /**
      * Construit le prompt système - IDENTIQUE à Groq
      */
-    private fun buildSystemPrompt(character: Character): String {
+    private fun buildSystemPrompt(character: Character, username: String = "Utilisateur"): String {
         val nsfwInstructions = if (nsfwMode) {
             """
 MODE NSFW ACTIVÉ (18+) :
@@ -163,6 +164,12 @@ IDENTITÉ :
 - Personnalité : ${character.personality}
 - Description : ${character.description}
 - Scénario : ${character.scenario}
+
+UTILISATEUR AVEC QUI TU PARLES :
+- Nom/Pseudo : $username
+- IMPORTANT : Utilise ce prénom "$username" de temps en temps dans tes réponses pour personnaliser l'interaction
+- Exemple : "Hey $username !", "Tu vas bien $username ?", "$username... *rougit*"
+- Ne l'utilise PAS à chaque message, mais de façon naturelle et organique
 
 RÈGLES ABSOLUES POUR UNE IMMERSION MAXIMALE :
 1. TU ES ${character.name.uppercase()} - Parle TOUJOURS en tant que ${character.name}
@@ -262,7 +269,7 @@ RAPPEL : TOUJOURS inclure des (pensées) dans tes réponses !
      * Analyse l'historique complet pour une cohérence maximale
      * ROBUSTE - NE PEUT PAS ÉCHOUER
      */
-    private fun generateFallbackResponse(character: Character, messages: List<Message>): String {
+    private fun generateFallbackResponse(character: Character, messages: List<Message>, username: String = "Utilisateur"): String {
         return try {
             // Extraire les derniers messages (10 max pour contexte)
             val recentMessages = messages.takeLast(10)
