@@ -49,11 +49,17 @@ fun SettingsScreen(
     val groqModelId by settingsViewModel.groqModelId.collectAsState()
     val nsfwMode by settingsViewModel.nsfwMode.collectAsState()
     
+    // Gemini settings
+    val useGeminiApi by settingsViewModel.useGeminiApi.collectAsState()
+    val geminiApiKey by settingsViewModel.geminiApiKey.collectAsState()
+    
     var showModelSelection by remember { mutableStateOf(false) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     var showGroqModels by remember { mutableStateOf(false) }
     var showApiKey by remember { mutableStateOf(false) }
+    var showGeminiApiKey by remember { mutableStateOf(false) }
     var apiKeyInput by remember { mutableStateOf(groqApiKey) }
+    var geminiApiKeyInput by remember { mutableStateOf(geminiApiKey) }
     
     Scaffold(
         topBar = {
@@ -291,11 +297,130 @@ fun SettingsScreen(
                 }
             }
             
+            // Section Gemini API (NOUVEAU - Gratuit)
+            item {
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    "⚡ Gemini API (Google - GRATUIT)",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            "✨ NOUVEAU : Gemini offre des conversations VRAIMENT cohérentes, gratuitement !",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "Recommandé pour des dialogues immersifs et une mémoire conversationnelle.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
+            }
+            
+            // Switch Utiliser Gemini API
+            item {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Utiliser Gemini API",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                if (useGeminiApi) "Activé - Backup intelligent si Groq échoue" else "Désactivé",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (useGeminiApi) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = useGeminiApi,
+                            onCheckedChange = { scope.launch { settingsViewModel.setUseGeminiApi(it) } }
+                        )
+                    }
+                }
+            }
+            
+            if (useGeminiApi) {
+                // Clé API Gemini
+                item {
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                "Clé API Gemini",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = geminiApiKeyInput,
+                                onValueChange = { geminiApiKeyInput = it },
+                                label = { Text("AIza...") },
+                                placeholder = { Text("Collez votre clé API ici") },
+                                visualTransformation = if (showGeminiApiKey) VisualTransformation.None else PasswordVisualTransformation(),
+                                trailingIcon = {
+                                    Row {
+                                        IconButton(onClick = { showGeminiApiKey = !showGeminiApiKey }) {
+                                            Icon(
+                                                if (showGeminiApiKey) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                                "Afficher/Masquer"
+                                            )
+                                        }
+                                        if (geminiApiKeyInput != geminiApiKey) {
+                                            IconButton(
+                                                onClick = {
+                                                    scope.launch {
+                                                        settingsViewModel.setGeminiApiKey(geminiApiKeyInput)
+                                                    }
+                                                }
+                                            ) {
+                                                Icon(Icons.Default.Check, "Sauvegarder")
+                                            }
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            TextButton(
+                                onClick = { /* TODO: Ouvrir navigateur vers aistudio.google.com */ }
+                            ) {
+                                Icon(Icons.Default.OpenInNew, null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Obtenir une clé gratuite sur aistudio.google.com/apikey", style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+                }
+            }
+            
             // Section Groq API
             item {
                 Spacer(Modifier.height(16.dp))
                 Text(
-                    "🚀 Groq API (Recommandé)",
+                    "🚀 Groq API (Option 2)",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary

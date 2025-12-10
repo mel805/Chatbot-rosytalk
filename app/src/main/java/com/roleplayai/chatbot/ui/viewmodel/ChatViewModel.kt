@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.roleplayai.chatbot.data.ai.AIEngine
 import com.roleplayai.chatbot.data.ai.LocalAIEngine
 import com.roleplayai.chatbot.data.ai.GroqAIEngine
+import com.roleplayai.chatbot.data.ai.GeminiAIEngine
 import com.roleplayai.chatbot.data.model.Chat
 import com.roleplayai.chatbot.data.model.InferenceConfig
 import com.roleplayai.chatbot.data.model.Message
@@ -26,6 +27,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val aiEngine = AIEngine(application)
     private var localAIEngine: LocalAIEngine? = null
     private var groqAIEngine: GroqAIEngine? = null
+    private var geminiAIEngine: GeminiAIEngine? = null
     private var useLocalEngine = false
     
     private val _currentChat = MutableStateFlow<Chat?>(null)
@@ -119,31 +121,62 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                         
                         groqResponse
                     } catch (e: Exception) {
-                        // Basculement automatique vers IA locale
-                        android.util.Log.w("ChatViewModel", "⚠️ Groq indisponible (${e.message}), basculement vers IA locale")
+                        // Basculement automatique vers Gemini
+                        android.util.Log.w("ChatViewModel", "⚠️ Groq indisponible (${e.message}), tentative Gemini...")
                         
-                        // Essayer LocalAI
+                        // Essayer Gemini
                         try {
-                            // S'assurer que LocalAI est initialisé
-                            if (localAIEngine == null) {
-                                android.util.Log.w("ChatViewModel", "💡 Initialisation IA locale pour fallback...")
-                                // Créer LocalAI avec fallback intelligent
+                            // Initialiser Gemini si nécessaire
+                            if (geminiAIEngine == null) {
+                                android.util.Log.w("ChatViewModel", "💡 Initialisation Gemini pour fallback...")
+                                val geminiKey = preferencesManager.geminiApiKey.first()
                                 val nsfwMode = preferencesManager.nsfwMode.first()
-                                localAIEngine = LocalAIEngine(
-                                    context = getApplication(),
-                                    modelPath = "",  // Pas de modèle = fallback intelligent
-                                    config = InferenceConfig(contextLength = 2048),
+                                
+                                if (geminiKey.isBlank()) {
+                                    throw Exception("Clé API Gemini manquante")
+                                }
+                                
+                                geminiAIEngine = GeminiAIEngine(
+                                    apiKey = geminiKey,
+                                    model = "gemini-1.5-flash",
                                     nsfwMode = nsfwMode
                                 )
                             }
                             
-                            val localResponse = localAIEngine!!.generateResponse(character, updatedChat.messages)
+                            val geminiResponse = geminiAIEngine!!.generateResponse(character, updatedChat.messages)
                             
-                            // Ajouter un message d'info
-                            "⚠️ Groq indisponible (limite atteinte). Utilisation de l'IA locale.\n\n$localResponse"
-                        } catch (localError: Exception) {
-                            android.util.Log.e("ChatViewModel", "❌ Erreur IA locale aussi", localError)
-                            "Désolé, Groq a atteint ses limites et l'IA locale n'est pas disponible.\n\n💡 Astuce : Téléchargez un modèle local dans Paramètres > Modèle IA pour continuer à discuter même quand Groq est indisponible !"
+                            // Vérifier si erreur Gemini
+                            if (geminiResponse.contains("Erreur", ignoreCase = true)) {
+                                throw Exception("Gemini erreur")
+                            }
+                            
+                            android.util.Log.i("ChatViewModel", "✅ Réponse Gemini générée avec succès")
+                            geminiResponse
+                            
+                        } catch (geminiError: Exception) {
+                            // Si Gemini échoue aussi, essayer LocalAI
+                            android.util.Log.w("ChatViewModel", "⚠️ Gemini indisponible (${geminiError.message}), basculement vers IA locale")
+                            
+                            try {
+                                // S'assurer que LocalAI est initialisé
+                                if (localAIEngine == null) {
+                                    android.util.Log.w("ChatViewModel", "💡 Initialisation IA locale pour fallback...")
+                                    val nsfwMode = preferencesManager.nsfwMode.first()
+                                    localAIEngine = LocalAIEngine(
+                                        context = getApplication(),
+                                        modelPath = "",
+                                        config = InferenceConfig(contextLength = 2048),
+                                        nsfwMode = nsfwMode
+                                    )
+                                }
+                                
+                                val localResponse = localAIEngine!!.generateResponse(character, updatedChat.messages)
+                                
+                                "⚠️ Groq et Gemini indisponibles. Mode basique activé.\n\n$localResponse"
+                            } catch (localError: Exception) {
+                                android.util.Log.e("ChatViewModel", "❌ Toutes les IA ont échoué", localError)
+                                "Désolé, toutes les IA sont indisponibles.\n\n💡 Astuce : Configurez une clé API Gemini (gratuite) dans Paramètres pour des conversations cohérentes !"
+                            }
                         }
                     }
                 } else {

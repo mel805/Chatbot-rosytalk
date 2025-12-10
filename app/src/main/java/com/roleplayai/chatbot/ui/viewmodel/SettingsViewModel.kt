@@ -24,6 +24,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     val useGroqApi = preferencesManager.useGroqApi
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
     
+    val geminiApiKey = preferencesManager.geminiApiKey
+        .stateIn(viewModelScope, SharingStarted.Eagerly, "")
+    
+    val useGeminiApi = preferencesManager.useGeminiApi
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+    
     fun setGroqApiKey(apiKey: String) {
         viewModelScope.launch {
             preferencesManager.setGroqApiKey(apiKey)
@@ -45,6 +51,18 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setUseGroqApi(use: Boolean) {
         viewModelScope.launch {
             preferencesManager.setUseGroqApi(use)
+        }
+    }
+    
+    fun setGeminiApiKey(apiKey: String) {
+        viewModelScope.launch {
+            preferencesManager.setGeminiApiKey(apiKey)
+        }
+    }
+    
+    fun setUseGeminiApi(use: Boolean) {
+        viewModelScope.launch {
+            preferencesManager.setUseGeminiApi(use)
         }
     }
 }
