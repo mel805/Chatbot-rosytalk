@@ -6,8 +6,6 @@ import androidx.lifecycle.viewModelScope
 import com.roleplayai.chatbot.data.ai.AIEngine
 import com.roleplayai.chatbot.data.ai.LocalAIEngine
 import com.roleplayai.chatbot.data.ai.GroqAIEngine
-import com.roleplayai.chatbot.data.ai.KoboldAIEngine
-import com.roleplayai.chatbot.data.ai.TextGenWebUIEngine
 import com.roleplayai.chatbot.data.model.Chat
 import com.roleplayai.chatbot.data.model.InferenceConfig
 import com.roleplayai.chatbot.data.model.Message
@@ -28,8 +26,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val aiEngine = AIEngine(application)
     private var localAIEngine: LocalAIEngine? = null
     private var groqAIEngine: GroqAIEngine? = null
-    private var koboldAIEngine: KoboldAIEngine? = null
-    private var textGenAIEngine: TextGenWebUIEngine? = null
     private var useLocalEngine = false
     
     private val _currentChat = MutableStateFlow<Chat?>(null)
@@ -123,9 +119,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                         
                         groqResponse
                     } catch (e: Exception) {
-                        // Basculement vers self-hosted puis local
-                        android.util.Log.w("ChatViewModel", "⚠️ Groq indisponible (${e.message}), tentative self-hosted...")
-                        fallbackToSelfHostedOrLocal(character, updatedChat.messages)
+                        // Basculement vers IA locale
+                        android.util.Log.w("ChatViewModel", "⚠️ Groq indisponible (${e.message}), basculement vers IA locale...")
+                        fallbackToLocalAI(character, updatedChat.messages)
                     }
                 } else {
                     // Groq désactivé, utiliser LocalAI
@@ -251,52 +247,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     /**
-     * Fallback vers self-hosted (Kobold/TextGen) puis LocalAI
+     * Fallback vers IA locale (llama.cpp ou templates intelligents)
      */
-    private suspend fun fallbackToSelfHostedOrLocal(character: com.roleplayai.chatbot.data.model.Character, messages: List<Message>): String {
+    private suspend fun fallbackToLocalAI(character: com.roleplayai.chatbot.data.model.Character, messages: List<Message>): String {
         val nsfwMode = preferencesManager.nsfwMode.first()
         
-        // Essayer KoboldCPP d'abord
-        val useKobold = preferencesManager.useKoboldApi.first()
-        if (useKobold) {
-            try {
-                if (koboldAIEngine == null) {
-                    val koboldEndpoint = preferencesManager.koboldEndpoint.first()
-                    koboldAIEngine = KoboldAIEngine(endpoint = koboldEndpoint, nsfwMode = nsfwMode)
-                }
-                
-                val koboldResponse = koboldAIEngine!!.generateResponse(character, messages)
-                
-                if (!koboldResponse.contains("Erreur", ignoreCase = true)) {
-                    android.util.Log.i("ChatViewModel", "✅ Réponse KoboldCPP générée")
-                    return koboldResponse
-                }
-            } catch (e: Exception) {
-                android.util.Log.w("ChatViewModel", "⚠️ KoboldCPP indisponible: ${e.message}")
-            }
-        }
-        
-        // Essayer TextGen-WebUI
-        val useTextGen = preferencesManager.useTextGenApi.first()
-        if (useTextGen) {
-            try {
-                if (textGenAIEngine == null) {
-                    val textGenEndpoint = preferencesManager.textGenEndpoint.first()
-                    textGenAIEngine = TextGenWebUIEngine(endpoint = textGenEndpoint, nsfwMode = nsfwMode)
-                }
-                
-                val textGenResponse = textGenAIEngine!!.generateResponse(character, messages)
-                
-                if (!textGenResponse.contains("Erreur", ignoreCase = true)) {
-                    android.util.Log.i("ChatViewModel", "✅ Réponse TextGen-WebUI générée")
-                    return textGenResponse
-                }
-            } catch (e: Exception) {
-                android.util.Log.w("ChatViewModel", "⚠️ TextGen-WebUI indisponible: ${e.message}")
-            }
-        }
-        
-        // Fallback vers LocalAI (llama.cpp ou templates)
         return try {
             if (localAIEngine == null) {
                 android.util.Log.w("ChatViewModel", "💡 Initialisation IA locale...")
@@ -311,11 +266,12 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             }
             
             val localResponse = localAIEngine!!.generateResponse(character, messages)
-            "⚠️ IA externes indisponibles. IA locale activée.\n\n$localResponse"
+            android.util.Log.i("ChatViewModel", "✅ IA locale activée")
+            localResponse
             
         } catch (e: Exception) {
-            android.util.Log.e("ChatViewModel", "❌ Toutes les IA ont échoué", e)
-            "Désolé, toutes les IA sont indisponibles.\n\n💡 Configurez une IA self-hosted (KoboldCPP/TextGen) dans Paramètres !"
+            android.util.Log.e("ChatViewModel", "❌ Erreur IA locale", e)
+            "Erreur de l'IA locale.\n\n💡 Astuce : Téléchargez un modèle local dans Paramètres > Modèle IA pour de meilleures réponses, ou activez Groq API pour des réponses ultra-rapides !"
         }
     }
     

@@ -26,14 +26,6 @@ class PreferencesManager(private val context: Context) {
         private val GROQ_MODEL_ID = stringPreferencesKey("groq_model_id")
         private val NSFW_MODE_ENABLED = booleanPreferencesKey("nsfw_mode_enabled")
         private val USE_GROQ_API = booleanPreferencesKey("use_groq_api")
-        
-        // KoboldCPP settings
-        private val KOBOLD_ENDPOINT = stringPreferencesKey("kobold_endpoint")
-        private val USE_KOBOLD_API = booleanPreferencesKey("use_kobold_api")
-        
-        // TextGen-WebUI settings
-        private val TEXTGEN_ENDPOINT = stringPreferencesKey("textgen_endpoint")
-        private val USE_TEXTGEN_API = booleanPreferencesKey("use_textgen_api")
     }
     
     val selectedModelId: Flow<String?> = context.dataStore.data.map { preferences ->
@@ -129,47 +121,5 @@ class PreferencesManager(private val context: Context) {
     
     val useGroqApi: Flow<Boolean> = context.dataStore.data.map { preferences ->
         preferences[USE_GROQ_API] ?: false
-    }
-    
-    // KoboldCPP settings
-    suspend fun setKoboldEndpoint(endpoint: String) {
-        context.dataStore.edit { preferences ->
-            preferences[KOBOLD_ENDPOINT] = endpoint
-        }
-    }
-    
-    val koboldEndpoint: Flow<String> = context.dataStore.data.map { preferences ->
-        preferences[KOBOLD_ENDPOINT] ?: "http://localhost:5001"
-    }
-    
-    suspend fun setUseKoboldApi(use: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[USE_KOBOLD_API] = use
-        }
-    }
-    
-    val useKoboldApi: Flow<Boolean> = context.dataStore.data.map { preferences ->
-        preferences[USE_KOBOLD_API] ?: false
-    }
-    
-    // TextGen-WebUI settings
-    suspend fun setTextGenEndpoint(endpoint: String) {
-        context.dataStore.edit { preferences ->
-            preferences[TEXTGEN_ENDPOINT] = endpoint
-        }
-    }
-    
-    val textGenEndpoint: Flow<String> = context.dataStore.data.map { preferences ->
-        preferences[TEXTGEN_ENDPOINT] ?: "http://localhost:5000"
-    }
-    
-    suspend fun setUseTextGenApi(use: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[USE_TEXTGEN_API] = use
-        }
-    }
-    
-    val useTextGenApi: Flow<Boolean> = context.dataStore.data.map { preferences ->
-        preferences[USE_TEXTGEN_API] ?: false
     }
 }
