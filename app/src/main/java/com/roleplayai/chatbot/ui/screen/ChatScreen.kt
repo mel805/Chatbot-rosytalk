@@ -14,7 +14,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -59,44 +61,73 @@ fun ChatScreen(
         }
     }
     
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        chat?.let {
-                            AsyncImage(
-                                model = it.characterImageUrl,
-                                contentDescription = it.characterName,
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primaryContainer),
-                                contentScale = ContentScale.Crop
-                            )
-                            Text(
-                                it.characterName,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
-                )
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Image d'arrière-plan du personnage
+        chat?.let { currentChat ->
+            AsyncImage(
+                model = currentChat.characterImageUrl,
+                contentDescription = "${currentChat.characterName} background",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                alpha = 0.15f // Transparence pour ne pas gêner la lecture
             )
-        },
-        bottomBar = {
+            
+            // Gradient overlay pour améliorer la lisibilité
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.background.copy(alpha = 0.85f),
+                                MaterialTheme.colorScheme.background.copy(alpha = 0.95f),
+                                MaterialTheme.colorScheme.background.copy(alpha = 0.98f)
+                            )
+                        )
+                    )
+            )
+        }
+        
+        // Contenu de la conversation par-dessus
+        Scaffold(
+            containerColor = Color.Transparent, // Fond transparent pour voir l'image
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            chat?.let {
+                                AsyncImage(
+                                    model = it.characterImageUrl,
+                                    contentDescription = it.characterName,
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.primaryContainer),
+                                    contentScale = ContentScale.Crop
+                                )
+                                Text(
+                                    it.characterName,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.Default.ArrowBack, "Back")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = Color.White,
+                        navigationIconContentColor = Color.White
+                    )
+                )
+            },
+            bottomBar = {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 tonalElevation = 3.dp
@@ -202,7 +233,8 @@ fun ChatScreen(
                 }
             }
         }
-    }
+        } // Fin du Scaffold
+    } // Fin du Box avec l'image d'arrière-plan
 }
 
 @Composable
