@@ -9,6 +9,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.roleplayai.chatbot.ui.screen.CharacterListScreen
+import com.roleplayai.chatbot.ui.screen.CharacterProfileScreen
 import com.roleplayai.chatbot.ui.screen.ChatScreen
 import com.roleplayai.chatbot.ui.screen.ModelSelectionScreen
 import com.roleplayai.chatbot.ui.screen.SettingsScreen
@@ -25,6 +26,9 @@ sealed class Screen(val route: String) {
     object Settings : Screen("settings")
     object Chat : Screen("chat/{characterId}") {
         fun createRoute(characterId: String) = "chat/$characterId"
+    }
+    object CharacterProfile : Screen("profile/{characterId}") {
+        fun createRoute(characterId: String) = "profile/$characterId"
     }
 }
 
@@ -90,8 +94,26 @@ fun AppNavigation(
                 onCharacterSelected = { characterId ->
                     navController.navigate(Screen.Chat.createRoute(characterId))
                 },
+                onCharacterProfileClick = { characterId ->
+                    navController.navigate(Screen.CharacterProfile.createRoute(characterId))
+                },
                 onSettingsClick = {
                     navController.navigate(Screen.Settings.route)
+                }
+            )
+        }
+        
+        composable(Screen.CharacterProfile.route) { backStackEntry ->
+            val characterId = backStackEntry.arguments?.getString("characterId") ?: return@composable
+            val character = characterViewModel.getCharacterById(characterId) ?: return@composable
+            
+            CharacterProfileScreen(
+                character = character,
+                onBack = { navController.popBackStack() },
+                onStartChat = {
+                    navController.navigate(Screen.Chat.createRoute(characterId)) {
+                        popUpTo(Screen.CharacterList.route)
+                    }
                 }
             )
         }

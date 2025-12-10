@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.roleplayai.chatbot.data.model.Chat
 import com.roleplayai.chatbot.data.model.Message
+import com.roleplayai.chatbot.ui.components.RichMessageText
 import com.roleplayai.chatbot.ui.theme.MessageAIBubble
 import com.roleplayai.chatbot.ui.theme.MessageUserBubble
 import com.roleplayai.chatbot.ui.viewmodel.ChatViewModel
@@ -235,13 +236,15 @@ fun MessageBubble(message: Message, chatName: String) {
                 bottomEnd = 16.dp
             ),
             color = if (message.isUser) MessageUserBubble else MessageAIBubble,
-            modifier = Modifier.widthIn(max = 300.dp)
+            modifier = Modifier.widthIn(max = 320.dp)
         ) {
-            Text(
-                text = message.content,
-                modifier = Modifier.padding(12.dp),
-                color = Color.White
-            )
+            // Utiliser RichMessageText pour affichage immersif avec couleurs
+            Column(modifier = Modifier.padding(12.dp)) {
+                RichMessageText(
+                    message = message.content,
+                    isUser = message.isUser
+                )
+            }
         }
     }
 }

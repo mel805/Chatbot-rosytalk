@@ -11,7 +11,12 @@ data class Character(
     val themes: List<CharacterTheme>,
     val greeting: String,
     val exampleDialogues: List<String> = emptyList(),
-    val gender: CharacterGender = CharacterGender.FEMALE // Déduire du theme si non spécifié
+    val gender: CharacterGender = CharacterGender.FEMALE,
+    
+    // Nouvelles informations pour la page de profil
+    val physicalDescription: String = "",  // Description physique détaillée
+    val characterTraits: List<String> = emptyList(), // Traits de caractère
+    val additionalImages: List<String> = emptyList() // URLs d'images supplémentaires
 )
 
 enum class CharacterGender {

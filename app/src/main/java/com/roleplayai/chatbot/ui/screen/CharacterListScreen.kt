@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -33,6 +34,7 @@ import com.roleplayai.chatbot.ui.viewmodel.CharacterViewModel
 fun CharacterListScreen(
     viewModel: CharacterViewModel,
     onCharacterSelected: (String) -> Unit,
+    onCharacterProfileClick: (String) -> Unit = {},
     onSettingsClick: () -> Unit = {}
 ) {
     val filteredCharacters by viewModel.filteredCharacters.collectAsState()
@@ -136,7 +138,8 @@ fun CharacterListScreen(
                     items(filteredCharacters) { character ->
                         CharacterCard(
                             character = character,
-                            onClick = { onCharacterSelected(character.id) }
+                            onClick = { onCharacterSelected(character.id) },
+                            onProfileClick = { onCharacterProfileClick(character.id) }
                         )
                     }
                 }
@@ -148,21 +151,22 @@ fun CharacterListScreen(
 @Composable
 fun CharacterCard(
     character: Character,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onProfileClick: () -> Unit = {}
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onClick)
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
             // Character image
             AsyncImage(
                 model = character.imageUrl,
@@ -225,6 +229,22 @@ fun CharacterCard(
                         )
                     }
                 }
+            }
+            }
+            
+            // Bouton Voir Profil
+            Divider()
+            TextButton(
+                onClick = onProfileClick,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    Icons.Default.Person,
+                    contentDescription = "Profil",
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text("Voir le profil détaillé")
             }
         }
     }
