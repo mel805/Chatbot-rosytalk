@@ -146,22 +146,26 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                             "Désolé, Groq a atteint ses limites et l'IA locale n'est pas disponible.\n\n💡 Astuce : Téléchargez un modèle local dans Paramètres > Modèle IA pour continuer à discuter même quand Groq est indisponible !"
                         }
                     }
-                } else if (localAIEngine != null) {
-                    // Utiliser le moteur local
-                    localAIEngine!!.generateResponse(character, updatedChat.messages)
                 } else {
-                    // Aucun moteur disponible - initialiser LocalAI en mode fallback
+                    // Groq désactivé, utiliser LocalAI
                     try {
-                        val nsfwMode = preferencesManager.nsfwMode.first()
-                        localAIEngine = LocalAIEngine(
-                            context = getApplication(),
-                            modelPath = "",
-                            config = InferenceConfig(contextLength = 2048),
-                            nsfwMode = nsfwMode
-                        )
+                        // S'assurer que LocalAI est initialisé
+                        if (localAIEngine == null) {
+                            android.util.Log.i("ChatViewModel", "💡 Initialisation IA locale (Groq désactivé)...")
+                            val nsfwMode = preferencesManager.nsfwMode.first()
+                            localAIEngine = LocalAIEngine(
+                                context = getApplication(),
+                                modelPath = "",
+                                config = InferenceConfig(contextLength = 2048),
+                                nsfwMode = nsfwMode
+                            )
+                        }
+                        
+                        // Générer avec LocalAI
                         localAIEngine!!.generateResponse(character, updatedChat.messages)
                     } catch (e: Exception) {
-                        "Aucune IA configurée. Activez Groq API dans Paramètres ou téléchargez un modèle local."
+                        android.util.Log.e("ChatViewModel", "❌ Erreur LocalAI (Groq désactivé)", e)
+                        "Erreur de l'IA locale.\n\n💡 Astuce : Téléchargez un modèle local dans Paramètres > Modèle IA pour de meilleures réponses, ou activez Groq API pour des réponses ultra-rapides !"
                     }
                 }
                 
