@@ -101,17 +101,68 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 val useGroq = preferencesManager.useGroqApi.first()
                 
                 val response = if (useGroq) {
-                    // Utiliser Groq API (priorité)
-                    // TOUJOURS réinitialiser pour prendre en compte les changements de modèle
-                    initializeGroqEngine()
-                    groqAIEngine?.generateResponse(character, updatedChat.messages)
-                        ?: "Erreur : Groq API non configurée. Ajoutez votre clé API dans Paramètres."
+                    // Tenter Groq d'abord avec fallback automatique
+                    try {
+                        // TOUJOURS réinitialiser pour prendre en compte les changements de modèle
+                        initializeGroqEngine()
+                        
+                        val groqResponse = groqAIEngine?.generateResponse(character, updatedChat.messages)
+                            ?: throw Exception("Groq API non configurée")
+                        
+                        // Vérifier si erreur de limite Groq
+                        if (groqResponse.contains("rate limit", ignoreCase = true) ||
+                            groqResponse.contains("limite", ignoreCase = true) ||
+                            groqResponse.contains("quota", ignoreCase = true) ||
+                            groqResponse.contains("Erreur", ignoreCase = true)) {
+                            throw Exception("Limite Groq atteinte")
+                        }
+                        
+                        groqResponse
+                    } catch (e: Exception) {
+                        // Basculement automatique vers IA locale
+                        android.util.Log.w("ChatViewModel", "⚠️ Groq indisponible (${e.message}), basculement vers IA locale")
+                        
+                        // Essayer LocalAI
+                        try {
+                            // S'assurer que LocalAI est initialisé
+                            if (localAIEngine == null) {
+                                android.util.Log.w("ChatViewModel", "💡 Initialisation IA locale pour fallback...")
+                                // Créer LocalAI avec fallback intelligent
+                                val nsfwMode = preferencesManager.nsfwMode.first()
+                                localAIEngine = LocalAIEngine(
+                                    context = getApplication(),
+                                    modelPath = "",  // Pas de modèle = fallback intelligent
+                                    config = InferenceConfig(contextLength = 2048),
+                                    nsfwMode = nsfwMode
+                                )
+                            }
+                            
+                            val localResponse = localAIEngine!!.generateResponse(character, updatedChat.messages)
+                            
+                            // Ajouter un message d'info
+                            "⚠️ Groq indisponible (limite atteinte). Utilisation de l'IA locale.\n\n$localResponse"
+                        } catch (localError: Exception) {
+                            android.util.Log.e("ChatViewModel", "❌ Erreur IA locale aussi", localError)
+                            "Désolé, Groq a atteint ses limites et l'IA locale n'est pas disponible.\n\n💡 Astuce : Téléchargez un modèle local dans Paramètres > Modèle IA pour continuer à discuter même quand Groq est indisponible !"
+                        }
+                    }
                 } else if (localAIEngine != null) {
                     // Utiliser le moteur local
                     localAIEngine!!.generateResponse(character, updatedChat.messages)
                 } else {
-                    // Aucun moteur disponible
-                    "Aucune IA configurée. Activez Groq API dans Paramètres ou téléchargez un modèle local."
+                    // Aucun moteur disponible - initialiser LocalAI en mode fallback
+                    try {
+                        val nsfwMode = preferencesManager.nsfwMode.first()
+                        localAIEngine = LocalAIEngine(
+                            context = getApplication(),
+                            modelPath = "",
+                            config = InferenceConfig(contextLength = 2048),
+                            nsfwMode = nsfwMode
+                        )
+                        localAIEngine!!.generateResponse(character, updatedChat.messages)
+                    } catch (e: Exception) {
+                        "Aucune IA configurée. Activez Groq API dans Paramètres ou téléchargez un modèle local."
+                    }
                 }
                 
                 // Add AI response
@@ -160,22 +211,27 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         aiEngine.setUseLocalAPI(use, endpoint)
     }
     
-    fun initializeLocalAI(modelPath: String, config: InferenceConfig = InferenceConfig()) {
-        viewModelScope.launch {
-            try {
-                localAIEngine = LocalAIEngine(
-                    context = getApplication(),
-                    modelPath = modelPath,
-                    config = config
-                )
-                
-                val loaded = localAIEngine?.loadModel() ?: false
-                if (loaded) {
-                    useLocalEngine = true
-                }
-            } catch (e: Exception) {
-                _error.value = "Erreur d'initialisation de l'IA locale: ${e.message}"
+    suspend fun initializeLocalAI(modelPath: String) {
+        try {
+            val nsfwMode = preferencesManager.nsfwMode.first()
+            
+            localAIEngine = LocalAIEngine(
+                context = getApplication(),
+                modelPath = modelPath,
+                config = InferenceConfig(contextLength = 2048),
+                nsfwMode = nsfwMode
+            )
+            
+            val loaded = localAIEngine?.loadModel() ?: false
+            if (loaded) {
+                useLocalEngine = true
+                android.util.Log.i("ChatViewModel", "✅ IA locale initialisée et prête")
+            } else {
+                android.util.Log.i("ChatViewModel", "💡 IA locale en mode fallback (pas de modèle chargé)")
             }
+        } catch (e: Exception) {
+            android.util.Log.e("ChatViewModel", "❌ Erreur initialisation IA locale", e)
+            _error.value = "Erreur d'initialisation de l'IA locale: ${e.message}"
         }
     }
     
