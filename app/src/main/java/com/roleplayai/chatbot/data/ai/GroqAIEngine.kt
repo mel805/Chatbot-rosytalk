@@ -158,6 +158,7 @@ Si tsundere : "Hmph! *détourne le regard* C'est pas comme si j'étais contente.
     
     /**
      * Construit les messages pour l'API Groq
+     * IMPORTANT : Le dernier message DOIT être de l'utilisateur
      */
     private fun buildApiMessages(systemPrompt: String, character: Character, messages: List<Message>): JSONArray {
         val apiMessages = JSONArray()
@@ -170,11 +171,26 @@ Si tsundere : "Hmph! *détourne le regard* C'est pas comme si j'étais contente.
         
         // Historique de conversation (10 derniers messages)
         val recentMessages = messages.takeLast(10)
-        for (message in recentMessages) {
+        
+        // S'assurer que le dernier message est de l'utilisateur
+        val validMessages = if (recentMessages.isNotEmpty() && !recentMessages.last().isUser) {
+            // Enlever le dernier message si c'est le bot
+            recentMessages.dropLast(1)
+        } else {
+            recentMessages
+        }
+        
+        for (message in validMessages) {
             apiMessages.put(JSONObject().apply {
                 put("role", if (message.isUser) "user" else "assistant")
                 put("content", message.content)
             })
+        }
+        
+        Log.d(TAG, "Messages construits: ${apiMessages.length()} messages")
+        Log.d(TAG, "Premier message: ${apiMessages.getJSONObject(0).getString("role")}")
+        if (apiMessages.length() > 1) {
+            Log.d(TAG, "Dernier message: ${apiMessages.getJSONObject(apiMessages.length()-1).getString("role")}")
         }
         
         return apiMessages
@@ -230,8 +246,20 @@ Si tsundere : "Hmph! *détourne le regard* C'est pas comme si j'étais contente.
                 return content.trim()
             } else {
                 val error = connection.errorStream?.bufferedReader()?.use { it.readText() } ?: "Unknown error"
-                Log.e(TAG, "API Error: $error")
-                return "Erreur API Groq (code $responseCode)"
+                Log.e(TAG, "===== ERREUR GROQ API =====")
+                Log.e(TAG, "Code: $responseCode")
+                Log.e(TAG, "Erreur complète: $error")
+                Log.e(TAG, "Modèle utilisé: $model")
+                Log.e(TAG, "Clé API (3 premiers car): ${apiKey.take(3)}...")
+                
+                // Parser l'erreur pour message plus clair
+                try {
+                    val errorJson = JSONObject(error)
+                    val errorMessage = errorJson.getJSONObject("error").getString("message")
+                    return "Erreur Groq: $errorMessage"
+                } catch (e: Exception) {
+                    return "Erreur API Groq (code $responseCode). Vérifiez votre clé API et votre connexion Internet."
+                }
             }
         } finally {
             connection.disconnect()
