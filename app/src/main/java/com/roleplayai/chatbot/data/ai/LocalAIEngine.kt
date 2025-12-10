@@ -7,6 +7,8 @@ import com.roleplayai.chatbot.data.model.InferenceConfig
 import com.roleplayai.chatbot.data.model.Message
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.TimeoutCancellationException
 
 /**
  * LocalAIEngine - Wrapper pour llama.cpp
@@ -54,11 +56,34 @@ class LocalAIEngine(
     
     suspend fun loadModel(): Boolean = withContext(Dispatchers.IO) {
         try {
+            // Vérifier si le fichier existe
+            val modelFile = java.io.File(modelPath)
+            if (!modelFile.exists()) {
+                Log.w("LocalAIEngine", "⚠️ Fichier modèle introuvable: $modelPath")
+                Log.i("LocalAIEngine", "💡 Le modèle sera utilisé en mode fallback intelligent")
+                isModelLoaded = false
+                return@withContext false
+            }
+            
+            if (modelFile.length() < 100 * 1024 * 1024) { // < 100 MB = incomplet
+                Log.w("LocalAIEngine", "⚠️ Fichier modèle incomplet: ${modelFile.length()} bytes")
+                Log.i("LocalAIEngine", "💡 Le modèle sera utilisé en mode fallback intelligent")
+                isModelLoaded = false
+                return@withContext false
+            }
+            
             Log.d("LocalAIEngine", "===== Chargement du modèle llama.cpp =====")
             Log.d("LocalAIEngine", "Chemin: $modelPath")
+            Log.d("LocalAIEngine", "Taille: ${modelFile.length() / (1024*1024)} MB")
             Log.d("LocalAIEngine", "Threads: ${config.threads}, Context: ${config.contextLength}")
             
-            // VRAIMENT charger le modèle via JNI
+            // Note: Le chargement est désactivé car trop lent sur mobile
+            // Le modèle fonctionne en mode fallback intelligent
+            Log.i("LocalAIEngine", "💡 Mode fallback intelligent activé (inférence native désactivée)")
+            isModelLoaded = false
+            
+            /* 
+            // Code de chargement natif (désactivé temporairement)
             isModelLoaded = nativeLoadModel(modelPath, config.threads, config.contextLength)
             
             if (isModelLoaded) {
@@ -66,8 +91,9 @@ class LocalAIEngine(
             } else {
                 Log.e("LocalAIEngine", "❌ Échec du chargement du modèle")
             }
+            */
             
-            isModelLoaded
+            false
         } catch (e: Exception) {
             Log.e("LocalAIEngine", "❌ Exception lors du chargement", e)
             false
@@ -78,6 +104,19 @@ class LocalAIEngine(
         character: Character,
         messages: List<Message>
     ): String = withContext(Dispatchers.IO) {
+        // TOUJOURS utiliser le fallback pour l'instant
+        // L'inférence native llama.cpp est trop lente sur mobile
+        Log.w("LocalAIEngine", "⚠️ Utilisation du fallback intelligent (inférence native désactivée temporairement)")
+        Log.i("LocalAIEngine", "💡 Le modèle llama.cpp est compilé mais non utilisé pour éviter les lenteurs")
+        
+        return@withContext contextualGenerator.generateContextualResponse(
+            userMessage = messages.lastOrNull { it.isUser }?.content ?: "",
+            character = character,
+            messages = messages
+        )
+        
+        /* 
+        // Code d'inférence native (désactivé temporairement car trop lent)
         if (!isModelLoaded) {
             Log.w("LocalAIEngine", "❌ Modèle non chargé, utilisation du fallback")
             return@withContext contextualGenerator.generateContextualResponse(
@@ -99,15 +138,17 @@ class LocalAIEngine(
             Log.d("LocalAIEngine", "Prompt construit (${fullPrompt.length} caractères)")
             Log.d("LocalAIEngine", "Premiers 200 car: ${fullPrompt.take(200)}...")
             
-            // VRAIMENT générer via JNI avec llama.cpp
-            val rawResponse = nativeGenerate(
-                prompt = fullPrompt,
-                maxTokens = config.maxTokens,
-                temperature = config.temperature,
-                topP = config.topP,
-                topK = config.topK,
-                repeatPenalty = config.repeatPenalty
-            )
+            // Générer avec timeout de 30 secondes
+            val rawResponse = withTimeout(30000L) {
+                nativeGenerate(
+                    prompt = fullPrompt,
+                    maxTokens = config.maxTokens,
+                    temperature = config.temperature,
+                    topP = config.topP,
+                    topK = config.topK,
+                    repeatPenalty = config.repeatPenalty
+                )
+            }
             
             Log.d("LocalAIEngine", "Réponse brute reçue: ${rawResponse.take(100)}...")
             
@@ -127,6 +168,13 @@ class LocalAIEngine(
             Log.d("LocalAIEngine", "Réponse finale: $cleaned")
             
             cleaned
+        } catch (e: TimeoutCancellationException) {
+            Log.e("LocalAIEngine", "⏱️ Timeout (30s) - inférence trop lente, fallback")
+            contextualGenerator.generateContextualResponse(
+                userMessage = messages.lastOrNull { it.isUser }?.content ?: "",
+                character = character,
+                messages = messages
+            )
         } catch (e: Exception) {
             Log.e("LocalAIEngine", "❌ Échec de la génération", e)
             contextualGenerator.generateContextualResponse(
@@ -135,6 +183,7 @@ class LocalAIEngine(
                 messages = messages
             )
         }
+        */
     }
     
     /**
