@@ -18,7 +18,7 @@ class CharacterRepository {
                 description = "Kunoichi médicale de 32 ans, experte en combat et médecine ninja. Ancienne élève de Tsunade, elle est devenue l'une des ninjas les plus puissantes du village.",
                 personality = "Déterminée, courageuse, attentionnée, forte, loyale, mature",
                 scenario = "Sakura termine sa journée à l'hôpital ninja et vous retrouve pour discuter de votre prochaine mission.",
-                imageUrl = "https://image.pollinations.ai/prompt/adult%20Sakura%20Haruno%20age%2032%20pink%20hair%20green%20eyes%20medical%20ninja%20outfit%20confident%20mature%20anime%20style%20high%20quality?width=512&height=512&seed=5001",
+                imageUrl = "https://image.pollinations.ai/prompt/beautiful-adult-Sakura-Haruno-age-32-long-pink-hair-green-eyes-mature-kunoichi-red-ninja-outfit-confident-sexy-attractive-anime-style-Naruto-Shippuden?width=512&height=512&nologo=true",
                 category = CharacterCategory.ANIME,
                 themes = listOf(CharacterTheme.FRIEND_FEMALE),
                 greeting = "Ah, te voilà ! J'ai terminé mes soins à l'hôpital. On devrait parler de la mission de demain. *sourire confiant*",
@@ -36,17 +36,18 @@ class CharacterRepository {
                     "Leader naturelle"
                 ),
                 additionalImages = listOf(
-                    // Style Anime
-                    "https://image.pollinations.ai/prompt/Sakura%20Haruno%20adult%20age%2032%20pink%20hair%20medical%20ninja%20healing%20patient%20hospital%20caring%20anime?width=600&height=800&seed=5002",
-                    "https://image.pollinations.ai/prompt/Sakura%20Haruno%20adult%20fighting%20pose%20powerful%20punch%20pink%20hair%20determined%20anime?width=600&height=800&seed=5003",
-                    "https://image.pollinations.ai/prompt/Sakura%20Haruno%20adult%20casual%20clothes%20pink%20hair%20confident%20smile%20village%20background%20anime?width=600&height=800&seed=5004",
-                    "https://image.pollinations.ai/prompt/Sakura%20Haruno%20adult%20ninja%20outfit%20ready%20for%20mission%20serious%20professional%20anime?width=600&height=800&seed=5005",
-                    "https://image.pollinations.ai/prompt/Sakura%20Haruno%20adult%20training%20chakra%20control%20glowing%20hands%20focused%20anime?width=600&height=800&seed=5006",
-                    // Style Réaliste
-                    "https://image.pollinations.ai/prompt/realistic%20adult%20woman%20age%2032%20pink%20hair%20green%20eyes%20ninja%20medical%20outfit%20confident%20photorealistic?width=600&height=800&seed=5007",
-                    "https://image.pollinations.ai/prompt/realistic%20young%20woman%20pink%20hair%20determined%20fighter%20strong%20athletic%20photorealistic?width=600&height=800&seed=5008",
-                    "https://image.pollinations.ai/prompt/realistic%20mature%20woman%20pink%20hair%20doctor%20caring%20professional%20photorealistic?width=600&height=800&seed=5009",
-                    "https://image.pollinations.ai/prompt/realistic%20woman%20pink%20hair%20casual%20confident%20smile%20natural%20beauty%20photorealistic?width=600&height=800&seed=5010"
+                    // Style Anime Naruto - Sexy/Sensuel
+                    "https://image.pollinations.ai/prompt/beautiful-adult-Sakura-Haruno-pink-hair-green-eyes-red-ninja-dress-sexy-pose-confident-smile-Naruto-anime-style?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/gorgeous-Sakura-Haruno-adult-pink-hair-red-qipao-dress-attractive-feminine-sensual-pose-Naruto-Shippuden-style?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/sexy-Sakura-Haruno-kunoichi-age-32-pink-hair-red-outfit-fighting-stance-powerful-beautiful-anime-Naruto?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/alluring-adult-Sakura-medical-ninja-pink-hair-green-eyes-chakra-glowing-hands-attractive-sensual-anime?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/beautiful-Sakura-Haruno-casual-outfit-pink-hair-flirty-smile-mature-woman-sexy-Naruto-anime?width=600&height=800&nologo=true",
+                    // Style Réaliste/Photoréaliste - Sensuel
+                    "https://image.pollinations.ai/prompt/photorealistic-beautiful-woman-age-32-long-pink-hair-green-eyes-red-asian-dress-sexy-attractive-confident?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/realistic-gorgeous-woman-pink-hair-athletic-body-ninja-outfit-sensual-pose-photorealistic-cinematic?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/stunning-real-woman-pink-hair-green-eyes-medical-outfit-beautiful-face-alluring-photorealistic?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/real-photo-attractive-woman-32-pink-hair-casual-clothes-sexy-smile-natural-beauty-photorealistic?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/photorealistic-beautiful-asian-woman-pink-hair-feminine-dress-elegant-sensual-confident-portrait?width=600&height=800&nologo=true"
                 )
             ),
             
@@ -57,7 +58,7 @@ class CharacterRepository {
                 description = "Kunoichi de 32 ans du clan Hyuga, maîtresse du Byakugan et du Gentle Fist. Ancienne timide devenue une ninja confiante et puissante.",
                 personality = "Douce, déterminée, courageuse, bienveillante, loyale, confiante",
                 scenario = "Hinata s'entraîne dans le dojo du clan Hyuga et vous invite à la rejoindre pour une session de sparring.",
-                imageUrl = "https://image.pollinations.ai/prompt/adult%20Hinata%20Hyuga%20age%2032%20long%20dark%20blue%20hair%20lavender%20eyes%20ninja%20outfit%20confident%20gentle%20anime%20style?width=512&height=512&seed=5101",
+                imageUrl = "https://image.pollinations.ai/prompt/beautiful-adult-Hinata-Hyuga-age-32-long-dark-blue-hair-lavender-pearl-eyes-elegant-kunoichi-attractive-gentle-sexy-Naruto-anime-style?width=512&height=512&nologo=true",
                 category = CharacterCategory.ANIME,
                 themes = listOf(CharacterTheme.FRIEND_FEMALE),
                 greeting = "Bonjour... *sourire doux mais confiant* Je m'entraînais justement. Tu veux te joindre à moi ?",
@@ -75,17 +76,18 @@ class CharacterRepository {
                     "Force cachée sous la douceur"
                 ),
                 additionalImages = listOf(
-                    // Style Anime
-                    "https://image.pollinations.ai/prompt/Hinata%20Hyuga%20adult%20age%2032%20byakugan%20activated%20white%20eyes%20fighting%20stance%20powerful%20anime?width=600&height=800&seed=5102",
-                    "https://image.pollinations.ai/prompt/Hinata%20Hyuga%20adult%20gentle%20fist%20technique%20chakra%20flow%20determined%20anime?width=600&height=800&seed=5103",
-                    "https://image.pollinations.ai/prompt/Hinata%20Hyuga%20adult%20traditional%20kimono%20elegant%20soft%20smile%20beautiful%20anime?width=600&height=800&seed=5104",
-                    "https://image.pollinations.ai/prompt/Hinata%20Hyuga%20adult%20training%20dojo%20focused%20serious%20ninja%20anime?width=600&height=800&seed=5105",
-                    "https://image.pollinations.ai/prompt/Hinata%20Hyuga%20adult%20confident%20smile%20dark%20blue%20hair%20lavender%20eyes%20anime?width=600&height=800&seed=5106",
-                    // Style Réaliste
-                    "https://image.pollinations.ai/prompt/realistic%20adult%20woman%20age%2032%20long%20dark%20blue%20hair%20lavender%20eyes%20gentle%20confident%20photorealistic?width=600&height=800&seed=5107",
-                    "https://image.pollinations.ai/prompt/realistic%20young%20woman%20dark%20hair%20martial%20artist%20graceful%20powerful%20photorealistic?width=600&height=800&seed=5108",
-                    "https://image.pollinations.ai/prompt/realistic%20woman%20traditional%20japanese%20outfit%20elegant%20gentle%20smile%20photorealistic?width=600&height=800&seed=5109",
-                    "https://image.pollinations.ai/prompt/realistic%20mature%20woman%20dark%20blue%20hair%20determined%20kind%20eyes%20photorealistic?width=600&height=800&seed=5110"
+                    // Style Anime Naruto - Sexy/Sensuel
+                    "https://image.pollinations.ai/prompt/gorgeous-Hinata-Hyuga-adult-long-dark-blue-hair-lavender-eyes-elegant-kimono-sexy-beautiful-gentle-Naruto-anime?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/beautiful-Hinata-byakugan-activated-white-eyes-ninja-outfit-attractive-feminine-sensual-fighting-pose-anime?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/sexy-Hinata-Hyuga-adult-purple-ninja-dress-alluring-confident-smile-dark-blue-hair-Naruto-style?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/alluring-Hinata-traditional-japanese-kimono-elegant-sexy-pose-beautiful-mature-woman-Naruto-anime?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/gorgeous-Hinata-Hyuga-casual-outfit-dark-blue-hair-lavender-eyes-attractive-flirty-smile-anime?width=600&height=800&nologo=true",
+                    // Style Réaliste/Photoréaliste - Sensuel
+                    "https://image.pollinations.ai/prompt/photorealistic-beautiful-asian-woman-age-32-long-dark-blue-hair-lavender-contact-lenses-elegant-sexy-kimono?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/realistic-gorgeous-woman-dark-hair-martial-arts-outfit-athletic-sexy-body-confident-pose-photorealistic?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/stunning-real-woman-dark-blue-hair-traditional-dress-sensual-elegant-beautiful-face-photorealistic?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/real-photo-attractive-asian-woman-32-dark-hair-casual-clothes-sexy-gentle-smile-photorealistic?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/photorealistic-beautiful-woman-long-dark-hair-feminine-outfit-alluring-confident-graceful-portrait?width=600&height=800&nologo=true"
                 )
             ),
             
@@ -96,7 +98,7 @@ class CharacterRepository {
                 description = "Ninja de 33 ans, dernier survivant du clan Uchiha. Maître du Sharingan et du Rinnegan, il protège le village de l'ombre après avoir trouvé la rédemption.",
                 personality = "Calme, mystérieux, intelligent, protecteur, réservé, loyal",
                 scenario = "Sasuke revient d'une mission secrète et vous croise dans le village. Il semble avoir quelque chose d'important à discuter.",
-                imageUrl = "https://image.pollinations.ai/prompt/adult%20Sasuke%20Uchiha%20age%2033%20black%20hair%20dark%20eyes%20ninja%20cloak%20mysterious%20cool%20anime%20style?width=512&height=512&seed=5201",
+                imageUrl = "https://image.pollinations.ai/prompt/handsome-adult-Sasuke-Uchiha-age-33-black-hair-dark-eyes-mysterious-attractive-cool-ninja-dark-aesthetic-Naruto-anime-style?width=512&height=512&nologo=true",
                 category = CharacterCategory.ANIME,
                 themes = listOf(CharacterTheme.STRANGER),
                 greeting = "Hn. *regard calme* Je ne pensais pas te croiser ici. J'ai des informations sur une menace potentielle.",
@@ -114,17 +116,18 @@ class CharacterRepository {
                     "Force incommensurable"
                 ),
                 additionalImages = listOf(
-                    // Style Anime
-                    "https://image.pollinations.ai/prompt/Sasuke%20Uchiha%20adult%20age%2033%20sharingan%20activated%20red%20eyes%20powerful%20dark%20aesthetic%20anime?width=600&height=800&seed=5202",
-                    "https://image.pollinations.ai/prompt/Sasuke%20Uchiha%20adult%20chidori%20lightning%20hand%20intense%20powerful%20anime?width=600&height=800&seed=5203",
-                    "https://image.pollinations.ai/prompt/Sasuke%20Uchiha%20adult%20black%20cloak%20traveling%20mysterious%20cool%20anime?width=600&height=800&seed=5204",
-                    "https://image.pollinations.ai/prompt/Sasuke%20Uchiha%20adult%20serious%20expression%20determined%20ninja%20anime?width=600&height=800&seed=5205",
-                    "https://image.pollinations.ai/prompt/Sasuke%20Uchiha%20adult%20rinnegan%20eye%20purple%20powerful%20mysterious%20anime?width=600&height=800&seed=5206",
-                    // Style Réaliste
-                    "https://image.pollinations.ai/prompt/realistic%20adult%20man%20age%2033%20black%20hair%20intense%20dark%20eyes%20ninja%20warrior%20photorealistic?width=600&height=800&seed=5207",
-                    "https://image.pollinations.ai/prompt/realistic%20young%20man%20dark%20hair%20mysterious%20powerful%20aura%20photorealistic?width=600&height=800&seed=5208",
-                    "https://image.pollinations.ai/prompt/realistic%20man%20black%20outfit%20serious%20determined%20strong%20photorealistic?width=600&height=800&seed=5209",
-                    "https://image.pollinations.ai/prompt/realistic%20mature%20man%20dark%20hair%20calm%20intense%20gaze%20photorealistic?width=600&height=800&seed=5210"
+                    // Style Anime Naruto - Attirant/Cool
+                    "https://image.pollinations.ai/prompt/handsome-Sasuke-Uchiha-adult-sharingan-red-eyes-black-hair-cool-attractive-powerful-dark-ninja-Naruto-anime?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/attractive-Sasuke-chidori-lightning-black-hair-intense-look-badass-cool-mysterious-anime-style?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/sexy-Sasuke-Uchiha-black-cloak-uchiha-symbol-handsome-face-dark-aesthetic-Naruto-anime?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/gorgeous-Sasuke-rinnegan-eye-purple-mysterious-attractive-powerful-cool-ninja-anime?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/handsome-Sasuke-Uchiha-casual-clothes-black-hair-attractive-smile-cool-Naruto-style?width=600&height=800&nologo=true",
+                    // Style Réaliste/Photoréaliste - Attirant
+                    "https://image.pollinations.ai/prompt/photorealistic-handsome-asian-man-age-33-black-hair-intense-eyes-mysterious-attractive-ninja-outfit?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/realistic-attractive-man-dark-hair-warrior-outfit-muscular-sexy-body-confident-pose-photorealistic?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/stunning-real-man-black-hair-dark-clothes-handsome-face-mysterious-badass-photorealistic?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/real-photo-handsome-man-33-black-hair-casual-outfit-attractive-intense-gaze-photorealistic?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/photorealistic-attractive-asian-man-dark-hair-ninja-warrior-cool-confident-masculine-portrait?width=600&height=800&nologo=true"
                 )
             ),
             
@@ -135,7 +138,7 @@ class CharacterRepository {
                 description = "Hokage du village de Konoha, âgé de 32 ans. Ancien jinchūriki de Kyūbi, il est devenu le ninja le plus puissant et le leader aimé de tous.",
                 personality = "Énergique, optimiste, déterminé, protecteur, charismatique, bienveillant",
                 scenario = "Naruto termine une réunion importante au bureau du Hokage et vous invite à manger des ramens en discutant de l'avenir du village.",
-                imageUrl = "https://image.pollinations.ai/prompt/adult%20Naruto%20Uzumaki%20age%2032%20blonde%20spiky%20hair%20blue%20eyes%20hokage%20cloak%20confident%20smile%20anime%20style?width=512&height=512&seed=5301",
+                imageUrl = "https://image.pollinations.ai/prompt/handsome-adult-Naruto-Uzumaki-age-32-blonde-spiky-hair-blue-eyes-hokage-white-cloak-attractive-confident-smile-Naruto-anime-style?width=512&height=512&nologo=true",
                 category = CharacterCategory.ANIME,
                 themes = listOf(CharacterTheme.FRIEND_FEMALE),
                 greeting = "Yo ! *grand sourire* J'ai enfin fini ces maudits papiers ! Ça te dit d'aller chez Ichiraku ? C'est moi qui régale, dattebayo !",
@@ -153,17 +156,18 @@ class CharacterRepository {
                     "Force légendaire"
                 ),
                 additionalImages = listOf(
-                    // Style Anime
-                    "https://image.pollinations.ai/prompt/Naruto%20Uzumaki%20adult%20age%2032%20hokage%20office%20white%20cloak%20leader%20confident%20anime?width=600&height=800&seed=5302",
-                    "https://image.pollinations.ai/prompt/Naruto%20Uzumaki%20adult%20rasengan%20blue%20sphere%20powerful%20determined%20anime?width=600&height=800&seed=5303",
-                    "https://image.pollinations.ai/prompt/Naruto%20Uzumaki%20adult%20sage%20mode%20orange%20eyes%20powerful%20aura%20anime?width=600&height=800&seed=5304",
-                    "https://image.pollinations.ai/prompt/Naruto%20Uzumaki%20adult%20eating%20ramen%20happy%20smile%20casual%20anime?width=600&height=800&seed=5305",
-                    "https://image.pollinations.ai/prompt/Naruto%20Uzumaki%20adult%20ninja%20outfit%20ready%20for%20action%20energetic%20anime?width=600&height=800&seed=5306",
-                    // Style Réaliste
-                    "https://image.pollinations.ai/prompt/realistic%20adult%20man%20age%2032%20blonde%20spiky%20hair%20blue%20eyes%20leader%20confident%20photorealistic?width=600&height=800&seed=5307",
-                    "https://image.pollinations.ai/prompt/realistic%20young%20man%20blonde%20hair%20energetic%20smile%20charismatic%20photorealistic?width=600&height=800&seed=5308",
-                    "https://image.pollinations.ai/prompt/realistic%20man%20white%20cloak%20leader%20determined%20powerful%20photorealistic?width=600&height=800&seed=5309",
-                    "https://image.pollinations.ai/prompt/realistic%20mature%20man%20blonde%20hair%20warm%20smile%20protective%20photorealistic?width=600&height=800&seed=5310"
+                    // Style Anime Naruto - Attirant/Charismatique
+                    "https://image.pollinations.ai/prompt/handsome-Naruto-Uzumaki-hokage-white-cloak-blonde-hair-blue-eyes-attractive-confident-leader-Naruto-anime?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/attractive-Naruto-rasengan-blue-sphere-blonde-spiky-hair-powerful-cool-determined-anime-style?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/sexy-Naruto-sage-mode-orange-eyes-blonde-hair-muscular-attractive-powerful-aura-anime?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/handsome-Naruto-Uzumaki-orange-ninja-outfit-blonde-hair-charming-smile-energetic-anime?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/gorgeous-Naruto-casual-clothes-blonde-spiky-hair-blue-eyes-attractive-warm-smile-anime?width=600&height=800&nologo=true",
+                    // Style Réaliste/Photoréaliste - Attirant
+                    "https://image.pollinations.ai/prompt/photorealistic-handsome-man-age-32-blonde-spiky-hair-blue-eyes-white-cloak-leader-confident-attractive?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/realistic-attractive-blonde-man-ninja-outfit-muscular-body-energetic-smile-photorealistic?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/stunning-real-man-blonde-hair-blue-eyes-warrior-outfit-handsome-charismatic-photorealistic?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/real-photo-handsome-man-32-blonde-spiky-hair-casual-clothes-attractive-warm-smile-photorealistic?width=600&height=800&nologo=true",
+                    "https://image.pollinations.ai/prompt/photorealistic-attractive-man-blonde-hair-blue-eyes-ninja-leader-cool-confident-masculine-portrait?width=600&height=800&nologo=true"
                 )
             )
         )
