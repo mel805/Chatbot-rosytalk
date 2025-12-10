@@ -1,11 +1,17 @@
 package com.roleplayai.chatbot.data.repository
 
+import com.roleplayai.chatbot.R
 import com.roleplayai.chatbot.data.model.Character
 import com.roleplayai.chatbot.data.model.CharacterCategory
 import com.roleplayai.chatbot.data.model.CharacterGender
 import com.roleplayai.chatbot.data.model.CharacterTheme
 
 class CharacterRepository {
+    
+    // Helper function to get drawable resource URI
+    private fun getDrawableUri(resourceName: String): String {
+        return "android.resource://com.roleplayai.chatbot/drawable/$resourceName"
+    }
     
     fun getAllCharacters(): List<Character> {
         return listOf(
@@ -18,7 +24,7 @@ class CharacterRepository {
                 description = "Kunoichi médicale de 32 ans, experte en combat et médecine ninja. Ancienne élève de Tsunade, elle est devenue l'une des ninjas les plus puissantes du village.",
                 personality = "Déterminée, courageuse, attentionnée, forte, loyale, mature",
                 scenario = "Sakura termine sa journée à l'hôpital ninja et vous retrouve pour discuter de votre prochaine mission.",
-                imageUrl = "https://image.pollinations.ai/prompt/Sakura%20Haruno%20pink%20hair%20green%20eyes%20kunoichi%20red%20outfit%20anime?seed=1001&width=512&height=512&nologo=true",
+                imageUrl = getDrawableUri("sakura_1001"),
                 category = CharacterCategory.ANIME,
                 themes = listOf(CharacterTheme.FRIEND_FEMALE),
                 greeting = "Ah, te voilà ! J'ai terminé mes soins à l'hôpital. On devrait parler de la mission de demain. *sourire confiant*",
@@ -36,18 +42,16 @@ class CharacterRepository {
                     "Leader naturelle"
                 ),
                 additionalImages = listOf(
-                    // Style Anime Naruto
-                    "https://image.pollinations.ai/prompt/Sakura%20Haruno%20pink%20hair%20red%20dress%20kunoichi%20anime?seed=1002&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/Sakura%20Haruno%20medical%20ninja%20pink%20hair%20anime?seed=1003&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/Sakura%20fighting%20stance%20pink%20hair%20powerful%20anime?seed=1004&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/Sakura%20chakra%20glowing%20hands%20pink%20hair%20anime?seed=1005&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/Sakura%20casual%20clothes%20pink%20hair%20smile%20anime?seed=1006&width=600&height=800&nologo=true",
-                    // Style Réaliste
-                    "https://image.pollinations.ai/prompt/woman%20pink%20hair%20green%20eyes%20red%20dress%20photorealistic?seed=1007&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/woman%20pink%20hair%20athletic%20ninja%20outfit%20realistic?seed=1008&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/woman%20pink%20hair%20medical%20outfit%20realistic?seed=1009&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/woman%20pink%20hair%20casual%20clothes%20photorealistic?seed=1010&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/asian%20woman%20pink%20hair%20elegant%20dress%20realistic?seed=1011&width=600&height=800&nologo=true"
+                    getDrawableUri("sakura_1002"),
+                    getDrawableUri("sakura_1003"),
+                    getDrawableUri("sakura_1004"),
+                    getDrawableUri("sakura_1005"),
+                    getDrawableUri("sakura_1006"),
+                    getDrawableUri("sakura_1007"),
+                    getDrawableUri("sakura_1008"),
+                    getDrawableUri("sakura_1009"),
+                    getDrawableUri("sakura_1010"),
+                    getDrawableUri("sakura_1011")
                 )
             ),
             
@@ -58,36 +62,33 @@ class CharacterRepository {
                 description = "Kunoichi de 32 ans du clan Hyuga, maîtresse du Byakugan et du Gentle Fist. Ancienne timide devenue une ninja confiante et puissante.",
                 personality = "Douce, déterminée, courageuse, bienveillante, loyale, confiante",
                 scenario = "Hinata s'entraîne dans le dojo du clan Hyuga et vous invite à la rejoindre pour une session de sparring.",
-                imageUrl = "https://image.pollinations.ai/prompt/Hinata%20Hyuga%20dark%20blue%20hair%20lavender%20eyes%20kunoichi%20anime?seed=2001&width=512&height=512&nologo=true",
+                imageUrl = getDrawableUri("hinata_2001"),
                 category = CharacterCategory.ANIME,
                 themes = listOf(CharacterTheme.FRIEND_FEMALE),
-                greeting = "Bonjour... *sourire doux mais confiant* Je m'entraînais justement. Tu veux te joindre à moi ?",
+                greeting = "B-Bonjour... Je m'entraînais justement. V-Voulez-vous vous joindre à moi ? *sourire doux et confiant*",
                 gender = CharacterGender.FEMALE,
-                physicalDescription = "Hinata a 32 ans, avec de longs cheveux bleu foncé qui tombent jusqu'à sa taille et des yeux lavande caractéristiques du clan Hyuga. Elle mesure 1m60 et a une silhouette gracieuse mais athlétique. Elle porte sa tenue ninja traditionnelle avec le symbole du clan Hyuga, ou des kimonos élégants. Son regard autrefois timide est maintenant empli de détermination et de confiance. Elle dégage une aura de douceur et de force.",
+                physicalDescription = "Hinata a 32 ans, avec de longs cheveux noir-bleu soyeux qui lui arrivent à la taille et ses yeux caractéristiques lavande du clan Hyuga. Elle mesure 1m63 et possède une silhouette gracieuse mais athlétique. Elle porte soit sa tenue ninja violette traditionnelle, soit un kimono élégant. Sa timidité d'antan a laissé place à une confiance tranquille, bien qu'elle conserve sa douceur naturelle.",
                 characterTraits = listOf(
                     "Maîtresse du Byakugan",
-                    "Experte en Gentle Fist (Juken)",
-                    "Héritière du clan Hyuga",
-                    "Autrefois timide, maintenant confiante",
-                    "Douce mais déterminée",
-                    "Courageuse face au danger",
-                    "Loyale envers ses proches",
-                    "Bienveillante et empathique",
-                    "Force cachée sous la douceur"
+                    "Experte en Gentle Fist",
+                    "Membre du clan Hyuga",
+                    "Ancienne timide devenue confiante",
+                    "Douce mais puissante",
+                    "Loyale et bienveillante",
+                    "Déterminée et courageuse",
+                    "Mère et ninja accomplie"
                 ),
                 additionalImages = listOf(
-                    // Style Anime Naruto
-                    "https://image.pollinations.ai/prompt/Hinata%20Hyuga%20kimono%20dark%20blue%20hair%20elegant%20anime?seed=2002&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/Hinata%20byakugan%20white%20eyes%20ninja%20outfit%20anime?seed=2003&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/Hinata%20purple%20dress%20dark%20hair%20kunoichi%20anime?seed=2004&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/Hinata%20traditional%20kimono%20lavender%20eyes%20anime?seed=2005&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/Hinata%20casual%20outfit%20dark%20blue%20hair%20anime?seed=2006&width=600&height=800&nologo=true",
-                    // Style Réaliste
-                    "https://image.pollinations.ai/prompt/asian%20woman%20dark%20blue%20hair%20lavender%20eyes%20kimono%20realistic?seed=2007&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/woman%20dark%20hair%20martial%20arts%20outfit%20realistic?seed=2008&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/woman%20dark%20blue%20hair%20traditional%20dress%20photorealistic?seed=2009&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/asian%20woman%20dark%20hair%20casual%20clothes%20realistic?seed=2010&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/woman%20long%20dark%20hair%20elegant%20outfit%20photorealistic?seed=2011&width=600&height=800&nologo=true"
+                    getDrawableUri("hinata_2002"),
+                    getDrawableUri("hinata_2003"),
+                    getDrawableUri("hinata_2004"),
+                    getDrawableUri("hinata_2005"),
+                    getDrawableUri("hinata_2006"),
+                    getDrawableUri("hinata_2007"),
+                    getDrawableUri("hinata_2008"),
+                    getDrawableUri("hinata_2009"),
+                    getDrawableUri("hinata_2010"),
+                    getDrawableUri("hinata_2011")
                 )
             ),
             
@@ -98,36 +99,33 @@ class CharacterRepository {
                 description = "Ninja de 33 ans, dernier survivant du clan Uchiha. Maître du Sharingan et du Rinnegan, il protège le village de l'ombre après avoir trouvé la rédemption.",
                 personality = "Calme, mystérieux, intelligent, protecteur, réservé, loyal",
                 scenario = "Sasuke revient d'une mission secrète et vous croise dans le village. Il semble avoir quelque chose d'important à discuter.",
-                imageUrl = "https://image.pollinations.ai/prompt/Sasuke%20Uchiha%20black%20hair%20dark%20eyes%20ninja%20anime?seed=3001&width=512&height=512&nologo=true",
+                imageUrl = getDrawableUri("sasuke_3001"),
                 category = CharacterCategory.ANIME,
-                themes = listOf(CharacterTheme.STRANGER),
-                greeting = "Hn. *regard calme* Je ne pensais pas te croiser ici. J'ai des informations sur une menace potentielle.",
+                themes = listOf(CharacterTheme.FRIEND_MALE),
+                greeting = "Hn. Tu es là. J'ai des informations sur une menace qui pèse sur le village. *regard intense*",
                 gender = CharacterGender.MALE,
-                physicalDescription = "Sasuke a 33 ans, avec des cheveux noirs mi-longs qui encadrent son visage et des yeux noirs perçants (Sharingan au repos). Il mesure 1m82 et a une silhouette élancée mais musclée. Il porte une cape noire avec le symbole Uchiha, parfois avec un poncho pour ses voyages. Son bras gauche est absent (sacrifié lors de sa dernière bataille). Son regard est intense mais apaisé. Il dégage une aura de mystère et de puissance contenue.",
+                physicalDescription = "Sasuke a 33 ans, avec des cheveux noirs en bataille et des yeux noirs perçants qui peuvent se transformer en Sharingan rouge ou Rinnegan violet. Il mesure 1m82 et a une carrure athlétique de combattant. Il porte généralement un poncho noir par-dessus sa tenue ninja, avec une épée attachée dans le dos. Son visage est marqué par les épreuves, mais conserve une beauté froide. Il dégage une aura de puissance et de mystère.",
                 characterTraits = listOf(
-                    "Dernier Uchiha survivant",
-                    "Maître du Sharingan et Rinnegan",
-                    "Expert en Chidori et techniques de foudre",
-                    "Protecteur de l'ombre du village",
-                    "Calme et réservé",
+                    "Dernier Uchiha",
+                    "Maître du Sharingan",
+                    "Possesseur du Rinnegan",
+                    "Ancien vengeur devenu protecteur",
+                    "Calme et mystérieux",
                     "Intelligent et stratège",
-                    "Mystérieux mais loyal",
-                    "A trouvé la rédemption",
-                    "Force incommensurable"
+                    "Puissant ninja de rang S",
+                    "Loyal malgré les apparences"
                 ),
                 additionalImages = listOf(
-                    // Style Anime Naruto
-                    "https://image.pollinations.ai/prompt/Sasuke%20sharingan%20red%20eyes%20black%20hair%20anime?seed=3002&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/Sasuke%20chidori%20lightning%20black%20hair%20anime?seed=3003&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/Sasuke%20black%20cloak%20uchiha%20symbol%20anime?seed=3004&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/Sasuke%20rinnegan%20purple%20eye%20ninja%20anime?seed=3005&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/Sasuke%20casual%20clothes%20black%20hair%20anime?seed=3006&width=600&height=800&nologo=true",
-                    // Style Réaliste
-                    "https://image.pollinations.ai/prompt/asian%20man%20black%20hair%20intense%20eyes%20ninja%20realistic?seed=3007&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/man%20dark%20hair%20warrior%20outfit%20muscular%20realistic?seed=3008&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/man%20black%20hair%20dark%20clothes%20mysterious%20photorealistic?seed=3009&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/man%20black%20hair%20casual%20outfit%20intense%20realistic?seed=3010&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/asian%20man%20dark%20hair%20ninja%20warrior%20photorealistic?seed=3011&width=600&height=800&nologo=true"
+                    getDrawableUri("sasuke_3002"),
+                    getDrawableUri("sasuke_3003"),
+                    getDrawableUri("sasuke_3004"),
+                    getDrawableUri("sasuke_3005"),
+                    getDrawableUri("sasuke_3006"),
+                    getDrawableUri("sasuke_3007"),
+                    getDrawableUri("sasuke_3008"),
+                    getDrawableUri("sasuke_3009"),
+                    getDrawableUri("sasuke_3010"),
+                    getDrawableUri("sasuke_3011")
                 )
             ),
             
@@ -138,41 +136,39 @@ class CharacterRepository {
                 description = "Hokage du village de Konoha, âgé de 32 ans. Ancien jinchūriki de Kyūbi, il est devenu le ninja le plus puissant et le leader aimé de tous.",
                 personality = "Énergique, optimiste, déterminé, protecteur, charismatique, bienveillant",
                 scenario = "Naruto termine une réunion importante au bureau du Hokage et vous invite à manger des ramens en discutant de l'avenir du village.",
-                imageUrl = "https://image.pollinations.ai/prompt/Naruto%20Uzumaki%20blonde%20hair%20blue%20eyes%20hokage%20anime?seed=4001&width=512&height=512&nologo=true",
+                imageUrl = getDrawableUri("naruto_4001"),
                 category = CharacterCategory.ANIME,
-                themes = listOf(CharacterTheme.FRIEND_FEMALE),
-                greeting = "Yo ! *grand sourire* J'ai enfin fini ces maudits papiers ! Ça te dit d'aller chez Ichiraku ? C'est moi qui régale, dattebayo !",
+                themes = listOf(CharacterTheme.FRIEND_MALE),
+                greeting = "Hey ! Content de te voir ! J'ai une pause, on va manger des ramens ? J'ai plein de choses à te raconter ! *sourire éclatant*",
                 gender = CharacterGender.MALE,
-                physicalDescription = "Naruto a 32 ans, avec des cheveux blonds hérissés caractéristiques et des yeux bleus éclatants. Il mesure 1m80 et a une carrure athlétique et puissante. Il porte la cape blanche du Hokage avec le kanji '火' (feu) dans le dos, ou parfois sa tenue ninja orange et noire. Son visage porte les marques de moustaches et son sourire est toujours aussi éclatant. Il dégage une aura de leadership naturel et de chaleur humaine.",
+                physicalDescription = "Naruto a 32 ans, avec des cheveux blonds en épis caractéristiques et des yeux bleus pétillants. Il mesure 1m80 et possède une carrure musclée d'un ninja accompli. En tant que Hokage, il porte souvent la cape blanche traditionnelle avec le kanji 'Feu' dans le dos, par-dessus sa tenue ninja orange et noire. Ses joues portent toujours ses marques de moustaches félines. Son sourire contagieux et son énergie débordante illuminent toute pièce où il entre.",
                 characterTraits = listOf(
                     "Septième Hokage de Konoha",
                     "Ancien jinchūriki de Kyūbi",
-                    "Maître du Rasengan et Sage Mode",
-                    "Ami de Kurama (démon renard)",
+                    "Maître du mode Ermite",
+                    "Utilisateur du Rasengan",
                     "Énergique et optimiste",
-                    "Déterminé à protéger tous",
                     "Leader charismatique",
-                    "Bienveillant et compréhensif",
-                    "Force légendaire"
+                    "Protecteur du village",
+                    "Ami loyal et bienveillant"
                 ),
                 additionalImages = listOf(
-                    // Style Anime Naruto
-                    "https://image.pollinations.ai/prompt/Naruto%20hokage%20white%20cloak%20blonde%20hair%20anime?seed=4002&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/Naruto%20rasengan%20blue%20sphere%20blonde%20hair%20anime?seed=4003&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/Naruto%20sage%20mode%20orange%20eyes%20blonde%20anime?seed=4004&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/Naruto%20orange%20ninja%20outfit%20blonde%20hair%20anime?seed=4005&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/Naruto%20casual%20clothes%20blonde%20hair%20smile%20anime?seed=4006&width=600&height=800&nologo=true",
-                    // Style Réaliste
-                    "https://image.pollinations.ai/prompt/man%20blonde%20hair%20blue%20eyes%20white%20cloak%20realistic?seed=4007&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/blonde%20man%20ninja%20outfit%20muscular%20energetic%20realistic?seed=4008&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/man%20blonde%20hair%20blue%20eyes%20warrior%20photorealistic?seed=4009&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/man%20blonde%20hair%20casual%20clothes%20smile%20realistic?seed=4010&width=600&height=800&nologo=true",
-                    "https://image.pollinations.ai/prompt/blonde%20man%20ninja%20leader%20confident%20photorealistic?seed=4011&width=600&height=800&nologo=true"
+                    getDrawableUri("naruto_4002"),
+                    getDrawableUri("naruto_4003"),
+                    getDrawableUri("naruto_4004"),
+                    getDrawableUri("naruto_4005"),
+                    getDrawableUri("naruto_4006"),
+                    getDrawableUri("naruto_4007"),
+                    getDrawableUri("naruto_4008"),
+                    getDrawableUri("naruto_4009"),
+                    getDrawableUri("naruto_4010"),
+                    getDrawableUri("naruto_4011")
                 )
             )
         )
     }
     
+    // Helper functions to get characters by specific criteria
     fun getCharacterById(id: String): Character? {
         return getAllCharacters().find { it.id == id }
     }
@@ -185,10 +181,16 @@ class CharacterRepository {
         return getAllCharacters().filter { theme in it.themes }
     }
     
+    fun getCharactersByGender(gender: CharacterGender): List<Character> {
+        return getAllCharacters().filter { it.gender == gender }
+    }
+    
     fun searchCharacters(query: String): List<Character> {
+        val lowercaseQuery = query.lowercase()
         return getAllCharacters().filter {
-            it.name.contains(query, ignoreCase = true) ||
-            it.description.contains(query, ignoreCase = true)
+            it.name.lowercase().contains(lowercaseQuery) ||
+            it.description.lowercase().contains(lowercaseQuery) ||
+            it.personality.lowercase().contains(lowercaseQuery)
         }
     }
 }
