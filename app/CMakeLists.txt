@@ -24,38 +24,68 @@ endif()
 set(LLAMA_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/main/cpp/llama.cpp)
 set(GGML_DIR ${LLAMA_DIR}/ggml)
 
-# Sources GGML (moteur de calcul + backends)
+# Sources GGML (TOUS les fichiers nécessaires)
 file(GLOB GGML_SOURCES
     ${GGML_DIR}/src/ggml.c
     ${GGML_DIR}/src/ggml-alloc.c
     ${GGML_DIR}/src/ggml-quants.c
     ${GGML_DIR}/src/ggml-backend.cpp
     ${GGML_DIR}/src/ggml-backend-reg.cpp
-    ${GGML_DIR}/src/ggml-cpu/ggml-cpu.cpp
     ${GGML_DIR}/src/ggml-threading.cpp
+    ${GGML_DIR}/src/ggml-opt.cpp
+    ${GGML_DIR}/src/gguf.cpp
 )
 
-# Sources llama.cpp principales (compilées sélectivement)
-file(GLOB LLAMA_CORE_SOURCES
+# Tous les fichiers CPU (C et C++)
+file(GLOB GGML_CPU_C_SOURCES ${GGML_DIR}/src/ggml-cpu/*.c)
+file(GLOB GGML_CPU_CPP_SOURCES ${GGML_DIR}/src/ggml-cpu/*.cpp)
+file(GLOB GGML_LLAMAFILE_SOURCES ${GGML_DIR}/src/ggml-cpu/llamafile/*.cpp)
+
+# Fichiers ARM spécifiques (C et C++)
+file(GLOB GGML_ARM_C_SOURCES ${GGML_DIR}/src/ggml-cpu/arch/arm/*.c)
+file(GLOB GGML_ARM_CPP_SOURCES ${GGML_DIR}/src/ggml-cpu/arch/arm/*.cpp)
+
+# Exclure kleidiai qui nécessite une dépendance externe
+list(FILTER GGML_CPU_CPP_SOURCES EXCLUDE REGEX ".*/kleidiai/.*")
+
+set(GGML_SOURCES ${GGML_SOURCES} ${GGML_CPU_C_SOURCES} ${GGML_CPU_CPP_SOURCES} ${GGML_LLAMAFILE_SOURCES} ${GGML_ARM_C_SOURCES} ${GGML_ARM_CPP_SOURCES})
+
+# Sources llama.cpp principales + tous les fichiers de base
+set(LLAMA_CORE_SOURCES
     ${LLAMA_DIR}/src/llama.cpp
     ${LLAMA_DIR}/src/llama-vocab.cpp
     ${LLAMA_DIR}/src/llama-grammar.cpp
     ${LLAMA_DIR}/src/llama-sampling.cpp
     ${LLAMA_DIR}/src/llama-context.cpp
     ${LLAMA_DIR}/src/llama-batch.cpp
+    ${LLAMA_DIR}/src/llama-chat.cpp
     ${LLAMA_DIR}/src/llama-model.cpp
     ${LLAMA_DIR}/src/llama-model-loader.cpp
+    ${LLAMA_DIR}/src/llama-model-saver.cpp
     ${LLAMA_DIR}/src/llama-io.cpp
     ${LLAMA_DIR}/src/llama-impl.cpp
     ${LLAMA_DIR}/src/llama-arch.cpp
+    ${LLAMA_DIR}/src/llama-adapter.cpp
     ${LLAMA_DIR}/src/llama-kv-cache.cpp
+    ${LLAMA_DIR}/src/llama-kv-cache-iswa.cpp
     ${LLAMA_DIR}/src/llama-memory.cpp
+    ${LLAMA_DIR}/src/llama-memory-hybrid.cpp
+    ${LLAMA_DIR}/src/llama-memory-recurrent.cpp
     ${LLAMA_DIR}/src/llama-mmap.cpp
     ${LLAMA_DIR}/src/llama-hparams.cpp
     ${LLAMA_DIR}/src/llama-cparams.cpp
+    ${LLAMA_DIR}/src/llama-quant.cpp
+    ${LLAMA_DIR}/src/llama-graph.cpp
     ${LLAMA_DIR}/src/unicode.cpp
     ${LLAMA_DIR}/src/unicode-data.cpp
 )
+
+# Ajouter TOUS les modèles pour éviter les erreurs de linking
+file(GLOB LLAMA_MODEL_SOURCES
+    ${LLAMA_DIR}/src/models/*.cpp
+)
+
+set(LLAMA_CORE_SOURCES ${LLAMA_CORE_SOURCES} ${LLAMA_MODEL_SOURCES})
 
 # Sources JNI
 set(JNI_SOURCES
@@ -69,6 +99,8 @@ include_directories(
     ${GGML_DIR}/include
     ${GGML_DIR}/src
     ${GGML_DIR}/src/ggml-cpu
+    ${GGML_DIR}/src/ggml-cpu/llamafile
+    ${GGML_DIR}/src/ggml-cpu/arch/arm
     ${CMAKE_CURRENT_SOURCE_DIR}/src/main/cpp
 )
 

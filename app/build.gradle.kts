@@ -68,8 +68,9 @@ android {
         // ... other configs ...
         
         ndk {
-            // Support for ARM and x86
-            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+            // Compiler seulement pour ARM 64-bit (téléphones modernes)
+            // armeabi-v7a, x86, x86_64 exclus pour simplifier llama.cpp
+            abiFilters += listOf("arm64-v8a")
         }
         
         externalNativeBuild {
