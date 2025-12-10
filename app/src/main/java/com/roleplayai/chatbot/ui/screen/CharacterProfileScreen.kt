@@ -42,8 +42,11 @@ fun CharacterProfileScreen(
     // Utiliser les images appropriées selon le mode NSFW
     val (mainImageUrl, additionalImageUrls) = remember(character, isNsfwMode) {
         if (isNsfwMode && character.nsfwImageUrl.isNotEmpty()) {
-            Pair(character.nsfwImageUrl, character.nsfwAdditionalImages)
+            // En mode NSFW : combiner les images SFW + NSFW
+            val combinedImages = character.additionalImages + character.nsfwAdditionalImages
+            Pair(character.imageUrl, combinedImages)
         } else {
+            // Mode normal : seulement les images SFW
             Pair(character.imageUrl, character.additionalImages)
         }
     }
@@ -257,11 +260,11 @@ fun CharacterProfileScreen(
             if (additionalImageUrls.isNotEmpty()) {
                 item {
                     ProfileSection(
-                        title = if (isNsfwMode) "🔞 Galerie NSFW (${additionalImageUrls.size} images)" else "🖼️ Galerie (${additionalImageUrls.size} images)",
+                        title = if (isNsfwMode) "🔞 Galerie Complète (${additionalImageUrls.size} images)" else "🖼️ Galerie (${additionalImageUrls.size} images)",
                         icon = Icons.Default.PhotoLibrary
                     ) {
                         Text(
-                            if (isNsfwMode) "Cliquez sur une image pour l'agrandir (Mode NSFW activé)" else "Cliquez sur une image pour l'agrandir",
+                            if (isNsfwMode) "Mode NSFW : Toutes les images SFW + NSFW" else "Cliquez sur une image pour l'agrandir",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(bottom = 12.dp)
