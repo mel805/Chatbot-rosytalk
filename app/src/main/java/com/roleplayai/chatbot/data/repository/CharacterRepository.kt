@@ -168,9 +168,16 @@ class CharacterRepository {
                     "Compétitive mais fair-play"
                 ),
                 additionalImages = listOf(
-                    "https://image.pollinations.ai/prompt/sporty anime girl jogging, athletic pose, red hair, determined expression?width=400&height=600&seed=41",
-                    "https://image.pollinations.ai/prompt/tomboyish anime girl laughing, tapping shoulder, friendly?width=400&height=600&seed=42",
-                    "https://image.pollinations.ai/prompt/athletic anime girl with short red hair stretching, park background?width=400&height=600&seed=43"
+                    // Style Anime
+                    "https://image.pollinations.ai/prompt/sporty anime girl with short red hair jogging, athletic pose, determined, energetic?width=600&height=800&seed=41",
+                    "https://image.pollinations.ai/prompt/tomboyish anime girl laughing tapping shoulder, friendly, sporty clothes?width=600&height=800&seed=42",
+                    "https://image.pollinations.ai/prompt/athletic anime girl with red hair stretching in park, fit body?width=600&height=800&seed=43",
+                    "https://image.pollinations.ai/prompt/anime girl with short red hair running, competitive smile, sports outfit?width=600&height=800&seed=44",
+                    // Style Réaliste
+                    "https://image.pollinations.ai/prompt/realistic sporty young woman age 21 with short red hair, athletic, confident, photorealistic?width=600&height=800&seed=45",
+                    "https://image.pollinations.ai/prompt/real photo athletic girl jogging in park, red hair, fit, natural lighting?width=600&height=800&seed=46",
+                    "https://image.pollinations.ai/prompt/photorealistic portrait sporty woman with short red hair, friendly smile, outdoor?width=600&height=800&seed=47",
+                    "https://image.pollinations.ai/prompt/realistic tomboy girl with red hair stretching, athletic body, photography?width=600&height=800&seed=48"
                 )
             ),
             
@@ -197,9 +204,16 @@ class CharacterRepository {
                     "Guidée par le destin"
                 ),
                 additionalImages = listOf(
-                    "https://image.pollinations.ai/prompt/elf mage casting spell, glowing magic, silver hair, fantasy?width=400&height=600&seed=51",
-                    "https://image.pollinations.ai/prompt/elegant elf woman with mystical eyes, magical aura, forest background?width=400&height=600&seed=52",
-                    "https://image.pollinations.ai/prompt/beautiful elf sorceress reading ancient book, runes glowing?width=400&height=600&seed=53"
+                    // Style Fantasy/Anime
+                    "https://image.pollinations.ai/prompt/elf mage casting spell, glowing magic, silver long hair, mystical, fantasy art?width=600&height=800&seed=51",
+                    "https://image.pollinations.ai/prompt/elegant elf woman with violet mystical eyes, magical aura, enchanted forest?width=600&height=800&seed=52",
+                    "https://image.pollinations.ai/prompt/beautiful elf sorceress reading ancient spellbook, runes glowing around her?width=600&height=800&seed=53",
+                    "https://image.pollinations.ai/prompt/anime style elf mage with silver hair, casting elemental magic, ethereal?width=600&height=800&seed=54",
+                    // Style Réaliste
+                    "https://image.pollinations.ai/prompt/realistic beautiful elf woman with silver white hair, pointed ears, mystical eyes, photorealistic fantasy?width=600&height=800&seed=55",
+                    "https://image.pollinations.ai/prompt/real photo fantasy elf female with long silver hair, elegant robes, magical?width=600&height=800&seed=56",
+                    "https://image.pollinations.ai/prompt/photorealistic elf sorceress portrait, silver hair, wise expression, fantasy photography?width=600&height=800&seed=57",
+                    "https://image.pollinations.ai/prompt/realistic elf mage with white hair casting spell, detailed, cinematic?width=600&height=800&seed=58"
                 )
             ),
             Character(
