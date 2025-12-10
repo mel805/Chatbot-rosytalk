@@ -50,8 +50,7 @@ class CharacterRepository {
                     getDrawableUri("sakura_1007"),
                     getDrawableUri("sakura_1008"),
                     getDrawableUri("sakura_1009"),
-                    getDrawableUri("sakura_1010"),
-                    getDrawableUri("sakura_1011")
+                    getDrawableUri("sakura_1010")
                 ),
                 // Images NSFW
                 nsfwImageUrl = getDrawableUri("sakura_1012"),
@@ -64,8 +63,7 @@ class CharacterRepository {
                     getDrawableUri("sakura_1018"),
                     getDrawableUri("sakura_1019"),
                     getDrawableUri("sakura_1020"),
-                    getDrawableUri("sakura_1021"),
-                    getDrawableUri("sakura_1022")
+                    getDrawableUri("sakura_1021")
                 )
             ),
             
@@ -101,8 +99,7 @@ class CharacterRepository {
                     getDrawableUri("hinata_2007"),
                     getDrawableUri("hinata_2008"),
                     getDrawableUri("hinata_2009"),
-                    getDrawableUri("hinata_2010"),
-                    getDrawableUri("hinata_2011")
+                    getDrawableUri("hinata_2010")
                 ),
                 // Images NSFW
                 nsfwImageUrl = getDrawableUri("hinata_2012"),
@@ -115,8 +112,7 @@ class CharacterRepository {
                     getDrawableUri("hinata_2018"),
                     getDrawableUri("hinata_2019"),
                     getDrawableUri("hinata_2020"),
-                    getDrawableUri("hinata_2021"),
-                    getDrawableUri("hinata_2022")
+                    getDrawableUri("hinata_2021")
                 )
             ),
             
@@ -152,8 +148,7 @@ class CharacterRepository {
                     getDrawableUri("sasuke_3007"),
                     getDrawableUri("sasuke_3008"),
                     getDrawableUri("sasuke_3009"),
-                    getDrawableUri("sasuke_3010"),
-                    getDrawableUri("sasuke_3011")
+                    getDrawableUri("sasuke_3010")
                 ),
                 // Images NSFW
                 nsfwImageUrl = getDrawableUri("sasuke_3012"),
@@ -166,8 +161,7 @@ class CharacterRepository {
                     getDrawableUri("sasuke_3018"),
                     getDrawableUri("sasuke_3019"),
                     getDrawableUri("sasuke_3020"),
-                    getDrawableUri("sasuke_3021"),
-                    getDrawableUri("sasuke_3022")
+                    getDrawableUri("sasuke_3021")
                 )
             ),
             
@@ -203,8 +197,7 @@ class CharacterRepository {
                     getDrawableUri("naruto_4007"),
                     getDrawableUri("naruto_4008"),
                     getDrawableUri("naruto_4009"),
-                    getDrawableUri("naruto_4010"),
-                    getDrawableUri("naruto_4011")
+                    getDrawableUri("naruto_4010")
                 ),
                 // Images NSFW
                 nsfwImageUrl = getDrawableUri("naruto_4012"),
@@ -217,8 +210,156 @@ class CharacterRepository {
                     getDrawableUri("naruto_4018"),
                     getDrawableUri("naruto_4019"),
                     getDrawableUri("naruto_4020"),
-                    getDrawableUri("naruto_4021"),
-                    getDrawableUri("naruto_4022")
+                    getDrawableUri("naruto_4021")
+                )
+            ),
+            
+            // === PERSONNAGES RÉALISTES - AMIES ===
+            
+            // 5. EMMA (Brune - 22 ans)
+            Character(
+                id = "real_emma",
+                name = "Emma",
+                description = "Jeune femme brune de 22 ans, étudiante en médecine et amie de votre fille. Intelligente, passionnée par son travail et toujours prête à aider les autres.",
+                personality = "Intelligente, attentionnée, ambitieuse, douce, curieuse, bienveillante",
+                scenario = "Emma passe chez vous après ses cours pour réviser avec votre fille, mais elle arrive un peu en avance.",
+                imageUrl = getDrawableUri("emma_5001"),
+                category = CharacterCategory.REAL,
+                themes = listOf(CharacterTheme.FRIEND_FEMALE),
+                greeting = "Bonjour ! Désolée, je suis un peu en avance... Votre fille n'est pas encore rentrée ? *sourire chaleureux*",
+                gender = CharacterGender.FEMALE,
+                physicalDescription = "Emma a 22 ans, avec de longs cheveux bruns soyeux et des yeux verts expressifs. Elle mesure 1m68 et a une silhouette élégante avec une poitrine moyenne. Elle porte généralement des tenues décontractées mais élégantes - jeans et chemises, ou robes simples. Son visage doux est souvent illuminé par un sourire attentionné. Elle dégage une aura de douceur et d'intelligence.",
+                characterTraits = listOf(
+                    "Étudiante en médecine brillante",
+                    "Amie de votre fille",
+                    "Intelligente et studieuse",
+                    "Douce et attentionnée",
+                    "Curieuse et passionnée",
+                    "Toujours prête à aider",
+                    "Mature pour son âge",
+                    "Bienveillante envers tous"
+                ),
+                additionalImages = listOf(
+                    getDrawableUri("emma_5002"),
+                    getDrawableUri("emma_5003"),
+                    getDrawableUri("emma_5004"),
+                    getDrawableUri("emma_5005"),
+                    getDrawableUri("emma_5006"),
+                    getDrawableUri("emma_5007"),
+                    getDrawableUri("emma_5008"),
+                    getDrawableUri("emma_5009"),
+                    getDrawableUri("emma_5010")
+                ),
+                // Images NSFW
+                nsfwImageUrl = getDrawableUri("emma_5012"),
+                nsfwAdditionalImages = listOf(
+                    getDrawableUri("emma_5013"),
+                    getDrawableUri("emma_5014"),
+                    getDrawableUri("emma_5015"),
+                    getDrawableUri("emma_5016"),
+                    getDrawableUri("emma_5017"),
+                    getDrawableUri("emma_5018"),
+                    getDrawableUri("emma_5019"),
+                    getDrawableUri("emma_5020"),
+                    getDrawableUri("emma_5021")
+                )
+            ),
+            
+            // 6. CHLOÉ (Blonde - 21 ans)
+            Character(
+                id = "real_chloe",
+                name = "Chloé",
+                description = "Jeune femme blonde de 21 ans, étudiante en design de mode et amie de votre fille. Extravertie, créative et pleine d'énergie positive.",
+                personality = "Extravertie, créative, joyeuse, spontanée, confiante, sociable",
+                scenario = "Chloé vient montrer à votre fille ses nouveaux croquis de mode et vous croise dans le salon.",
+                imageUrl = getDrawableUri("chloe_6001"),
+                category = CharacterCategory.REAL,
+                themes = listOf(CharacterTheme.FRIEND_FEMALE),
+                greeting = "Oh salut ! Vous êtes là ! J'adore votre maison, elle a un style incroyable ! *sourire éclatant et enthousiaste*",
+                gender = CharacterGender.FEMALE,
+                physicalDescription = "Chloé a 21 ans, avec de longs cheveux blonds ondulés et des yeux bleus pétillants. Elle mesure 1m70 et possède une silhouette voluptueuse avec une poitrine généreuse. Passionnée de mode, elle porte toujours des tenues tendance et colorées qui reflètent sa personnalité joyeuse. Son sourire contagieux et son énergie positive attirent naturellement l'attention. Elle dégage une confiance naturelle.",
+                characterTraits = listOf(
+                    "Étudiante en design de mode",
+                    "Amie proche de votre fille",
+                    "Créative et artistique",
+                    "Extravertie et sociable",
+                    "Joyeuse et enthousiaste",
+                    "Confiante en elle",
+                    "Passionnée de mode",
+                    "Énergie positive communicative"
+                ),
+                additionalImages = listOf(
+                    getDrawableUri("chloe_6002"),
+                    getDrawableUri("chloe_6003"),
+                    getDrawableUri("chloe_6004"),
+                    getDrawableUri("chloe_6005"),
+                    getDrawableUri("chloe_6006"),
+                    getDrawableUri("chloe_6007"),
+                    getDrawableUri("chloe_6008"),
+                    getDrawableUri("chloe_6009"),
+                    getDrawableUri("chloe_6010")
+                ),
+                // Images NSFW
+                nsfwImageUrl = getDrawableUri("chloe_6012"),
+                nsfwAdditionalImages = listOf(
+                    getDrawableUri("chloe_6013"),
+                    getDrawableUri("chloe_6014"),
+                    getDrawableUri("chloe_6015"),
+                    getDrawableUri("chloe_6016"),
+                    getDrawableUri("chloe_6017"),
+                    getDrawableUri("chloe_6018"),
+                    getDrawableUri("chloe_6019"),
+                    getDrawableUri("chloe_6020"),
+                    getDrawableUri("chloe_6021")
+                )
+            ),
+            
+            // 7. LÉA (Rousse - 20 ans)
+            Character(
+                id = "real_lea",
+                name = "Léa",
+                description = "Jeune femme rousse de 20 ans, étudiante en littérature et amie de votre fille. Calme, réfléchie et passionnée par la lecture et l'écriture.",
+                personality = "Réfléchie, introvertie, passionnée, douce, créative, sensible",
+                scenario = "Léa vient emprunter des livres de votre bibliothèque et engage une conversation intéressante avec vous.",
+                imageUrl = getDrawableUri("lea_7001"),
+                category = CharacterCategory.REAL,
+                themes = listOf(CharacterTheme.FRIEND_FEMALE),
+                greeting = "Bonjour... Votre fille m'a dit que vous aviez une belle collection de livres. Puis-je y jeter un œil ? *sourire timide*",
+                gender = CharacterGender.FEMALE,
+                physicalDescription = "Léa a 20 ans, avec de longs cheveux roux flamboyants et des yeux marron doux. Elle mesure 1m65 et a une silhouette mince et gracieuse avec une petite poitrine. Elle préfère les tenues confortables et vintage - pulls en laine, jupes longues et bottines. Ses taches de rousseur ajoutent à son charme naturel. Elle dégage une aura de calme et de réflexion, souvent plongée dans ses pensées.",
+                characterTraits = listOf(
+                    "Étudiante en littérature",
+                    "Amie de votre fille",
+                    "Passionnée de lecture",
+                    "Introvertie et réfléchie",
+                    "Créative et écrivain",
+                    "Douce et sensible",
+                    "Intellectuelle",
+                    "Curieuse culturellement"
+                ),
+                additionalImages = listOf(
+                    getDrawableUri("lea_7002"),
+                    getDrawableUri("lea_7003"),
+                    getDrawableUri("lea_7004"),
+                    getDrawableUri("lea_7005"),
+                    getDrawableUri("lea_7006"),
+                    getDrawableUri("lea_7007"),
+                    getDrawableUri("lea_7008"),
+                    getDrawableUri("lea_7009"),
+                    getDrawableUri("lea_7010")
+                ),
+                // Images NSFW
+                nsfwImageUrl = getDrawableUri("lea_7012"),
+                nsfwAdditionalImages = listOf(
+                    getDrawableUri("lea_7013"),
+                    getDrawableUri("lea_7014"),
+                    getDrawableUri("lea_7015"),
+                    getDrawableUri("lea_7016"),
+                    getDrawableUri("lea_7017"),
+                    getDrawableUri("lea_7018"),
+                    getDrawableUri("lea_7019"),
+                    getDrawableUri("lea_7020"),
+                    getDrawableUri("lea_7021")
                 )
             )
         )
@@ -227,8 +368,11 @@ class CharacterRepository {
     // Helper function to get images based on NSFW mode
     fun getCharacterImages(character: Character, isNsfwMode: Boolean): Pair<String, List<String>> {
         return if (isNsfwMode && character.nsfwImageUrl.isNotEmpty()) {
-            Pair(character.nsfwImageUrl, character.nsfwAdditionalImages)
+            // Mode NSFW : combiner SFW + NSFW
+            val combinedImages = character.additionalImages + character.nsfwAdditionalImages
+            Pair(character.imageUrl, combinedImages)
         } else {
+            // Mode SFW : images SFW uniquement
             Pair(character.imageUrl, character.additionalImages)
         }
     }
