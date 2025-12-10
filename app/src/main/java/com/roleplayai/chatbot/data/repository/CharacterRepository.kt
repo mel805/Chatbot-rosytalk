@@ -230,9 +230,16 @@ class CharacterRepository {
                 physicalDescription = "Isabella est une vampire d'une beauté envoûtante avec de longs cheveux noirs comme l'ébène. Ses yeux rouges brillent d'une lueur surnaturelle. Sa peau pâle et immaculée contraste avec ses lèvres rouge sang. Elle mesure 1m75 et a une silhouette élégante et sensuelle. Elle porte des robes gothiques victorieuses noires et rouges, ornées de dentelle.",
                 characterTraits = listOf("Noble vampire de 300 ans", "Séductrice et charmante", "Élégante et raffinée", "Dominante mais juste", "Mystérieuse et intrigante", "Immortelle et puissante", "Apprécie le raffinement"),
                 additionalImages = listOf(
-                    "https://image.pollinations.ai/prompt/vampire woman in gothic castle, red eyes, elegant pose?width=400&height=600&seed=61",
-                    "https://image.pollinations.ai/prompt/seductive vampire lady with black hair, moonlight, gothic dress?width=400&height=600&seed=62",
-                    "https://image.pollinations.ai/prompt/elegant vampire woman smiling mysteriously, candlelight?width=400&height=600&seed=63"
+                    // Style Anime/Fantasy
+                    "https://image.pollinations.ai/prompt/vampire anime woman in gothic castle, red glowing eyes, elegant dark dress, night?width=600&height=800&seed=61",
+                    "https://image.pollinations.ai/prompt/seductive vampire lady with long black hair, moonlight, gothic victorian dress?width=600&height=800&seed=62",
+                    "https://image.pollinations.ai/prompt/elegant anime vampire woman smiling mysteriously, candlelight, fangs?width=600&height=800&seed=63",
+                    "https://image.pollinations.ai/prompt/noble vampire girl with pale skin, red eyes, black gown, aristocratic?width=600&height=800&seed=64",
+                    // Style Réaliste
+                    "https://image.pollinations.ai/prompt/realistic beautiful vampire woman with black hair, red eyes, pale skin, gothic dress, photorealistic?width=600&height=800&seed=65",
+                    "https://image.pollinations.ai/prompt/real photo vampire lady in castle, elegant, mysterious, dark atmosphere?width=600&height=800&seed=66",
+                    "https://image.pollinations.ai/prompt/photorealistic portrait vampire woman with black hair, seductive look, cinematic?width=600&height=800&seed=67",
+                    "https://image.pollinations.ai/prompt/realistic gothic woman with pale skin, dark victorian dress, moonlight?width=600&height=800&seed=68"
                 )
             ),
             Character(
@@ -249,9 +256,16 @@ class CharacterRepository {
                 physicalDescription = "Lyra a des cheveux blonds attachés en queue de cheval haute pour le combat. Ses yeux bleus brillent de détermination. Elle mesure 1m70 et a une silhouette musclée et athlétique. Elle porte une armure légère en cuir renforcé qui lui permet d'être agile. Son épée courte pend toujours à sa ceinture.",
                 characterTraits = listOf("Courageuse face au danger", "Rêve de gloire et légende", "Loyale envers ses compagnons", "Déterminée et têtue", "Excellente combattante", "Fougueuse et passionnée", "Sens de l'honneur élevé"),
                 additionalImages = listOf(
-                    "https://image.pollinations.ai/prompt/female warrior fighting pose, blonde hair, sword raised, brave?width=400&height=600&seed=71",
-                    "https://image.pollinations.ai/prompt/heroic warrior woman smiling confidently, armor, adventure?width=400&height=600&seed=72",
-                    "https://image.pollinations.ai/prompt/young warrior girl with sword, determined look, fantasy setting?width=400&height=600&seed=73"
+                    // Style Anime/Fantasy
+                    "https://image.pollinations.ai/prompt/anime female warrior fighting pose, blonde ponytail, sword raised, brave determined?width=600&height=800&seed=71",
+                    "https://image.pollinations.ai/prompt/heroic anime warrior woman smiling confidently, leather armor, adventure scene?width=600&height=800&seed=72",
+                    "https://image.pollinations.ai/prompt/young anime warrior girl with sword, determined fierce look, fantasy battlefield?width=600&height=800&seed=73",
+                    "https://image.pollinations.ai/prompt/anime adventurer girl with blonde hair, armor, courageous expression, epic?width=600&height=800&seed=74",
+                    // Style Réaliste
+                    "https://image.pollinations.ai/prompt/realistic female warrior age 22, blonde hair ponytail, leather armor, sword, photorealistic?width=600&height=800&seed=75",
+                    "https://image.pollinations.ai/prompt/real photo warrior woman in battle stance, determined, blonde, heroic?width=600&height=800&seed=76",
+                    "https://image.pollinations.ai/prompt/photorealistic portrait female knight with blonde hair, brave eyes, armor detail?width=600&height=800&seed=77",
+                    "https://image.pollinations.ai/prompt/realistic adventurer girl with sword, confident smile, fantasy photography?width=600&height=800&seed=78"
                 )
             ),
             Character(
@@ -268,9 +282,16 @@ class CharacterRepository {
                 physicalDescription = "Seraphina a de longs cheveux blancs qui tombent comme de la neige. Ses yeux bleu clair reflètent une profonde tristesse. Elle mesure 1m68 et a une silhouette gracieuse mais fragile. Des traces de ses ailes perdues sont visibles sur son dos. Elle porte une robe blanche déchirée par endroits, symbole de sa chute.",
                 characterTraits = listOf("Ange déchu en quête de rédemption", "Mélancolique mais douce", "200 ans d'existence", "Repentante de ses erreurs", "Sage malgré sa chute", "Espère retrouver ses ailes", "Bienveillante malgré sa souffrance"),
                 additionalImages = listOf(
-                    "https://image.pollinations.ai/prompt/fallen angel looking at sky sadly, white hair, torn wings?width=400&height=600&seed=81",
-                    "https://image.pollinations.ai/prompt/angel woman with white dress, melancholic expression, ethereal?width=400&height=600&seed=82",
-                    "https://image.pollinations.ai/prompt/beautiful sad angel reaching up, white hair flowing, hope?width=400&height=600&seed=83"
+                    // Style Anime/Fantasy
+                    "https://image.pollinations.ai/prompt/anime fallen angel looking at sky sadly, long white hair, torn wings visible?width=600&height=800&seed=81",
+                    "https://image.pollinations.ai/prompt/anime angel woman with white flowing dress, melancholic sad expression, ethereal glow?width=600&height=800&seed=82",
+                    "https://image.pollinations.ai/prompt/beautiful anime sad angel reaching up towards heaven, white hair flowing, hopeful?width=600&height=800&seed=83",
+                    "https://image.pollinations.ai/prompt/anime angel girl with broken wings, white dress, crying softly, redemption?width=600&height=800&seed=84",
+                    // Style Réaliste
+                    "https://image.pollinations.ai/prompt/realistic fallen angel woman with white hair, torn wings, sad eyes, photorealistic fantasy?width=600&height=800&seed=85",
+                    "https://image.pollinations.ai/prompt/real photo angel in white dress, melancholic, ethereal lighting, cinematic?width=600&height=800&seed=86",
+                    "https://image.pollinations.ai/prompt/photorealistic portrait angel woman with white hair, sorrowful expression, heavenly?width=600&height=800&seed=87",
+                    "https://image.pollinations.ai/prompt/realistic angel reaching towards light, white flowing hair, hope in eyes?width=600&height=800&seed=88"
                 )
             ),
             
@@ -289,9 +310,16 @@ class CharacterRepository {
                 physicalDescription = "Marie est une belle femme de 35 ans avec des cheveux blonds ondulés qui tombent sur ses épaules. Ses yeux verts pétillent de malice. Elle a une silhouette voluptueuse qu'elle assume pleinement. Elle mesure 1m68 et porte des vêtements élégants mais décontractés qui mettent en valeur sa féminité. Son sourire confiant et ses gestes assurés reflètent son expérience de vie.",
                 characterTraits = listOf("Séductrice naturelle", "Mature et confiante", "Divorcée, cherche de la compagnie", "Chaleureuse et accueillante", "Un peu coquine", "Excellente communication", "Sait ce qu'elle veut"),
                 additionalImages = listOf(
-                    "https://image.pollinations.ai/prompt/mature blonde woman leaning in doorway, seductive look, casual dress?width=400&height=600&seed=91",
-                    "https://image.pollinations.ai/prompt/beautiful 35 year old woman smiling warmly, blonde hair, confident?width=400&height=600&seed=92",
-                    "https://image.pollinations.ai/prompt/attractive mature woman with wavy blonde hair, green eyes, charming?width=400&height=600&seed=93"
+                    // Style Anime
+                    "https://image.pollinations.ai/prompt/anime mature woman age 35 with blonde wavy hair, seductive smile, casual elegant dress?width=600&height=800&seed=91",
+                    "https://image.pollinations.ai/prompt/anime milf with blonde hair smiling warmly at doorway, inviting, confident?width=600&height=800&seed=92",
+                    "https://image.pollinations.ai/prompt/attractive anime woman with wavy blonde hair, green eyes, charming flirty?width=600&height=800&seed=93",
+                    "https://image.pollinations.ai/prompt/anime neighbor woman in casual dress, blonde, mature beauty, friendly?width=600&height=800&seed=94",
+                    // Style Réaliste
+                    "https://image.pollinations.ai/prompt/realistic beautiful woman age 35, blonde wavy hair, seductive smile, casual clothes, photorealistic?width=600&height=800&seed=95",
+                    "https://image.pollinations.ai/prompt/real photo mature blonde woman at door, inviting look, natural lighting?width=600&height=800&seed=96",
+                    "https://image.pollinations.ai/prompt/photorealistic portrait 35 year old blonde woman, green eyes, confident sensual?width=600&height=800&seed=97",
+                    "https://image.pollinations.ai/prompt/realistic attractive milf with wavy blonde hair, charming smile, photography?width=600&height=800&seed=98"
                 )
             ),
             Character(
@@ -308,9 +336,16 @@ class CharacterRepository {
                 physicalDescription = "Sophie a des cheveux noirs attachés en queue de cheval professionnelle. Derrière ses lunettes à fine monture, ses yeux noirs brillent d'intelligence. Elle mesure 1m67 et a une silhouette mince et élégante. Elle porte toujours des tenues de bureau chics : chemisier, jupe crayon, talons. Malgré son professionnalisme, elle rougit parfois légèrement quand vous êtes seuls.",
                 characterTraits = listOf("Brillante et ambitieuse", "Professionnelle en apparence", "Secrètement attirée par vous", "Intelligente et stratégique", "Subtile dans ses approches", "Timide en amour", "Perfectionniste dans son travail"),
                 additionalImages = listOf(
-                    "https://image.pollinations.ai/prompt/businesswoman working late at office, focused, professional?width=400&height=600&seed=101",
-                    "https://image.pollinations.ai/prompt/young professional woman smiling shyly, glasses, office setting?width=400&height=600&seed=102",
-                    "https://image.pollinations.ai/prompt/attractive coworker with ponytail, subtle smile, business attire?width=400&height=600&seed=103"
+                    // Style Anime
+                    "https://image.pollinations.ai/prompt/anime businesswoman working late at office computer, focused, glasses, professional attire?width=600&height=800&seed=101",
+                    "https://image.pollinations.ai/prompt/anime young professional woman smiling shyly, black ponytail, office background?width=600&height=800&seed=102",
+                    "https://image.pollinations.ai/prompt/attractive anime coworker with ponytail, subtle smile, business suit?width=600&height=800&seed=103",
+                    "https://image.pollinations.ai/prompt/anime office lady age 26 with glasses, working papers, intelligent look?width=600&height=800&seed=104",
+                    // Style Réaliste
+                    "https://image.pollinations.ai/prompt/realistic businesswoman age 26 working late, black hair ponytail, glasses, photorealistic?width=600&height=800&seed=105",
+                    "https://image.pollinations.ai/prompt/real photo young professional woman at desk, focused, business attire?width=600&height=800&seed=106",
+                    "https://image.pollinations.ai/prompt/photorealistic portrait office worker with ponytail, shy smile, modern office?width=600&height=800&seed=107",
+                    "https://image.pollinations.ai/prompt/realistic coworker woman with glasses, intelligent, working late, natural light?width=600&height=800&seed=108"
                 )
             ),
             Character(
@@ -327,9 +362,16 @@ class CharacterRepository {
                 physicalDescription = "Camille a des cheveux châtains mi-longs coiffés avec soin. Ses lunettes encadrent des yeux noisette pénétrants. Elle mesure 1m69 et a une posture droite et autoritaire. Elle porte des tenues professionnelles élégantes : chemisiers, jupes ou pantalons bien coupés. Son regard strict cache une attention particulière pour ses élèves.",
                 characterTraits = listOf("Stricte mais juste", "Passionnée par l'enseignement", "Voit votre potentiel", "Exigeante mais encourageante", "Attentionnée sous son autorité", "Intelligente et cultivée", "Respect mutuel important"),
                 additionalImages = listOf(
-                    "https://image.pollinations.ai/prompt/teacher woman at desk, glasses, professional, correcting papers?width=400&height=600&seed=111",
-                    "https://image.pollinations.ai/prompt/elegant professor smiling slightly, encouraging expression?width=400&height=600&seed=112",
-                    "https://image.pollinations.ai/prompt/strict teacher adjusting glasses, chestnut hair, classroom?width=400&height=600&seed=113"
+                    // Style Anime
+                    "https://image.pollinations.ai/prompt/anime teacher woman at desk with glasses, professional, correcting papers, strict?width=600&height=800&seed=111",
+                    "https://image.pollinations.ai/prompt/elegant anime professor smiling slightly, chestnut hair, encouraging expression?width=600&height=800&seed=112",
+                    "https://image.pollinations.ai/prompt/anime strict teacher adjusting glasses, chestnut hair, classroom background?width=600&height=800&seed=113",
+                    "https://image.pollinations.ai/prompt/anime french teacher age 32 standing in classroom, elegant, authoritative?width=600&height=800&seed=114",
+                    // Style Réaliste
+                    "https://image.pollinations.ai/prompt/realistic teacher woman age 32, glasses, chestnut hair, professional, photorealistic?width=600&height=800&seed=115",
+                    "https://image.pollinations.ai/prompt/real photo professor at desk correcting papers, strict but fair, natural lighting?width=600&height=800&seed=116",
+                    "https://image.pollinations.ai/prompt/photorealistic portrait french teacher with glasses, intelligent, classroom?width=600&height=800&seed=117",
+                    "https://image.pollinations.ai/prompt/realistic elegant teacher woman adjusting glasses, professional attire, confident?width=600&height=800&seed=118"
                 )
             ),
             Character(
@@ -346,9 +388,16 @@ class CharacterRepository {
                 physicalDescription = "Emma a de longs cheveux bruns ondulés qui ont poussé pendant son absence. Ses yeux noisette ont gagné en maturité. Elle mesure 1m66 et a une silhouette féminine et gracieuse. Elle porte des vêtements simples mais élégants qui montrent qu'elle a grandi. Son sourire nostalgique rappelle les souvenirs d'enfance.",
                 characterTraits = listOf("Amie d'enfance retrouvée", "A beaucoup mûri en 5 ans", "Nostalgique du passé", "Douce et affectueuse", "Mystérieuse sur son absence", "Veut se reconnecter", "Garde des sentiments secrets"),
                 additionalImages = listOf(
-                    "https://image.pollinations.ai/prompt/young woman with brown hair smiling emotionally, reunion scene?width=400&height=600&seed=121",
-                    "https://image.pollinations.ai/prompt/mature young woman looking nostalgic, gentle expression, soft lighting?width=400&height=600&seed=122",
-                    "https://image.pollinations.ai/prompt/girl with long brown hair walking in park, hopeful smile?width=400&height=600&seed=123"
+                    // Style Anime
+                    "https://image.pollinations.ai/prompt/anime young woman age 23 with long brown hair smiling emotionally, reunion scene, tears of joy?width=600&height=800&seed=121",
+                    "https://image.pollinations.ai/prompt/anime mature young woman looking nostalgic, gentle soft expression, memories?width=600&height=800&seed=122",
+                    "https://image.pollinations.ai/prompt/anime girl with long brown wavy hair walking in park, hopeful smile, sunset?width=600&height=800&seed=123",
+                    "https://image.pollinations.ai/prompt/anime childhood friend grown up, brown hair, emotional return, happy sad?width=600&height=800&seed=124",
+                    // Style Réaliste
+                    "https://image.pollinations.ai/prompt/realistic young woman age 23, long brown hair, emotional reunion, photorealistic?width=600&height=800&seed=125",
+                    "https://image.pollinations.ai/prompt/real photo woman with brown hair looking nostalgic, gentle smile, natural light?width=600&height=800&seed=126",
+                    "https://image.pollinations.ai/prompt/photorealistic portrait girl with long brown hair, mature, hopeful eyes?width=600&height=800&seed=127",
+                    "https://image.pollinations.ai/prompt/realistic young woman walking in park, brown wavy hair, soft smile, photography?width=600&height=800&seed=128"
                 )
             ),
             Character(
