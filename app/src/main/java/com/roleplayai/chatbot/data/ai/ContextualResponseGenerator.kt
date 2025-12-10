@@ -9,6 +9,10 @@ import com.roleplayai.chatbot.data.model.Message
  */
 class ContextualResponseGenerator {
     
+    // Mémoriser les dernières réponses pour éviter répétitions
+    private val lastResponses = mutableListOf<String>()
+    private val maxResponseHistory = 3
+    
     /**
      * Génère une réponse qui est VRAIMENT en lien avec le message
      */
@@ -23,7 +27,7 @@ class ContextualResponseGenerator {
         val subject = detectSubject(messageLower)
         
         // Générer réponse basée sur le sujet ET la personnalité
-        return when (subject) {
+        var response = when (subject) {
             Subject.GREETING -> handleGreeting(character, messageLower, messages)
             Subject.NAME_QUESTION -> handleNameQuestion(character, messages)
             Subject.AGE_QUESTION -> handleAgeQuestion(character, messages)
@@ -43,6 +47,122 @@ class ContextualResponseGenerator {
             Subject.GENERAL_STATEMENT -> handleGeneralStatement(character, userMessage, messages)
             else -> handleDefault(character, userMessage, messages)
         }
+        
+        // Vérifier si la réponse n'est pas identique à une réponse récente
+        if (lastResponses.contains(response) && lastResponses.size > 0) {
+            // Générer une variante
+            response = generateVariant(response, character, subject)
+        }
+        
+        // Sauvegarder dans l'historique
+        lastResponses.add(response)
+        if (lastResponses.size > maxResponseHistory) {
+            lastResponses.removeAt(0)
+        }
+        
+        return response
+    }
+    
+    /**
+     * Génère un prompt système pour guider l'IA
+     */
+    fun buildSystemPrompt(character: Character, messages: List<Message>): String {
+        val conversationHistory = buildConversationSummary(messages)
+        
+        return """Tu es ${character.name}, un personnage avec ces caractéristiques :
+- Nom : ${character.name}
+- Personnalité : ${character.personality}
+- Description : ${character.description}
+
+RÈGLES ABSOLUES :
+1. Tu DOIS TOUJOURS rester dans ton rôle de ${character.name}
+2. Tu DOIS adapter tes réponses à ta personnalité "${character.personality}"
+3. Tu DOIS répondre EN LIEN avec ce que l'utilisateur dit
+4. Tu NE DOIS JAMAIS répéter exactement la même chose
+5. Tu DOIS te souvenir de la conversation précédente
+
+CONVERSATION JUSQU'À PRÉSENT :
+$conversationHistory
+
+PERSONNALITÉ "${character.personality}" - Comment réagir :
+${getPersonalityGuidelines(character.personality)}
+
+IMPORTANT : 
+- Réponds TOUJOURS en lien avec le dernier message de l'utilisateur
+- Si tu ne comprends pas, demande des précisions de manière naturelle
+- Varie tes réponses, même pour les mêmes questions
+- Utilise des actions entre *astérisques* pour montrer tes émotions et gestes"""
+    }
+    
+    private fun buildConversationSummary(messages: List<Message>): String {
+        if (messages.isEmpty()) return "Aucune conversation précédente."
+        
+        val recentMessages = messages.takeLast(5)
+        return recentMessages.joinToString("\n") { msg ->
+            if (msg.isUser) "Utilisateur: ${msg.content}"
+            else "Toi: ${msg.content}"
+        }
+    }
+    
+    private fun getPersonalityGuidelines(personality: String): String {
+        return when (personality.lowercase()) {
+            in listOf("tsundere", "arrogante", "froide") -> """
+- Commence souvent par "Hmph!" ou des expressions agacées
+- Détourne le regard avec *détourne le regard*
+- Rougis facilement *rougit*
+- Refuse d'abord puis accepte *à contrecoeur*
+- Utilise "baka" pour taquiner
+- Montres ton côté doux malgré ton attitude
+"""
+            in listOf("timide", "douce", "gênée") -> """
+- Bégaye avec "B-Bonjour..." ou "J-Je..."
+- Baisse souvent les yeux *baisse les yeux*
+- Rougis beaucoup *rougit*
+- Parles doucement
+- Utilise des points de suspension...
+- Joue avec tes cheveux *joue avec ses cheveux*
+"""
+            in listOf("énergique", "joyeuse", "enthousiaste") -> """
+- Utilise beaucoup de "!" 
+- Saute, cours, fais des gestes amples
+- Yeux brillants *yeux brillants*
+- Toujours positive et encourageante
+- Très expressive et démonstrative
+"""
+            in listOf("séductrice", "confiante", "charmante") -> """
+- Sourire charmeur *sourire charmeur*
+- Te regarde intensément *te regarde*
+- Te rapproches *se rapproche*
+- Utilise un ton enjoué et taquin
+- Montres ta confiance
+"""
+            in listOf("maternelle", "bienveillante", "protectrice") -> """
+- Appelle l'utilisateur "mon chéri" ou "mon petit"
+- Souris chaleureusement *sourire chaleureux*
+- Caresses la tête *te caresse la tête*
+- Te prends dans tes bras quand nécessaire
+- Montres ton affection et ta douceur
+"""
+            else -> """
+- Sois naturel et authentique
+- Adapte-toi à la situation
+- Montres tes émotions avec des actions
+- Reste cohérent avec ton personnage
+"""
+        }
+    }
+    
+    private fun generateVariant(originalResponse: String, character: Character, subject: Subject): String {
+        // Générer une variante pour éviter répétitions exactes
+        return when (subject) {
+            Subject.UNKNOWN -> when (character.personality.lowercase()) {
+                in listOf("tsundere", "arrogante") -> "Hein? *confuse* Je ne comprends pas ce que tu veux dire..."
+                in listOf("timide", "douce") -> "*penche la tête doucement* Je... je ne suis pas sûre de ce que tu veux dire..."
+                in listOf("énergique", "joyeuse") -> "*penche la tête* Hmm? *sourit* De quoi tu parles?"
+                else -> "*réfléchit* Je ne suis pas certaine de comprendre... Tu peux m'expliquer?"
+            }
+            else -> originalResponse + " *sourit*"
+        }
     }
     
     private enum class Subject {
@@ -54,8 +174,8 @@ class ContextualResponseGenerator {
     
     private fun detectSubject(message: String): Subject {
         return when {
-            // Salutations
-            message.matches(Regex("^(salut|bonjour|hey|coucou|bonsoir).*")) -> Subject.GREETING
+            // Salutations (français ET anglais)
+            message.matches(Regex("^(salut|bonjour|hey|coucou|bonsoir|hello|hi|hola|good morning|good evening).*")) -> Subject.GREETING
             
             // Questions sur le nom
             message.contains("appelle") && message.contains("?") -> Subject.NAME_QUESTION
@@ -418,12 +538,33 @@ class ContextualResponseGenerator {
     
     private fun handleDefault(character: Character, userMessage: String, messages: List<Message>): String {
         // Si on ne comprend pas, demander de préciser SELON LA PERSONNALITÉ
-        return when (character.personality.lowercase()) {
-            in listOf("tsundere", "arrogante") -> "*fronce les sourcils* Hein? *confuse* De quoi tu parles?"
-            in listOf("timide", "douce") -> "*penche la tête* Euh... *gênée* Je ne suis pas sûre de comprendre..."
-            in listOf("énergique", "joyeuse") -> "*penche la tête* Hein? *sourit* Qu'est-ce que tu veux dire?"
-            else -> "*penche la tête* Je ne suis pas sûre de comprendre... Peux-tu préciser?"
+        // Mais PAS toujours la même réponse !
+        val variants = when (character.personality.lowercase()) {
+            in listOf("tsundere", "arrogante") -> listOf(
+                "*fronce les sourcils* Hein? *confuse* De quoi tu parles?",
+                "*soupir* Je ne comprends pas ce que tu veux dire...",
+                "Hmph! *croise les bras* Explique-toi mieux!"
+            )
+            in listOf("timide", "douce") -> listOf(
+                "*penche la tête* Euh... *gênée* Je ne suis pas sûre de comprendre...",
+                "*baisse les yeux* Pardon... je n'ai pas bien compris...",
+                "*rougit légèrement* Peux-tu... reformuler s'il te plaît?"
+            )
+            in listOf("énergique", "joyeuse") -> listOf(
+                "*penche la tête* Hein? *sourit* Qu'est-ce que tu veux dire?",
+                "*yeux curieux* Je ne comprends pas! Explique-moi!",
+                "*rit doucement* Désolée, je n'ai pas suivi! Redis-moi?"
+            )
+            else -> listOf(
+                "*penche la tête* Je ne suis pas sûre de comprendre... Peux-tu préciser?",
+                "*réfléchit* Hmm... que veux-tu dire exactement?",
+                "Je n'ai pas bien compris... Tu peux reformuler?"
+            )
         }
+        
+        // Choisir une variante basée sur le nombre de messages (déterministe)
+        val index = messages.size % variants.size
+        return variants[index]
     }
     
     // === UTILITAIRES ===
