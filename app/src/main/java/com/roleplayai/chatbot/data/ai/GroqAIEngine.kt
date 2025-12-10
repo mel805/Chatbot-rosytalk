@@ -24,36 +24,69 @@ class GroqAIEngine(
         private const val TAG = "GroqAIEngine"
         private const val GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
         
-        // Modèles Groq disponibles (mis à jour Décembre 2024)
+        // Modèles Groq ACTIFS (mis à jour Décembre 2024)
+        // Seuls les modèles NON décommissionnés sont listés
         val AVAILABLE_MODELS = listOf(
             GroqModel(
-                id = "llama-3.3-70b-versatile",
-                name = "Llama 3.3 70B Versatile",
-                description = "Dernier modèle Llama, excellent pour roleplay immersif",
-                contextLength = 32768,
+                id = "llama-3.1-8b-instant",
+                name = "Llama 3.1 8B Instant",
+                description = "Ultra-rapide, parfait pour roleplay fluide",
+                contextLength = 8192,
                 recommended = true,
                 nsfwCapable = true
             ),
             GroqModel(
-                id = "llama-3.1-8b-instant",
-                name = "Llama 3.1 8B Instant",
-                description = "Ultra-rapide, bon pour conversations simples",
+                id = "llama-3.3-70b-specdec",
+                name = "Llama 3.3 70B Speculative",
+                description = "Dernière version Llama, haute qualité",
+                contextLength = 8192,
+                recommended = true,
+                nsfwCapable = true
+            ),
+            GroqModel(
+                id = "llama-3.2-1b-preview",
+                name = "Llama 3.2 1B Preview",
+                description = "Très léger, ultra-rapide",
                 contextLength = 8192,
                 recommended = false,
                 nsfwCapable = true
             ),
             GroqModel(
-                id = "llama3-70b-8192",
-                name = "Llama 3 70B",
-                description = "Modèle stable et puissant",
+                id = "llama-3.2-3b-preview",
+                name = "Llama 3.2 3B Preview",
+                description = "Léger et rapide",
                 contextLength = 8192,
                 recommended = false,
                 nsfwCapable = true
             ),
             GroqModel(
-                id = "llama3-8b-8192",
-                name = "Llama 3 8B",
-                description = "Rapide et efficace",
+                id = "llama-3.2-11b-vision-preview",
+                name = "Llama 3.2 11B Vision",
+                description = "Support vision (expérimental)",
+                contextLength = 8192,
+                recommended = false,
+                nsfwCapable = true
+            ),
+            GroqModel(
+                id = "llama-3.2-90b-vision-preview",
+                name = "Llama 3.2 90B Vision",
+                description = "Plus puissant avec vision",
+                contextLength = 8192,
+                recommended = false,
+                nsfwCapable = true
+            ),
+            GroqModel(
+                id = "llama3-groq-70b-8192-tool-use-preview",
+                name = "Llama 3 70B Tool Use",
+                description = "Optimisé pour outils (expérimental)",
+                contextLength = 8192,
+                recommended = false,
+                nsfwCapable = true
+            ),
+            GroqModel(
+                id = "llama3-groq-8b-8192-tool-use-preview",
+                name = "Llama 3 8B Tool Use",
+                description = "Rapide avec outils",
                 contextLength = 8192,
                 recommended = false,
                 nsfwCapable = true
@@ -69,7 +102,15 @@ class GroqAIEngine(
             GroqModel(
                 id = "gemma2-9b-it",
                 name = "Gemma 2 9B",
-                description = "Modèle Google, très cohérent (SFW uniquement)",
+                description = "Google, très cohérent (SFW uniquement)",
+                contextLength = 8192,
+                recommended = false,
+                nsfwCapable = false
+            ),
+            GroqModel(
+                id = "gemma-7b-it",
+                name = "Gemma 7B",
+                description = "Google, stable (SFW uniquement)",
                 contextLength = 8192,
                 recommended = false,
                 nsfwCapable = false
@@ -185,8 +226,8 @@ Si tsundere : "Hmph! *détourne le regard* C'est pas comme si j'étais contente.
             put("content", systemPrompt)
         })
         
-        // Historique de conversation (10 derniers messages)
-        val recentMessages = messages.takeLast(10)
+        // Historique de conversation (30 derniers messages pour excellente mémoire)
+        val recentMessages = messages.takeLast(30)
         
         // S'assurer que le dernier message est de l'utilisateur
         val validMessages = if (recentMessages.isNotEmpty() && !recentMessages.last().isUser) {
@@ -232,7 +273,7 @@ Si tsundere : "Hmph! *détourne le regard* C'est pas comme si j'étais contente.
                 put("model", model)
                 put("messages", messages)
                 put("temperature", 0.7)
-                put("max_tokens", 300)
+                put("max_tokens", 500)  // Augmenté pour réponses plus complètes
                 put("top_p", 0.9)
             }
             
