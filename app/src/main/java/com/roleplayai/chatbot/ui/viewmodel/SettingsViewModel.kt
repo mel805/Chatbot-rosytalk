@@ -24,11 +24,17 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     val useGroqApi = preferencesManager.useGroqApi
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
     
-    val geminiApiKey = preferencesManager.geminiApiKey
-        .stateIn(viewModelScope, SharingStarted.Eagerly, "")
+    val koboldEndpoint = preferencesManager.koboldEndpoint
+        .stateIn(viewModelScope, SharingStarted.Eagerly, "http://localhost:5001")
     
-    val useGeminiApi = preferencesManager.useGeminiApi
-        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+    val useKoboldApi = preferencesManager.useKoboldApi
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    
+    val textGenEndpoint = preferencesManager.textGenEndpoint
+        .stateIn(viewModelScope, SharingStarted.Eagerly, "http://localhost:5000")
+    
+    val useTextGenApi = preferencesManager.useTextGenApi
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
     
     fun setGroqApiKey(apiKey: String) {
         viewModelScope.launch {
@@ -54,15 +60,27 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
     
-    fun setGeminiApiKey(apiKey: String) {
+    fun setKoboldEndpoint(endpoint: String) {
         viewModelScope.launch {
-            preferencesManager.setGeminiApiKey(apiKey)
+            preferencesManager.setKoboldEndpoint(endpoint)
         }
     }
     
-    fun setUseGeminiApi(use: Boolean) {
+    fun setUseKoboldApi(use: Boolean) {
         viewModelScope.launch {
-            preferencesManager.setUseGeminiApi(use)
+            preferencesManager.setUseKoboldApi(use)
+        }
+    }
+    
+    fun setTextGenEndpoint(endpoint: String) {
+        viewModelScope.launch {
+            preferencesManager.setTextGenEndpoint(endpoint)
+        }
+    }
+    
+    fun setUseTextGenApi(use: Boolean) {
+        viewModelScope.launch {
+            preferencesManager.setUseTextGenApi(use)
         }
     }
 }

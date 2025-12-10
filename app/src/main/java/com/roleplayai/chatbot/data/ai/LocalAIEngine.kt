@@ -7,6 +7,7 @@ import com.roleplayai.chatbot.data.model.InferenceConfig
 import com.roleplayai.chatbot.data.model.Message
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
 
 /**
  * LocalAIEngine - Moteur IA local utilisant llama.cpp
@@ -49,17 +50,44 @@ class LocalAIEngine(
     }
     
     suspend fun loadModel(): Boolean = withContext(Dispatchers.IO) {
-        // NE JAMAIS charger llama.cpp - trop lent pour mobile
-        // Toujours utiliser le fallback intelligent instantané
-        Log.i(TAG, "💡 Mode Fallback Intelligent Instantané activé")
-        Log.i(TAG, "⚡ Réponses en <1 seconde (au lieu de 5-10s avec llama.cpp)")
-        isModelLoaded = false
-        return@withContext false
+        try {
+            if (modelPath.isEmpty() || !File(modelPath).exists()) {
+                Log.w(TAG, "⚠️ Pas de modèle spécifié, mode fallback")
+                isModelLoaded = false
+                return@withContext false
+            }
+            
+            Log.i(TAG, "📦 Chargement du modèle llama.cpp: $modelPath")
+            
+            val loaded = try {
+                nativeLoadModel(
+                    modelPath = modelPath,
+                    threads = 4,
+                    contextSize = contextSize
+                )
+            } catch (e: UnsatisfiedLinkError) {
+                Log.w(TAG, "⚠️ JNI non disponible, mode fallback")
+                false
+            }
+            
+            isModelLoaded = loaded
+            
+            if (loaded) {
+                Log.i(TAG, "✅ Modèle llama.cpp chargé avec succès!")
+            } else {
+                Log.w(TAG, "⚠️ Modèle non chargé - mode fallback")
+            }
+            
+            return@withContext loaded
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Erreur chargement modèle", e)
+            isModelLoaded = false
+            return@withContext false
+        }
     }
     
     /**
-     * Génère une réponse INSTANTANÉE avec fallback intelligent
-     * Ne charge JAMAIS llama.cpp (trop lent pour mobile)
+     * Génère une réponse avec llama.cpp si chargé, sinon fallback
      */
     suspend fun generateResponse(
         character: Character,
@@ -67,12 +95,31 @@ class LocalAIEngine(
     ): String = withContext(Dispatchers.IO) {
         try {
             Log.d(TAG, "===== Génération avec IA Locale =====")
-            Log.d(TAG, "Mode: Fallback Intelligent Instantané (<1s)")
+            Log.d(TAG, "Modèle chargé: $isModelLoaded, Path: $modelPath")
             
-            // TOUJOURS utiliser le fallback intelligent (INSTANTANÉ)
-            // llama.cpp est trop lent sur mobile (5-10s vs <1s)
-            Log.d(TAG, "⚡ Génération INSTANTANÉE avec fallback intelligent")
-            val response = generateFallbackResponse(character, messages)
+            // Essayer llama.cpp si modèle chargé
+            val response = if (isModelLoaded) {
+                try {
+                    Log.d(TAG, "🚀 Génération avec llama.cpp...")
+                    val systemPrompt = buildSystemPrompt(character)
+                    val fullPrompt = buildChatPrompt(systemPrompt, character, messages)
+                    
+                    nativeGenerate(
+                        prompt = fullPrompt,
+                        maxTokens = 200,  // Plus court pour être plus rapide
+                        temperature = 0.8f,
+                        topP = 0.95f,
+                        topK = 40,
+                        repeatPenalty = 1.1f
+                    )
+                } catch (e: Exception) {
+                    Log.w(TAG, "⚠️ Erreur llama.cpp, fallback", e)
+                    generateFallbackResponse(character, messages)
+                }
+            } else {
+                Log.d(TAG, "💡 Génération avec fallback intelligent")
+                generateFallbackResponse(character, messages)
+            }
             
             // Nettoyer la réponse
             val cleaned = cleanResponse(response, character.name)

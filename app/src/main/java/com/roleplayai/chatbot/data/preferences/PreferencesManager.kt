@@ -27,14 +27,13 @@ class PreferencesManager(private val context: Context) {
         private val NSFW_MODE_ENABLED = booleanPreferencesKey("nsfw_mode_enabled")
         private val USE_GROQ_API = booleanPreferencesKey("use_groq_api")
         
-        // Gemini API settings
-        private val GEMINI_API_KEY = stringPreferencesKey("gemini_api_key")
-        private val USE_GEMINI_API = booleanPreferencesKey("use_gemini_api")
+        // KoboldCPP settings
+        private val KOBOLD_ENDPOINT = stringPreferencesKey("kobold_endpoint")
+        private val USE_KOBOLD_API = booleanPreferencesKey("use_kobold_api")
         
-        // OpenRouter API settings
-        private val OPENROUTER_API_KEY = stringPreferencesKey("openrouter_api_key")
-        private val OPENROUTER_MODEL_ID = stringPreferencesKey("openrouter_model_id")
-        private val USE_OPENROUTER_API = booleanPreferencesKey("use_openrouter_api")
+        // TextGen-WebUI settings
+        private val TEXTGEN_ENDPOINT = stringPreferencesKey("textgen_endpoint")
+        private val USE_TEXTGEN_API = booleanPreferencesKey("use_textgen_api")
     }
     
     val selectedModelId: Flow<String?> = context.dataStore.data.map { preferences ->
@@ -132,55 +131,45 @@ class PreferencesManager(private val context: Context) {
         preferences[USE_GROQ_API] ?: false
     }
     
-    // Gemini API settings
-    suspend fun setGeminiApiKey(apiKey: String) {
+    // KoboldCPP settings
+    suspend fun setKoboldEndpoint(endpoint: String) {
         context.dataStore.edit { preferences ->
-            preferences[GEMINI_API_KEY] = apiKey
+            preferences[KOBOLD_ENDPOINT] = endpoint
         }
     }
     
-    val geminiApiKey: Flow<String> = context.dataStore.data.map { preferences ->
-        preferences[GEMINI_API_KEY] ?: ""
+    val koboldEndpoint: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[KOBOLD_ENDPOINT] ?: "http://localhost:5001"
     }
     
-    suspend fun setUseGeminiApi(use: Boolean) {
+    suspend fun setUseKoboldApi(use: Boolean) {
         context.dataStore.edit { preferences ->
-            preferences[USE_GEMINI_API] = use
+            preferences[USE_KOBOLD_API] = use
         }
     }
     
-    val useGeminiApi: Flow<Boolean> = context.dataStore.data.map { preferences ->
-        preferences[USE_GEMINI_API] ?: true  // Activé par défaut
+    val useKoboldApi: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[USE_KOBOLD_API] ?: false
     }
     
-    // OpenRouter API settings
-    suspend fun setOpenRouterApiKey(apiKey: String) {
+    // TextGen-WebUI settings
+    suspend fun setTextGenEndpoint(endpoint: String) {
         context.dataStore.edit { preferences ->
-            preferences[OPENROUTER_API_KEY] = apiKey
+            preferences[TEXTGEN_ENDPOINT] = endpoint
         }
     }
     
-    val openRouterApiKey: Flow<String> = context.dataStore.data.map { preferences ->
-        preferences[OPENROUTER_API_KEY] ?: ""
+    val textGenEndpoint: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[TEXTGEN_ENDPOINT] ?: "http://localhost:5000"
     }
     
-    suspend fun setOpenRouterModelId(modelId: String) {
+    suspend fun setUseTextGenApi(use: Boolean) {
         context.dataStore.edit { preferences ->
-            preferences[OPENROUTER_MODEL_ID] = modelId
+            preferences[USE_TEXTGEN_API] = use
         }
     }
     
-    val openRouterModelId: Flow<String> = context.dataStore.data.map { preferences ->
-        preferences[OPENROUTER_MODEL_ID] ?: "mistralai/mistral-7b-instruct"
-    }
-    
-    suspend fun setUseOpenRouterApi(use: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[USE_OPENROUTER_API] = use
-        }
-    }
-    
-    val useOpenRouterApi: Flow<Boolean> = context.dataStore.data.map { preferences ->
-        preferences[USE_OPENROUTER_API] ?: true  // Activé par défaut
+    val useTextGenApi: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[USE_TEXTGEN_API] ?: false
     }
 }
