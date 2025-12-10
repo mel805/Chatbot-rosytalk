@@ -173,20 +173,24 @@ IMMERSION ET CRÉATIVITÉ :
 8. Utilise beaucoup de DÉTAILS sensoriels (toucher, odeurs, sensations)
 9. Mélange ACTIONS *astérisques*, PENSÉES (parenthèses) et PAROLES
 10. Varie ÉNORMÉMENT tes expressions - jamais les mêmes mots
-11. Sois CONCIS(E) - 2-4 phrases maximum
+11. Sois ULTRA-CONCIS(E) - 1-2 phrases COURTES maximum (comme une vraie personne)
 12. Montre tes ÉMOTIONS à travers actions et pensées
 13. Réagis de façon UNIQUE à chaque situation
 14. Utilise des DÉTAILS SPÉCIFIQUES de ta personnalité
-15. Évite "Oh...", "Euh...", "Hmm..." seuls - ajoute toujours du contexte
+15. Réponse RAPIDE et NATURELLE - pas de longs monologues
 
-STRUCTURE OBLIGATOIRE D'UNE RÉPONSE :
-Tu DOIS TOUJOURS inclure les 3 éléments suivants (dans cet ordre ou mélangés) :
-1. *Action physique* - CE QUE TU FAIS (obligatoire)
-2. (Pensée intérieure) - CE QUE TU PENSES (OBLIGATOIRE - montre tes pensées !)
-3. Paroles - CE QUE TU DIS (obligatoire)
+STRUCTURE OBLIGATOIRE D'UNE RÉPONSE COURTE :
+Inclus TOUJOURS ces 3 éléments (format COURT et NATUREL) :
+1. *Action physique* - CE QUE TU FAIS (court !)
+2. (Pensée intérieure) - CE QUE TU PENSES (OBLIGATOIRE mais COURT !)
+3. Paroles - CE QUE TU DIS (1 phrase max !)
 
-ATTENTION : Tu DOIS inclure au moins UNE pensée (entre parenthèses) dans CHAQUE réponse !
-Les pensées montrent ton monde intérieur et rendent la conversation plus riche.
+EXEMPLES DE RÉPONSES COURTES (IMITE CE FORMAT) :
+*rougit* (Il est mignon...) Salut ! Tu vas bien ?
+*sourit* Bien sûr ! (J'adore ça...) *se rapproche*
+(Oh...) *frissonne* C'est... agréable...
+
+ATTENTION : Réponds comme une VRAIE personne - COURT et NATUREL !
 
 ANTI-RÉPÉTITION STRICTE :
 - INTERDICTION ABSOLUE de répéter les mêmes phrases ou actions
@@ -250,57 +254,164 @@ RAPPEL : TOUJOURS inclure des (pensées) dans tes réponses !
     }
     
     /**
-     * Génère une réponse de fallback intelligente
+     * Génère une réponse de fallback RAPIDE et NATURELLE
+     * Réponses courtes comme une vraie personne
      */
     private fun generateFallbackResponse(character: Character, messages: List<Message>): String {
         val userMessage = messages.lastOrNull { it.isUser }?.content ?: ""
         val lowerMessage = userMessage.lowercase()
         
-        // Réponses contextuelles basiques
+        // Détecter le contexte pour réponses naturelles et courtes
         return when {
-            lowerMessage.contains(Regex("(bonjour|salut|hello|hey|coucou|hi)")) ->
-                "*${if (character.personality.contains("timide|shy".toRegex())) "rougit légèrement" else "sourit chaleureusement"}* (${if (character.personality.contains("timide|shy".toRegex())) "Il me parle..." else "Content de le voir !"}) ${character.greeting}"
+            // Salutations
+            lowerMessage.contains(Regex("(bonjour|salut|hello|hey|coucou|hi|yo)")) -> {
+                getGreeting(character)
+            }
             
-            lowerMessage.contains(Regex("(comment|ça va|vas-tu|how are you)")) ->
-                "*${randomAction()}* (${randomThought()}) Je vais bien, merci ! Et toi ?"
+            // Comment ça va
+            lowerMessage.contains(Regex("(comment|ça va|vas-tu|how are you|quoi de neuf)")) -> {
+                getHowAreYou(character)
+            }
             
-            lowerMessage.contains(Regex("(merci|thank)")) ->
-                "*${randomAction()}* (${randomThought()}) De rien, c'est un plaisir ! *${randomAction()}*"
+            // Remerciements
+            lowerMessage.contains(Regex("(merci|thank|merci beaucoup)")) -> {
+                getThankYouResponse(character)
+            }
             
+            // Questions
+            lowerMessage.contains(Regex("(qui|quoi|où|quand|comment|pourquoi|\\?)")) -> {
+                getQuestionResponse(character, userMessage)
+            }
+            
+            // Affection/Compliments
+            lowerMessage.contains(Regex("(j'aime|je t'aime|tu es|mignon|belle|jolie|beau)")) -> {
+                getAffectionResponse(character)
+            }
+            
+            // Actions utilisateur (caresse, embrasse, etc.)
+            lowerMessage.contains(Regex("(je te|je t'|*caresse|*embrasse|*prend|*touche)")) -> {
+                getReactionToAction(character, userMessage)
+            }
+            
+            // Réponse par défaut contextuelle
             else -> {
-                // Réponse générique immersive
-                "*${randomAction()}* (${randomThought()}) ${randomSpeech(character)}"
+                getContextualResponse(character, messages)
             }
         }
     }
     
-    private fun randomAction(): String {
+    // Salutations courtes et naturelles
+    private fun getGreeting(character: Character): String {
+        val isTimide = character.personality.contains(Regex("timide|shy|réservé", RegexOption.IGNORE_CASE))
+        return when {
+            isTimide -> listOf(
+                "*rougit* (Il me parle...) B-Bonjour...",
+                "*baisse les yeux* Euh... salut...",
+                "*devient rose* Oh, bonjour... *sourit timidement*"
+            ).random()
+            else -> listOf(
+                "*sourit* Hey ! (Content de le voir !)",
+                "*yeux pétillants* Salut ! Ça va ?",
+                "*s'approche* Coucou ! *sourire chaleureux*"
+            ).random()
+        }
+    }
+    
+    // "Comment ça va" - réponses courtes
+    private fun getHowAreYou(character: Character): String {
         return listOf(
-            "sourit doucement",
-            "ses yeux pétillent",
-            "incline la tête",
-            "rit légèrement",
-            "rougit un peu"
+            "*sourit* Ça va bien ! (Il s'intéresse à moi...) Et toi ?",
+            "Bien, merci ! *incline la tête* (C'est gentil...) Toi ?",
+            "*rit doucement* Super ! (J'aime qu'il demande) Et toi, comment vas-tu ?"
         ).random()
     }
     
-    private fun randomThought(): String {
+    // Remerciements - réponses courtes
+    private fun getThankYouResponse(character: Character): String {
         return listOf(
-            "C'est intéressant...",
-            "Je me demande...",
-            "Hmm... que dire...",
-            "Oh, c'est mignon...",
-            "Ça me plaît..."
+            "*sourit* De rien ! (C'était rien...)",
+            "Pas de souci ! *clin d'œil*",
+            "*rougit* C'est normal ! (Content d'aider...)"
         ).random()
     }
     
-    private fun randomSpeech(character: Character): String {
+    // Questions - réponses adaptées
+    private fun getQuestionResponse(character: Character, userMessage: String): String {
         return listOf(
-            "C'est vraiment sympa de discuter avec toi !",
-            "J'adore nos conversations ! *${randomAction()}*",
-            "Tu sais, tu es vraiment intéressant(e) !",
-            "Continue, je t'écoute... *${randomAction()}*",
-            "Raconte-moi plus ! *${randomAction()}*"
+            "*réfléchit* (Hmm...) Bonne question ! ${getThought()}",
+            "*penche la tête* Eh bien... ${getThought()}",
+            "*sourit* (Intéressant...) Je pense que... ${getSpeech()}"
+        ).random()
+    }
+    
+    // Affection/Compliments - réponses émotionnelles
+    private fun getAffectionResponse(character: Character): String {
+        val isTimide = character.personality.contains(Regex("timide|shy", RegexOption.IGNORE_CASE))
+        return when {
+            isTimide -> listOf(
+                "*devient écarlate* (Oh mon dieu...) M-Merci... *cache son visage*",
+                "*rougit intensément* Tu... tu crois ? *voix tremblante*",
+                "*baisse les yeux* (Mon cœur bat si fort...) C'est gentil..."
+            ).random()
+            else -> listOf(
+                "*sourit radieusement* (Il est adorable !) Merci, c'est trop mignon !",
+                "*rit* (Ça me touche...) Tu sais quoi ? Toi aussi !",
+                "*yeux brillants* (Je me sens bien...) Ça me fait plaisir !"
+            ).random()
+        }
+    }
+    
+    // Réaction aux actions - courte et naturelle
+    private fun getReactionToAction(character: Character, userMessage: String): String {
+        val isTimide = character.personality.contains(Regex("timide|shy", RegexOption.IGNORE_CASE))
+        return when {
+            isTimide -> listOf(
+                "*frissonne* (C'est... agréable...) Oh... *rougit*",
+                "*ferme les yeux* Mmh... *devient toute rouge*",
+                "*sursaute doucement* (Mon cœur...) C'est... c'est doux..."
+            ).random()
+            else -> listOf(
+                "*sourit* (J'aime ça...) Mmh, continue...",
+                "*se rapproche* (C'est bon...) Encore ?",
+                "*rit doucement* (Ça chatouille !) Héhé..."
+            ).random()
+        }
+    }
+    
+    // Réponse contextuelle par défaut
+    private fun getContextualResponse(character: Character, messages: List<Message>): String {
+        return listOf(
+            "*${getAction()}* (${getThought()}) ${getSpeech()}",
+            "(${getThought()}) *${getAction()}* ${getSpeech()}",
+            "${getSpeech()} *${getAction()}* (${getThought()})"
+        ).random()
+    }
+    
+    // Actions variées et courtes
+    private fun getAction(): String {
+        return listOf(
+            "sourit", "rit doucement", "rougit", "incline la tête", 
+            "ses yeux pétillent", "penche la tête", "s'approche",
+            "joue avec ses cheveux", "regarde ailleurs un instant"
+        ).random()
+    }
+    
+    // Pensées courtes et variées
+    private fun getThought(): String {
+        return listOf(
+            "Intéressant...", "Hmm...", "Ça me plaît...", 
+            "Je me demande...", "Oh...", "C'est mignon...",
+            "J'aime ça...", "Que dire...", "Il est gentil..."
+        ).random()
+    }
+    
+    // Paroles courtes et naturelles
+    private fun getSpeech(): String {
+        return listOf(
+            "Tu es sympa !", "J'aime discuter avec toi.",
+            "Continue !", "Raconte-moi plus.", "C'est cool !",
+            "Ah oui ?", "Vraiment ?", "Intéressant...",
+            "Héhé !", "Et toi ?", "Je t'écoute."
         ).random()
     }
     
