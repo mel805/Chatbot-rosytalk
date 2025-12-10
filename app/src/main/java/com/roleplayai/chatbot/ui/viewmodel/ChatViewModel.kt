@@ -102,9 +102,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 
                 val response = if (useGroq) {
                     // Utiliser Groq API (priorité)
-                    if (groqAIEngine == null) {
-                        initializeGroqEngine()
-                    }
+                    // TOUJOURS réinitialiser pour prendre en compte les changements de modèle
+                    initializeGroqEngine()
                     groqAIEngine?.generateResponse(character, updatedChat.messages)
                         ?: "Erreur : Groq API non configurée. Ajoutez votre clé API dans Paramètres."
                 } else if (localAIEngine != null) {
@@ -186,17 +185,26 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             val modelId = preferencesManager.groqModelId.first()
             val nsfwMode = preferencesManager.nsfwMode.first()
             
+            android.util.Log.d("ChatViewModel", "===== Initialisation Groq Engine =====")
+            android.util.Log.d("ChatViewModel", "Modèle sélectionné: $modelId")
+            android.util.Log.d("ChatViewModel", "NSFW mode: $nsfwMode")
+            android.util.Log.d("ChatViewModel", "Clé API présente: ${apiKey.isNotBlank()}")
+            
             if (apiKey.isBlank()) {
                 _error.value = "Clé API Groq manquante. Configurez-la dans Paramètres."
                 return
             }
             
+            // TOUJOURS recréer l'engine pour prendre en compte les nouveaux paramètres
             groqAIEngine = GroqAIEngine(
                 apiKey = apiKey,
                 model = modelId,
                 nsfwMode = nsfwMode
             )
+            
+            android.util.Log.i("ChatViewModel", "✅ Groq Engine initialisé avec modèle: $modelId")
         } catch (e: Exception) {
+            android.util.Log.e("ChatViewModel", "❌ Erreur initialisation Groq", e)
             _error.value = "Erreur d'initialisation de Groq: ${e.message}"
         }
     }

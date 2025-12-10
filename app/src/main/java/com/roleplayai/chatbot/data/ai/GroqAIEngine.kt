@@ -24,12 +24,12 @@ class GroqAIEngine(
         private const val TAG = "GroqAIEngine"
         private const val GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
         
-        // Modèles Groq disponibles
+        // Modèles Groq disponibles (mis à jour Décembre 2024)
         val AVAILABLE_MODELS = listOf(
             GroqModel(
-                id = "llama-3.1-70b-versatile",
-                name = "Llama 3.1 70B",
-                description = "Modèle le plus puissant, excellent pour roleplay",
+                id = "llama-3.3-70b-versatile",
+                name = "Llama 3.3 70B Versatile",
+                description = "Dernier modèle Llama, excellent pour roleplay immersif",
                 contextLength = 32768,
                 recommended = true,
                 nsfwCapable = true
@@ -38,6 +38,22 @@ class GroqAIEngine(
                 id = "llama-3.1-8b-instant",
                 name = "Llama 3.1 8B Instant",
                 description = "Ultra-rapide, bon pour conversations simples",
+                contextLength = 8192,
+                recommended = false,
+                nsfwCapable = true
+            ),
+            GroqModel(
+                id = "llama3-70b-8192",
+                name = "Llama 3 70B",
+                description = "Modèle stable et puissant",
+                contextLength = 8192,
+                recommended = false,
+                nsfwCapable = true
+            ),
+            GroqModel(
+                id = "llama3-8b-8192",
+                name = "Llama 3 8B",
+                description = "Rapide et efficace",
                 contextLength = 8192,
                 recommended = false,
                 nsfwCapable = true

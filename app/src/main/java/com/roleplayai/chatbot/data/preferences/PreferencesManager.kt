@@ -100,7 +100,7 @@ class PreferencesManager(private val context: Context) {
     }
     
     val groqModelId: Flow<String> = context.dataStore.data.map { preferences ->
-        preferences[GROQ_MODEL_ID] ?: "llama-3.1-70b-versatile"
+        preferences[GROQ_MODEL_ID] ?: "llama-3.3-70b-versatile"
     }
     
     suspend fun setNsfwMode(enabled: Boolean) {
