@@ -286,6 +286,75 @@ fun SettingsScreen(
                                 null,
                                 tint = MaterialTheme.colorScheme.onErrorContainer
                             )
+                        }
+                    }
+                }
+            }
+            
+            // Section Groq API
+            item {
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    "🚀 Groq API (Recommandé)",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            
+            item {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            "Groq API offre des réponses ultra-rapides (1-2s) et parfaitement cohérentes, gratuitement !",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+            
+            // Switch Utiliser Groq API
+            item {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Utiliser Groq API",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                if (useGroqApi) "Activé - Modèles locaux désactivés" else "Désactivé - Utilise modèles locaux",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (useGroqApi) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = useGroqApi,
+                            onCheckedChange = { scope.launch { settingsViewModel.setUseGroqApi(it) } }
+                        )
+                    }
+                }
+            }
+            
+            if (useGroqApi) {
+                // Clé API Groq
+                item {
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                "Clé API Groq",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(Modifier.height(8.dp))
                             OutlinedTextField(
                                 value = apiKeyInput,
                                 onValueChange = { apiKeyInput = it },
@@ -525,3 +594,127 @@ fun SettingsScreen(
                     }
                 }
             },
+            confirmButton = {
+                TextButton(onClick = { showGroqModels = false }) {
+                    Text("Fermer")
+                }
+            }
+        )
+    }
+    
+    // Dialog de sélection de modèle
+    if (showModelSelection) {
+        AlertDialog(
+            onDismissRequest = { showModelSelection = false },
+            title = { Text("Changer de modèle") },
+            text = {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(availableModels) { model ->
+                        val isCompatible = model.requiredRam <= availableRam
+                        val isDownloaded = viewModel.isModelDownloaded(model)
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .then(if (isCompatible) Modifier.clickable {
+                                    viewModel.selectModel(model)
+                                    if (!isDownloaded) {
+                                        // Lancer le téléchargement
+                                        viewModel.downloadSelectedModel()
+                                    }
+                                    showModelSelection = false
+                                } else Modifier),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (model == selectedModel) {
+                                    MaterialTheme.colorScheme.primaryContainer
+                                } else if (!isCompatible) {
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                } else {
+                                    MaterialTheme.colorScheme.surface
+                                }
+                            )
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            model.name,
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            "${formatBytes(model.size)} • RAM: ${model.requiredRam} MB",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = if (isCompatible) {
+                                                MaterialTheme.colorScheme.onSurface
+                                            } else {
+                                                MaterialTheme.colorScheme.error
+                                            }
+                                        )
+                                    }
+                                    if (isDownloaded) {
+                                        Icon(
+                                            Icons.Default.CheckCircle,
+                                            "Téléchargé",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showModelSelection = false }) {
+                    Text("Fermer")
+                }
+            }
+        )
+    }
+    
+    // Dialog de confirmation de suppression
+    if (showDeleteConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmation = false },
+            icon = { Icon(Icons.Default.Warning, null) },
+            title = { Text("Supprimer le modèle ?") },
+            text = {
+                Text("Cette action supprimera le modèle téléchargé. Vous devrez le retélécharger pour l'utiliser à nouveau.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        selectedModel?.let { viewModel.deleteModel(it) }
+                        showDeleteConfirmation = false
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Supprimer")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmation = false }) {
+                    Text("Annuler")
+                }
+            }
+        )
+    }
+}
+
+private fun formatBytes(bytes: Long): String {
+    return when {
+        bytes < 1024 -> "$bytes B"
+        bytes < 1024 * 1024 -> "${bytes / 1024} KB"
+        bytes < 1024 * 1024 * 1024 -> "${bytes / (1024 * 1024)} MB"
+        else -> "%.2f GB".format(bytes / (1024.0 * 1024 * 1024))
+    }
+}
