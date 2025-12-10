@@ -230,7 +230,7 @@ fun CharacterProfileScreen(
                         icon = Icons.Default.PhotoLibrary
                     ) {
                         Text(
-                            "Cliquez sur une image pour l'agrandir",
+                            "Cliquez sur une image pour l'agrandir (les images se génèrent à la demande)",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(bottom = 12.dp)
