@@ -34,9 +34,19 @@ import com.roleplayai.chatbot.ui.components.ImageViewerDialog
 fun CharacterProfileScreen(
     character: Character,
     onBack: () -> Unit,
-    onStartChat: () -> Unit
+    onStartChat: () -> Unit,
+    isNsfwMode: Boolean = false
 ) {
     var selectedImageUrl by remember { mutableStateOf<String?>(null) }
+    
+    // Utiliser les images appropriées selon le mode NSFW
+    val (mainImageUrl, additionalImageUrls) = remember(character, isNsfwMode) {
+        if (isNsfwMode && character.nsfwImageUrl.isNotEmpty()) {
+            Pair(character.nsfwImageUrl, character.nsfwAdditionalImages)
+        } else {
+            Pair(character.imageUrl, character.additionalImages)
+        }
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -80,7 +90,7 @@ fun CharacterProfileScreen(
                     // Image principale optimisée
                     SubcomposeAsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
-                            .data(character.imageUrl)
+                            .data(mainImageUrl)
                             .crossfade(400) // Animation fluide
                             .size(1024) // Taille optimale pour image principale
                             .scale(Scale.FIT)
@@ -244,14 +254,14 @@ fun CharacterProfileScreen(
             }
             
             // Galerie d'images générées par IA (cliquables pour zoom)
-            if (character.additionalImages.isNotEmpty()) {
+            if (additionalImageUrls.isNotEmpty()) {
                 item {
                     ProfileSection(
-                        title = "🖼️ Galerie (${character.additionalImages.size} images)",
+                        title = if (isNsfwMode) "🔞 Galerie NSFW (${additionalImageUrls.size} images)" else "🖼️ Galerie (${additionalImageUrls.size} images)",
                         icon = Icons.Default.PhotoLibrary
                     ) {
                         Text(
-                            "Cliquez sur une image pour l'agrandir (les images se génèrent à la demande)",
+                            if (isNsfwMode) "Cliquez sur une image pour l'agrandir (Mode NSFW activé)" else "Cliquez sur une image pour l'agrandir",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(bottom = 12.dp)
@@ -259,7 +269,7 @@ fun CharacterProfileScreen(
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            items(character.additionalImages) { imageUrl ->
+                            items(additionalImageUrls) { imageUrl ->
                                 Card(
                                     modifier = Modifier
                                         .size(180.dp)

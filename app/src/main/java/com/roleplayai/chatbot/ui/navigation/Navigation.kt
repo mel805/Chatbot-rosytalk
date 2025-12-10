@@ -22,6 +22,7 @@ import com.roleplayai.chatbot.ui.viewmodel.AuthViewModel
 import com.roleplayai.chatbot.ui.viewmodel.CharacterViewModel
 import com.roleplayai.chatbot.ui.viewmodel.ChatViewModel
 import com.roleplayai.chatbot.ui.viewmodel.ModelViewModel
+import com.roleplayai.chatbot.ui.viewmodel.SettingsViewModel
 import kotlinx.coroutines.delay
 
 sealed class Screen(val route: String) {
@@ -46,7 +47,8 @@ fun AppNavigation(
     characterViewModel: CharacterViewModel = viewModel(),
     chatViewModel: ChatViewModel = viewModel(),
     modelViewModel: ModelViewModel = viewModel(),
-    authViewModel: AuthViewModel = viewModel()
+    authViewModel: AuthViewModel = viewModel(),
+    settingsViewModel: SettingsViewModel = viewModel()
 ) {
     val currentUser by authViewModel.currentUser.collectAsState()
     
@@ -157,6 +159,7 @@ fun AppNavigation(
         composable(Screen.CharacterProfile.route) { backStackEntry ->
             val characterId = backStackEntry.arguments?.getString("characterId") ?: return@composable
             val character = characterViewModel.getCharacterById(characterId) ?: return@composable
+            val isNsfwMode by settingsViewModel.nsfwMode.collectAsState()
             
             CharacterProfileScreen(
                 character = character,
@@ -165,7 +168,8 @@ fun AppNavigation(
                     navController.navigate(Screen.Chat.createRoute(characterId)) {
                         popUpTo(Screen.Main.route)
                     }
-                }
+                },
+                isNsfwMode = isNsfwMode
             )
         }
         

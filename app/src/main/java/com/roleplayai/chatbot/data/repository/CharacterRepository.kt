@@ -52,6 +52,20 @@ class CharacterRepository {
                     getDrawableUri("sakura_1009"),
                     getDrawableUri("sakura_1010"),
                     getDrawableUri("sakura_1011")
+                ),
+                // Images NSFW
+                nsfwImageUrl = getDrawableUri("sakura_1012"),
+                nsfwAdditionalImages = listOf(
+                    getDrawableUri("sakura_1013"),
+                    getDrawableUri("sakura_1014"),
+                    getDrawableUri("sakura_1015"),
+                    getDrawableUri("sakura_1016"),
+                    getDrawableUri("sakura_1017"),
+                    getDrawableUri("sakura_1018"),
+                    getDrawableUri("sakura_1019"),
+                    getDrawableUri("sakura_1020"),
+                    getDrawableUri("sakura_1021"),
+                    getDrawableUri("sakura_1022")
                 )
             ),
             
@@ -89,6 +103,20 @@ class CharacterRepository {
                     getDrawableUri("hinata_2009"),
                     getDrawableUri("hinata_2010"),
                     getDrawableUri("hinata_2011")
+                ),
+                // Images NSFW
+                nsfwImageUrl = getDrawableUri("hinata_2012"),
+                nsfwAdditionalImages = listOf(
+                    getDrawableUri("hinata_2013"),
+                    getDrawableUri("hinata_2014"),
+                    getDrawableUri("hinata_2015"),
+                    getDrawableUri("hinata_2016"),
+                    getDrawableUri("hinata_2017"),
+                    getDrawableUri("hinata_2018"),
+                    getDrawableUri("hinata_2019"),
+                    getDrawableUri("hinata_2020"),
+                    getDrawableUri("hinata_2021"),
+                    getDrawableUri("hinata_2022")
                 )
             ),
             
@@ -126,6 +154,20 @@ class CharacterRepository {
                     getDrawableUri("sasuke_3009"),
                     getDrawableUri("sasuke_3010"),
                     getDrawableUri("sasuke_3011")
+                ),
+                // Images NSFW
+                nsfwImageUrl = getDrawableUri("sasuke_3012"),
+                nsfwAdditionalImages = listOf(
+                    getDrawableUri("sasuke_3013"),
+                    getDrawableUri("sasuke_3014"),
+                    getDrawableUri("sasuke_3015"),
+                    getDrawableUri("sasuke_3016"),
+                    getDrawableUri("sasuke_3017"),
+                    getDrawableUri("sasuke_3018"),
+                    getDrawableUri("sasuke_3019"),
+                    getDrawableUri("sasuke_3020"),
+                    getDrawableUri("sasuke_3021"),
+                    getDrawableUri("sasuke_3022")
                 )
             ),
             
@@ -163,9 +205,32 @@ class CharacterRepository {
                     getDrawableUri("naruto_4009"),
                     getDrawableUri("naruto_4010"),
                     getDrawableUri("naruto_4011")
+                ),
+                // Images NSFW
+                nsfwImageUrl = getDrawableUri("naruto_4012"),
+                nsfwAdditionalImages = listOf(
+                    getDrawableUri("naruto_4013"),
+                    getDrawableUri("naruto_4014"),
+                    getDrawableUri("naruto_4015"),
+                    getDrawableUri("naruto_4016"),
+                    getDrawableUri("naruto_4017"),
+                    getDrawableUri("naruto_4018"),
+                    getDrawableUri("naruto_4019"),
+                    getDrawableUri("naruto_4020"),
+                    getDrawableUri("naruto_4021"),
+                    getDrawableUri("naruto_4022")
                 )
             )
         )
+    }
+    
+    // Helper function to get images based on NSFW mode
+    fun getCharacterImages(character: Character, isNsfwMode: Boolean): Pair<String, List<String>> {
+        return if (isNsfwMode && character.nsfwImageUrl.isNotEmpty()) {
+            Pair(character.nsfwImageUrl, character.nsfwAdditionalImages)
+        } else {
+            Pair(character.imageUrl, character.additionalImages)
+        }
     }
     
     // Helper functions to get characters by specific criteria

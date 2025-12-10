@@ -16,7 +16,11 @@ data class Character(
     // Nouvelles informations pour la page de profil
     val physicalDescription: String = "",  // Description physique détaillée
     val characterTraits: List<String> = emptyList(), // Traits de caractère
-    val additionalImages: List<String> = emptyList() // URLs d'images supplémentaires
+    val additionalImages: List<String> = emptyList(), // URLs d'images supplémentaires
+    
+    // Images NSFW (utilisées uniquement si le mode NSFW est activé)
+    val nsfwImageUrl: String = "",  // Image principale NSFW
+    val nsfwAdditionalImages: List<String> = emptyList() // Images additionnelles NSFW
 )
 
 enum class CharacterGender {
