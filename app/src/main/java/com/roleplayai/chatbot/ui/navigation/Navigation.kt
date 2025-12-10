@@ -3,6 +3,7 @@ package com.roleplayai.chatbot.ui.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -11,9 +12,11 @@ import androidx.navigation.compose.rememberNavController
 import com.roleplayai.chatbot.ui.screen.CharacterListScreen
 import com.roleplayai.chatbot.ui.screen.CharacterProfileScreen
 import com.roleplayai.chatbot.ui.screen.ChatScreen
+import com.roleplayai.chatbot.ui.screen.LoginScreen
 import com.roleplayai.chatbot.ui.screen.ModelSelectionScreen
 import com.roleplayai.chatbot.ui.screen.SettingsScreen
 import com.roleplayai.chatbot.ui.screen.SplashScreen
+import com.roleplayai.chatbot.ui.viewmodel.AuthViewModel
 import com.roleplayai.chatbot.ui.viewmodel.CharacterViewModel
 import com.roleplayai.chatbot.ui.viewmodel.ChatViewModel
 import com.roleplayai.chatbot.ui.viewmodel.ModelViewModel
@@ -21,6 +24,7 @@ import kotlinx.coroutines.delay
 
 sealed class Screen(val route: String) {
     object Splash : Screen("splash")
+    object Login : Screen("login")
     object ModelSelection : Screen("model_selection")
     object CharacterList : Screen("character_list")
     object Settings : Screen("settings")
@@ -37,8 +41,11 @@ fun AppNavigation(
     navController: NavHostController = rememberNavController(),
     characterViewModel: CharacterViewModel = viewModel(),
     chatViewModel: ChatViewModel = viewModel(),
-    modelViewModel: ModelViewModel = viewModel()
+    modelViewModel: ModelViewModel = viewModel(),
+    authViewModel: AuthViewModel = viewModel()
 ) {
+    val currentUser by authViewModel.currentUser.collectAsState()
+    
     NavHost(
         navController = navController,
         startDestination = Screen.Splash.route
@@ -50,24 +57,45 @@ fun AppNavigation(
                 }
             )
             
-            // Vérifier si c'est le premier lancement
+            // 🔐 Vérifier l'authentification et premier lancement
             LaunchedEffect(Unit) {
                 delay(2000) // Attendre la fin du splash
-                val isFirstLaunch = modelViewModel.isFirstLaunch()
-                val isModelDownloaded = modelViewModel.isModelDownloaded()
                 
-                if (isFirstLaunch || !isModelDownloaded) {
-                    // Premier lancement ou modèle pas téléchargé : aller vers sélection
-                    navController.navigate(Screen.ModelSelection.route) {
+                // Vérifier si utilisateur connecté
+                if (currentUser == null) {
+                    // Pas connecté → Écran de connexion
+                    navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Splash.route) { inclusive = true }
                     }
                 } else {
-                    // Lancement normal : aller directement vers la liste
-                    navController.navigate(Screen.CharacterList.route) {
-                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    // Connecté → Vérifier modèle
+                    val isFirstLaunch = modelViewModel.isFirstLaunch()
+                    val isModelDownloaded = modelViewModel.isModelDownloaded()
+                    
+                    if (isFirstLaunch || !isModelDownloaded) {
+                        // Premier lancement ou modèle pas téléchargé : aller vers sélection
+                        navController.navigate(Screen.ModelSelection.route) {
+                            popUpTo(Screen.Splash.route) { inclusive = true }
+                        }
+                    } else {
+                        // Lancement normal : aller directement vers la liste
+                        navController.navigate(Screen.CharacterList.route) {
+                            popUpTo(Screen.Splash.route) { inclusive = true }
+                        }
                     }
                 }
             }
+        }
+        
+        composable(Screen.Login.route) {
+            LoginScreen(
+                onLoginSuccess = {
+                    // Après connexion, naviguer vers sélection de modèle ou liste
+                    navController.navigate(Screen.ModelSelection.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                }
+            )
         }
         
         composable(Screen.ModelSelection.route) {

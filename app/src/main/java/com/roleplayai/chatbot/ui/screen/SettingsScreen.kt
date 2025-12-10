@@ -20,6 +20,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.roleplayai.chatbot.data.ai.GroqAIEngine
 import com.roleplayai.chatbot.data.model.ModelConfig
 import com.roleplayai.chatbot.data.model.ModelState
+import com.roleplayai.chatbot.ui.viewmodel.AuthViewModel
 import com.roleplayai.chatbot.ui.viewmodel.ModelViewModel
 import com.roleplayai.chatbot.ui.viewmodel.SettingsViewModel
 import kotlinx.coroutines.launch
@@ -31,7 +32,11 @@ fun SettingsScreen(
     onBack: () -> Unit
 ) {
     val settingsViewModel: SettingsViewModel = viewModel()
+    val authViewModel: AuthViewModel = viewModel()
     val scope = rememberCoroutineScope()
+    
+    val currentUser by authViewModel.currentUser.collectAsState()
+    val isAdmin by authViewModel.isAdmin.collectAsState()
     
     val selectedModel by viewModel.selectedModel.collectAsState()
     val modelState by viewModel.modelState.collectAsState()
@@ -74,6 +79,76 @@ fun SettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // 🔐 Section Compte (nouvelle)
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isAdmin) {
+                            MaterialTheme.colorScheme.tertiaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        }
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = if (isAdmin) "👑 Compte Admin" else "Compte",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                currentUser?.let { user ->
+                                    Text(
+                                        text = user.displayName ?: "Utilisateur",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    Text(
+                                        text = user.email ?: "",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                            
+                            Button(
+                                onClick = {
+                                    scope.launch {
+                                        authViewModel.signOut()
+                                        onBack()
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.error
+                                )
+                            ) {
+                                Icon(Icons.Default.ExitToApp, "Déconnexion", modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Déconnexion")
+                            }
+                        }
+                        
+                        if (isAdmin) {
+                            Divider()
+                            Text(
+                                text = "✅ Vous avez le contrôle total de l'application",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+            
             // Section Modèle IA
             item {
                 Text(
