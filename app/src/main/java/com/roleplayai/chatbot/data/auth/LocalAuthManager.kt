@@ -2,16 +2,12 @@ package com.roleplayai.chatbot.data.auth
 
 import android.content.Context
 import android.util.Log
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -25,8 +21,6 @@ import kotlinx.serialization.json.Json
  */
 class LocalAuthManager(private val context: Context) {
     
-    private val Context.userDataStore: DataStore<Preferences> by preferencesDataStore(name = "users")
-    
     private val _currentUser = MutableStateFlow<User?>(null)
     val currentUser: StateFlow<User?> = _currentUser.asStateFlow()
     
@@ -39,6 +33,15 @@ class LocalAuthManager(private val context: Context) {
         
         private val CURRENT_USER_KEY = stringPreferencesKey("current_user")
         private val USERS_KEY = stringPreferencesKey("all_users")
+        
+        @Volatile
+        private var INSTANCE: LocalAuthManager? = null
+        
+        fun getInstance(context: Context): LocalAuthManager {
+            return INSTANCE ?: synchronized(this) {
+                INSTANCE ?: LocalAuthManager(context.applicationContext).also { INSTANCE = it }
+            }
+        }
     }
     
     private val json = Json { 

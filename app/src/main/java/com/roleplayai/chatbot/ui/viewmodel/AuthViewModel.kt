@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 
 class AuthViewModel(application: Application) : AndroidViewModel(application) {
     
-    private val authManager = LocalAuthManager(application)
+    private val authManager = LocalAuthManager.getInstance(application)
     
     val currentUser: StateFlow<User?> = authManager.currentUser
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
