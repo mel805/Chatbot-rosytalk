@@ -12,10 +12,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 
 /**
- * Composant pour afficher les messages avec couleurs immersives
- * - Actions entre *astérisques* : Violet/Orange
- * - Pensées entre (parenthèses) : Bleu/Cyan
- * - Paroles normales : Couleur standard
+ * Composant pour afficher les messages avec couleurs immersives DISTINCTES
+ * PERSONNAGE:
+ * - 🟣 Actions *astérisques* : VIOLET vif
+ * - 🔵 Pensées (parenthèses) : BLEU CLAIR
+ * - ⚫ Paroles : BLANC (sur fond coloré)
+ * 
+ * UTILISATEUR:
+ * - 🟠 Actions *astérisques* : ORANGE vif
+ * - 🔵 Pensées (parenthèses) : BLEU FONCÉ
+ * - ⚫ Paroles : BLANC (sur fond coloré)
  */
 @Composable
 fun RichMessageText(
@@ -38,7 +44,7 @@ fun RichMessageText(
                 val normalText = message.substring(currentIndex, match.range.first)
                 withStyle(
                     style = SpanStyle(
-                        color = if (isUser) Color(0xFF1A1A1A) else Color(0xFF2A2A2A),
+                        color = Color.White, // Paroles en blanc pour contraste
                         fontWeight = FontWeight.Normal
                     )
                 ) {
@@ -49,24 +55,24 @@ fun RichMessageText(
             // Ajouter la correspondance avec style
             when (match) {
                 in actionMatches -> {
-                    // Actions entre *astérisques* : Violet/Orange avec italique
+                    // 🟣🟠 Actions entre *astérisques* : VIOLET vif (perso) / ORANGE vif (user)
                     withStyle(
                         style = SpanStyle(
-                            color = if (isUser) Color(0xFFFF6B35) else Color(0xFF9C27B0),
+                            color = if (isUser) Color(0xFFFF8C00) else Color(0xFFBA55D3), // Orange vif / Violet orchidée
                             fontStyle = FontStyle.Italic,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Bold
                         )
                     ) {
                         append(match.value) // Garde les *astérisques*
                     }
                 }
                 in thoughtMatches -> {
-                    // Pensées entre (parenthèses) : Bleu/Cyan avec italique
+                    // 🔵 Pensées entre (parenthèses) : BLEU distinct
                     withStyle(
                         style = SpanStyle(
-                            color = if (isUser) Color(0xFF0288D1) else Color(0xFF00BCD4),
+                            color = if (isUser) Color(0xFF1E90FF) else Color(0xFF87CEEB), // Bleu dodger / Bleu ciel
                             fontStyle = FontStyle.Italic,
-                            fontWeight = FontWeight.Light
+                            fontWeight = FontWeight.SemiBold
                         )
                     ) {
                         append(match.value) // Garde les (parenthèses)
@@ -77,12 +83,12 @@ fun RichMessageText(
             currentIndex = match.range.last + 1
         }
         
-        // Ajouter le texte restant
+        // Ajouter le texte restant (paroles)
         if (currentIndex < message.length) {
             val remainingText = message.substring(currentIndex)
             withStyle(
                 style = SpanStyle(
-                    color = if (isUser) Color(0xFF1A1A1A) else Color(0xFF2A2A2A),
+                    color = Color.White, // Paroles en blanc
                     fontWeight = FontWeight.Normal
                 )
             ) {
