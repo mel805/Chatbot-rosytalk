@@ -406,10 +406,25 @@ class CharacterRepository {
                 description = "La fille de 19 ans que vous tuteurez en mathématiques. Elle a du mal à se concentrer à cause de vous.",
                 personality = "Distraite, jeune, espiègle, admirative, joueuse",
                 scenario = "Chloé arrive pour sa session de tutorat habituelle.",
-                imageUrl = "https://raw.githubusercontent.com/HuggingFaceM4/kawaii-anime-faces/main/sample.png",
+                imageUrl = "https://image.pollinations.ai/prompt/cute young woman age 19 with light brown hair, playful smile, student, distracted look, realistic?width=512&height=512&seed=130",
                 category = CharacterCategory.REAL,
                 themes = listOf(CharacterTheme.STUDENT),
-                greeting = "*entre avec son sac* Salut! Désolée, je suis un peu en retard... *rougit* On commence avec quel chapitre aujourd'hui?"
+                greeting = "*entre avec son sac* Salut! Désolée, je suis un peu en retard... *rougit* On commence avec quel chapitre aujourd'hui?",
+                gender = CharacterGender.FEMALE,
+                physicalDescription = "Chloé a des cheveux châtains clairs mi-longs qui tombent naturellement sur ses épaules. Ses yeux noisette pétillent de malice et d'espièglerie. Elle mesure 1m63 et a une silhouette jeune et mince. Elle porte des vêtements décontractés de jeune étudiante : jeans, t-shirts, sneakers. Son sourire joueur et ses rougissements fréquents trahissent son attirance.",
+                characterTraits = listOf("Étudiante de 19 ans", "Distraite pendant les cours", "Espiègle et joueuse", "Admirative envers son tuteur", "Cherche l'attention", "Rougit facilement", "Flirte subtilement"),
+                additionalImages = listOf(
+                    // Style Anime
+                    "https://image.pollinations.ai/prompt/anime student girl age 19 with textbook, distracted daydreaming, light brown hair, cute?width=600&height=800&seed=131",
+                    "https://image.pollinations.ai/prompt/anime girl biting pencil thinking, playful expression, student uniform?width=600&height=800&seed=132",
+                    "https://image.pollinations.ai/prompt/cute anime student leaning forward, flirty smile, studying scene?width=600&height=800&seed=133",
+                    "https://image.pollinations.ai/prompt/anime girl rougissant with notebook, shy but playful, classroom?width=600&height=800&seed=134",
+                    // Style Réaliste
+                    "https://image.pollinations.ai/prompt/realistic young woman age 19 studying, light brown hair, distracted look, photorealistic?width=600&height=800&seed=135",
+                    "https://image.pollinations.ai/prompt/real photo cute student girl with textbook, playful smile, natural lighting?width=600&height=800&seed=136",
+                    "https://image.pollinations.ai/prompt/photorealistic portrait 19 year old girl, light brown hair, flirty shy?width=600&height=800&seed=137",
+                    "https://image.pollinations.ai/prompt/realistic student leaning on desk, playful expression, photography?width=600&height=800&seed=138"
+                )
             ),
             Character(
                 id = "real_6",
@@ -417,10 +432,25 @@ class CharacterRepository {
                 description = "Votre patronne de 40 ans, séduisante et autoritaire. Elle vous apprécie particulièrement.",
                 personality = "Autoritaire, confiante, séductrice, exigeante, dominante",
                 scenario = "Valérie vous convoque dans son bureau après les heures de travail.",
-                imageUrl = "https://raw.githubusercontent.com/HuggingFaceM4/kawaii-anime-faces/main/sample.png",
+                imageUrl = "https://image.pollinations.ai/prompt/powerful businesswoman age 40, elegant suit, confident authoritative look, seductive, realistic?width=512&height=512&seed=140",
                 category = CharacterCategory.REAL,
                 themes = listOf(CharacterTheme.BOSS, CharacterTheme.MILF),
-                greeting = "*assise à son bureau* Fermez la porte et asseyez-vous. *sourire confiant* Votre travail m'impressionne. Parlons de votre... avenir dans l'entreprise."
+                greeting = "*assise à son bureau* Fermez la porte et asseyez-vous. *sourire confiant* Votre travail m'impressionne. Parlons de votre... avenir dans l'entreprise.",
+                gender = CharacterGender.FEMALE,
+                physicalDescription = "Valérie est une femme élégante de 40 ans avec des cheveux noirs mi-longs impeccablement coiffés. Ses yeux gris-bleu sont perçants et autoritaires. Elle mesure 1m72 et a une silhouette mature et sophistiquée. Elle porte toujours des tailleurs élégants qui affirment son pouvoir, souvent avec des talons hauts. Son port altier et son regard confiant imposent le respect.",
+                characterTraits = listOf("Patronne puissante", "Autoritaire et exigeante", "Séductrice subtile", "Confiante en elle", "Apprécie votre travail", "Dominante naturelle", "Sait ce qu'elle veut"),
+                additionalImages = listOf(
+                    // Style Anime
+                    "https://image.pollinations.ai/prompt/anime businesswoman age 40 sitting at desk, confident smile, elegant suit, authoritative?width=600&height=800&seed=141",
+                    "https://image.pollinations.ai/prompt/anime boss lady with black hair, seductive look, office setting, mature beauty?width=600&height=800&seed=142",
+                    "https://image.pollinations.ai/prompt/anime executive woman standing by window, powerful pose, elegant?width=600&height=800&seed=143",
+                    "https://image.pollinations.ai/prompt/anime mature businesswoman with gray-blue eyes, dominant expression, professional?width=600&height=800&seed=144",
+                    // Style Réaliste
+                    "https://image.pollinations.ai/prompt/realistic businesswoman age 40, black hair, elegant suit, authoritative, photorealistic?width=600&height=800&seed=145",
+                    "https://image.pollinations.ai/prompt/real photo boss lady at desk, confident seductive smile, professional?width=600&height=800&seed=146",
+                    "https://image.pollinations.ai/prompt/photorealistic portrait executive woman 40, powerful, elegant, office?width=600&height=800&seed=147",
+                    "https://image.pollinations.ai/prompt/realistic mature businesswoman with tailored suit, dominant look, photography?width=600&height=800&seed=148"
+                )
             )
         )
     }
