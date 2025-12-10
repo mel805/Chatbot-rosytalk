@@ -32,9 +32,16 @@ class CharacterRepository {
                     "Rougit facilement quand elle est gênée"
                 ),
                 additionalImages = listOf(
-                    "https://image.pollinations.ai/prompt/anime girl with pink hair drawing cherry blossoms, side view, soft lighting, detailed?width=400&height=600&seed=2",
-                    "https://image.pollinations.ai/prompt/shy anime girl with pink hair looking down, blushing, cherry blossom background?width=400&height=600&seed=3",
-                    "https://image.pollinations.ai/prompt/anime girl pink hair smiling gently, holding flower, soft pastel colors?width=400&height=600&seed=4"
+                    // Style Anime
+                    "https://image.pollinations.ai/prompt/anime girl with long pink hair drawing cherry blossoms, side view, soft lighting, detailed anime art?width=600&height=800&seed=2",
+                    "https://image.pollinations.ai/prompt/shy anime girl with pink hair looking down blushing, cherry blossom background, cute?width=600&height=800&seed=3",
+                    "https://image.pollinations.ai/prompt/anime girl pink hair smiling gently holding flower, soft pastel colors, kawaii?width=600&height=800&seed=4",
+                    "https://image.pollinations.ai/prompt/anime schoolgirl with pink hair in garden, shy expression, beautiful?width=600&height=800&seed=5",
+                    // Style Réaliste
+                    "https://image.pollinations.ai/prompt/realistic young asian woman with pink dyed hair, shy smile, cherry blossom garden, photorealistic?width=600&height=800&seed=6",
+                    "https://image.pollinations.ai/prompt/beautiful real girl age 19 with long pink hair, blushing, soft lighting, photography?width=600&height=800&seed=7",
+                    "https://image.pollinations.ai/prompt/realistic portrait young woman pink hair, gentle eyes, natural smile, professional photo?width=600&height=800&seed=8",
+                    "https://image.pollinations.ai/prompt/photorealistic asian girl with pink hair drawing, artistic, soft natural light?width=600&height=800&seed=9"
                 )
             ),
             Character(
@@ -59,9 +66,16 @@ class CharacterRepository {
                     "Adore aider les autres secrètement"
                 ),
                 additionalImages = listOf(
-                    "https://image.pollinations.ai/prompt/tsundere anime girl studying with books, looking away embarrassed?width=400&height=600&seed=11",
-                    "https://image.pollinations.ai/prompt/anime girl with glasses blushing, turning head away, school setting?width=400&height=600&seed=12",
-                    "https://image.pollinations.ai/prompt/smart anime girl with short black hair smiling slightly, classroom?width=400&height=600&seed=13"
+                    // Style Anime
+                    "https://image.pollinations.ai/prompt/tsundere anime girl with short black hair and glasses studying with books, embarrassed, turning away?width=600&height=800&seed=11",
+                    "https://image.pollinations.ai/prompt/anime girl with rectangular glasses blushing, tsundere expression, school uniform?width=600&height=800&seed=12",
+                    "https://image.pollinations.ai/prompt/smart anime student with short black hair smiling slightly, classroom setting, intelligent?width=600&height=800&seed=13",
+                    "https://image.pollinations.ai/prompt/anime girl tsundere looking away with arms crossed, blushing, school background?width=600&height=800&seed=14",
+                    // Style Réaliste
+                    "https://image.pollinations.ai/prompt/realistic young asian woman age 20 with short black hair and glasses, studying, serious expression, photorealistic?width=600&height=800&seed=15",
+                    "https://image.pollinations.ai/prompt/beautiful real student girl with bob cut black hair, glasses, turning away embarrassed, photography?width=600&height=800&seed=16",
+                    "https://image.pollinations.ai/prompt/photorealistic portrait intelligent woman with short dark hair, glasses, library background?width=600&height=800&seed=17",
+                    "https://image.pollinations.ai/prompt/real photo smart asian girl with glasses blushing slightly, classroom, natural lighting?width=600&height=800&seed=18"
                 )
             ),
             Character(
@@ -86,9 +100,16 @@ class CharacterRepository {
                     "Aime câliner et réconforter"
                 ),
                 additionalImages = listOf(
-                    "https://image.pollinations.ai/prompt/anime mom cooking in kitchen, warm lighting, happy expression?width=400&height=600&seed=21",
-                    "https://image.pollinations.ai/prompt/beautiful anime mother hugging, caring expression, warm colors?width=400&height=600&seed=22",
-                    "https://image.pollinations.ai/prompt/elegant anime woman with bun hair smiling warmly, home setting?width=400&height=600&seed=23"
+                    // Style Anime
+                    "https://image.pollinations.ai/prompt/anime mom cooking in kitchen, warm lighting, happy motherly expression, apron?width=600&height=800&seed=21",
+                    "https://image.pollinations.ai/prompt/beautiful anime mother hugging warmly, caring loving expression, soft colors?width=600&height=800&seed=22",
+                    "https://image.pollinations.ai/prompt/elegant anime woman with bun hair smiling warmly, home setting, maternal?width=600&height=800&seed=23",
+                    "https://image.pollinations.ai/prompt/anime milf age 38 preparing dinner, gentle smile, domestic scene?width=600&height=800&seed=24",
+                    // Style Réaliste
+                    "https://image.pollinations.ai/prompt/realistic beautiful mature asian woman age 38, brown hair in bun, warm smile, apron, photorealistic?width=600&height=800&seed=25",
+                    "https://image.pollinations.ai/prompt/real photo mature mother cooking, elegant, caring expression, natural lighting?width=600&height=800&seed=26",
+                    "https://image.pollinations.ai/prompt/photorealistic portrait woman 38 years old, gentle eyes, maternal warmth, professional photo?width=600&height=800&seed=27",
+                    "https://image.pollinations.ai/prompt/realistic mature lady in kitchen, brown hair, warm atmosphere, photography?width=600&height=800&seed=28"
                 )
             ),
             Character(
@@ -113,9 +134,16 @@ class CharacterRepository {
                     "Enthousiaste pour tout"
                 ),
                 additionalImages = listOf(
-                    "https://image.pollinations.ai/prompt/anime girl jumping happily, school uniform, energetic pose?width=400&height=600&seed=31",
-                    "https://image.pollinations.ai/prompt/cheerful anime girl with short brown hair hugging, bright smile?width=400&height=600&seed=32",
-                    "https://image.pollinations.ai/prompt/anime girl excited expression, sparkling eyes, pointing?width=400&height=600&seed=33"
+                    // Style Anime
+                    "https://image.pollinations.ai/prompt/energetic anime girl jumping happily, school uniform, dynamic pose, bright smile?width=600&height=800&seed=31",
+                    "https://image.pollinations.ai/prompt/cheerful anime girl with short brown hair hugging excitedly, sparkling eyes?width=600&height=800&seed=32",
+                    "https://image.pollinations.ai/prompt/anime little sister excited expression, pointing enthusiastically, kawaii?width=600&height=800&seed=33",
+                    "https://image.pollinations.ai/prompt/anime girl running happily towards viewer, arms open, joyful?width=600&height=800&seed=34",
+                    // Style Réaliste
+                    "https://image.pollinations.ai/prompt/realistic young girl age 16 with short brown hair, bright smile, energetic, photorealistic?width=600&height=800&seed=35",
+                    "https://image.pollinations.ai/prompt/real photo teenage girl jumping joyfully, school uniform, natural lighting?width=600&height=800&seed=36",
+                    "https://image.pollinations.ai/prompt/photorealistic portrait cheerful girl with short hair, sparkling eyes, happy?width=600&height=800&seed=37",
+                    "https://image.pollinations.ai/prompt/realistic young energetic girl hugging, bright expression, photography?width=600&height=800&seed=38"
                 )
             ),
             Character(

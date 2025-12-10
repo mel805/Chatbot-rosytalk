@@ -1,6 +1,7 @@
 package com.roleplayai.chatbot.ui.screen
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -9,7 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -21,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.roleplayai.chatbot.data.model.Character
 import com.roleplayai.chatbot.data.model.CharacterGender
+import com.roleplayai.chatbot.ui.components.ImageViewerDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,6 +31,7 @@ fun CharacterProfileScreen(
     onBack: () -> Unit,
     onStartChat: () -> Unit
 ) {
+    var selectedImageUrl by remember { mutableStateOf<String?>(null) }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -219,25 +222,36 @@ fun CharacterProfileScreen(
                 }
             }
             
-            // Galerie d'images générées par IA
+            // Galerie d'images générées par IA (cliquables pour zoom)
             if (character.additionalImages.isNotEmpty()) {
                 item {
                     ProfileSection(
-                        title = "🖼️ Galerie (Générées par IA)",
+                        title = "🖼️ Galerie (${character.additionalImages.size} images)",
                         icon = Icons.Default.PhotoLibrary
                     ) {
+                        Text(
+                            "Cliquez sur une image pour l'agrandir",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             items(character.additionalImages) { imageUrl ->
-                                AsyncImage(
-                                    model = imageUrl,
-                                    contentDescription = "Image de ${character.name}",
+                                Card(
                                     modifier = Modifier
-                                        .size(150.dp)
-                                        .clip(RoundedCornerShape(12.dp)),
-                                    contentScale = ContentScale.Crop
-                                )
+                                        .size(180.dp)
+                                        .clickable { selectedImageUrl = imageUrl },
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                                ) {
+                                    AsyncImage(
+                                        model = imageUrl,
+                                        contentDescription = "Image de ${character.name}",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
                             }
                         }
                     }
@@ -270,6 +284,15 @@ fun CharacterProfileScreen(
                 Spacer(Modifier.height(80.dp))
             }
         }
+    }
+    
+    // Dialog pour afficher image en grand
+    selectedImageUrl?.let { imageUrl ->
+        ImageViewerDialog(
+            imageUrl = imageUrl,
+            characterName = character.name,
+            onDismiss = { selectedImageUrl = null }
+        )
     }
 }
 
