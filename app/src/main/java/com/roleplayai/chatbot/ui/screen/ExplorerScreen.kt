@@ -33,8 +33,7 @@ import com.roleplayai.chatbot.ui.viewmodel.CharacterViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExplorerScreen(
-    onCharacterClick: (String) -> Unit,
-    onCharacterProfileClick: (String) -> Unit
+    onCharacterClick: (String) -> Unit
 ) {
     val characterViewModel: CharacterViewModel = viewModel()
     val allCharacters by characterViewModel.characters.collectAsState()
@@ -168,8 +167,7 @@ fun ExplorerScreen(
                 items(filteredCharacters) { character ->
                     ExplorerCharacterCard(
                         character = character,
-                        onClick = { onCharacterClick(character.id) },
-                        onLongClick = { onCharacterProfileClick(character.id) }
+                        onClick = { onCharacterClick(character.id) }
                     )
                 }
             }
@@ -180,8 +178,7 @@ fun ExplorerScreen(
 @Composable
 fun ExplorerCharacterCard(
     character: Character,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit
+    onClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -247,22 +244,6 @@ fun ExplorerCharacterCard(
                 }
             }
             
-            // Bouton info (long press)
-            IconButton(
-                onClick = onLongClick,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(8.dp)
-                    .size(32.dp)
-                    .background(Color.Black.copy(alpha = 0.5f), CircleShape)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Info,
-                    contentDescription = "Profil",
-                    tint = Color.White,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
         }
     }
 }

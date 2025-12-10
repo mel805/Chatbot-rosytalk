@@ -61,8 +61,7 @@ fun MainScreen(
         when (selectedTab) {
             NavigationItem.Explorer.route -> {
                 ExplorerScreen(
-                    onCharacterClick = onCharacterClick,
-                    onCharacterProfileClick = onCharacterProfileClick
+                    onCharacterClick = onCharacterProfileClick // Aller vers le profil au lieu du chat
                 )
             }
             NavigationItem.Chats.route -> {
