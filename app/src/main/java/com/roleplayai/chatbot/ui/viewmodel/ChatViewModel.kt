@@ -7,6 +7,7 @@ import com.roleplayai.chatbot.data.ai.AIEngine
 import com.roleplayai.chatbot.data.ai.LocalAIEngine
 import com.roleplayai.chatbot.data.ai.GroqAIEngine
 import com.roleplayai.chatbot.data.ai.GeminiAIEngine
+import com.roleplayai.chatbot.data.ai.OpenRouterAIEngine
 import com.roleplayai.chatbot.data.model.Chat
 import com.roleplayai.chatbot.data.model.InferenceConfig
 import com.roleplayai.chatbot.data.model.Message
@@ -28,6 +29,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private var localAIEngine: LocalAIEngine? = null
     private var groqAIEngine: GroqAIEngine? = null
     private var geminiAIEngine: GeminiAIEngine? = null
+    private var openRouterAIEngine: OpenRouterAIEngine? = null
     private var useLocalEngine = false
     
     private val _currentChat = MutableStateFlow<Chat?>(null)
@@ -121,62 +123,48 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                         
                         groqResponse
                     } catch (e: Exception) {
-                        // Basculement automatique vers Gemini
-                        android.util.Log.w("ChatViewModel", "⚠️ Groq indisponible (${e.message}), tentative Gemini...")
+                        // Basculement intelligent selon mode NSFW
+                        val nsfwMode = preferencesManager.nsfwMode.first()
                         
-                        // Essayer Gemini
-                        try {
-                            // Initialiser Gemini si nécessaire
-                            if (geminiAIEngine == null) {
-                                android.util.Log.w("ChatViewModel", "💡 Initialisation Gemini pour fallback...")
-                                val geminiKey = preferencesManager.geminiApiKey.first()
-                                val nsfwMode = preferencesManager.nsfwMode.first()
-                                
-                                if (geminiKey.isBlank()) {
-                                    throw Exception("Clé API Gemini manquante")
-                                }
-                                
-                                geminiAIEngine = GeminiAIEngine(
-                                    apiKey = geminiKey,
-                                    model = "gemini-1.5-flash",
-                                    nsfwMode = nsfwMode
-                                )
-                            }
-                            
-                            val geminiResponse = geminiAIEngine!!.generateResponse(character, updatedChat.messages)
-                            
-                            // Vérifier si erreur Gemini
-                            if (geminiResponse.contains("Erreur", ignoreCase = true)) {
-                                throw Exception("Gemini erreur")
-                            }
-                            
-                            android.util.Log.i("ChatViewModel", "✅ Réponse Gemini générée avec succès")
-                            geminiResponse
-                            
-                        } catch (geminiError: Exception) {
-                            // Si Gemini échoue aussi, essayer LocalAI
-                            android.util.Log.w("ChatViewModel", "⚠️ Gemini indisponible (${geminiError.message}), basculement vers IA locale")
+                        if (nsfwMode) {
+                            // Mode NSFW : Essayer OpenRouter d'abord (NSFW-friendly)
+                            android.util.Log.w("ChatViewModel", "⚠️ Groq indisponible, tentative OpenRouter (NSFW)...")
                             
                             try {
-                                // S'assurer que LocalAI est initialisé
-                                if (localAIEngine == null) {
-                                    android.util.Log.w("ChatViewModel", "💡 Initialisation IA locale pour fallback...")
-                                    val nsfwMode = preferencesManager.nsfwMode.first()
-                                    localAIEngine = LocalAIEngine(
-                                        context = getApplication(),
-                                        modelPath = "",
-                                        config = InferenceConfig(contextLength = 2048),
+                                // Initialiser OpenRouter si nécessaire
+                                if (openRouterAIEngine == null) {
+                                    val openRouterKey = preferencesManager.openRouterApiKey.first()
+                                    val openRouterModel = preferencesManager.openRouterModelId.first()
+                                    
+                                    if (openRouterKey.isBlank()) {
+                                        throw Exception("Clé API OpenRouter manquante")
+                                    }
+                                    
+                                    openRouterAIEngine = OpenRouterAIEngine(
+                                        apiKey = openRouterKey,
+                                        model = openRouterModel,
                                         nsfwMode = nsfwMode
                                     )
                                 }
                                 
-                                val localResponse = localAIEngine!!.generateResponse(character, updatedChat.messages)
+                                val openRouterResponse = openRouterAIEngine!!.generateResponse(character, updatedChat.messages)
                                 
-                                "⚠️ Groq et Gemini indisponibles. Mode basique activé.\n\n$localResponse"
-                            } catch (localError: Exception) {
-                                android.util.Log.e("ChatViewModel", "❌ Toutes les IA ont échoué", localError)
-                                "Désolé, toutes les IA sont indisponibles.\n\n💡 Astuce : Configurez une clé API Gemini (gratuite) dans Paramètres pour des conversations cohérentes !"
+                                if (openRouterResponse.contains("Erreur", ignoreCase = true)) {
+                                    throw Exception("OpenRouter erreur")
+                                }
+                                
+                                android.util.Log.i("ChatViewModel", "✅ Réponse OpenRouter NSFW générée")
+                                openRouterResponse
+                                
+                            } catch (openRouterError: Exception) {
+                                // Si OpenRouter échoue, essayer quand même Gemini (peut refuser NSFW)
+                                android.util.Log.w("ChatViewModel", "⚠️ OpenRouter indisponible, tentative Gemini (peut refuser NSFW)...")
+                                fallbackToGeminiOrLocal(character, updatedChat.messages, nsfwMode)
                             }
+                        } else {
+                            // Mode SFW : Gemini directement
+                            android.util.Log.w("ChatViewModel", "⚠️ Groq indisponible, tentative Gemini (SFW)...")
+                            fallbackToGeminiOrLocal(character, updatedChat.messages, nsfwMode)
                         }
                     }
                 } else {
@@ -299,6 +287,73 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         } catch (e: Exception) {
             android.util.Log.e("ChatViewModel", "❌ Erreur initialisation Groq", e)
             _error.value = "Erreur d'initialisation de Groq: ${e.message}"
+        }
+    }
+    
+    /**
+     * Fallback vers Gemini ou LocalAI
+     */
+    private suspend fun fallbackToGeminiOrLocal(character: com.roleplayai.chatbot.data.model.Character, messages: List<Message>, nsfwMode: Boolean): String {
+        return try {
+            // Initialiser Gemini si nécessaire
+            if (geminiAIEngine == null) {
+                android.util.Log.w("ChatViewModel", "💡 Initialisation Gemini pour fallback...")
+                val geminiKey = preferencesManager.geminiApiKey.first()
+                
+                if (geminiKey.isBlank()) {
+                    throw Exception("Clé API Gemini manquante")
+                }
+                
+                geminiAIEngine = GeminiAIEngine(
+                    apiKey = geminiKey,
+                    model = "gemini-1.5-flash",
+                    nsfwMode = nsfwMode
+                )
+            }
+            
+            val geminiResponse = geminiAIEngine!!.generateResponse(character, messages)
+            
+            // Vérifier si Gemini a refusé (souvent en mode NSFW)
+            if (geminiResponse.contains("Erreur", ignoreCase = true) || 
+                geminiResponse.contains("cannot", ignoreCase = true) ||
+                geminiResponse.contains("unable", ignoreCase = true)) {
+                throw Exception("Gemini a refusé")
+            }
+            
+            android.util.Log.i("ChatViewModel", "✅ Réponse Gemini générée avec succès")
+            geminiResponse
+            
+        } catch (geminiError: Exception) {
+            // Si Gemini échoue aussi, essayer LocalAI
+            android.util.Log.w("ChatViewModel", "⚠️ Gemini indisponible (${geminiError.message}), basculement vers IA locale")
+            
+            try {
+                // S'assurer que LocalAI est initialisé
+                if (localAIEngine == null) {
+                    android.util.Log.w("ChatViewModel", "💡 Initialisation IA locale pour fallback...")
+                    localAIEngine = LocalAIEngine(
+                        context = getApplication(),
+                        modelPath = "",
+                        config = InferenceConfig(contextLength = 2048),
+                        nsfwMode = nsfwMode
+                    )
+                }
+                
+                val localResponse = localAIEngine!!.generateResponse(character, messages)
+                
+                if (nsfwMode) {
+                    "⚠️ Toutes les IA externes indisponibles. Mode basique activé.\n\n💡 Configurez OpenRouter (NSFW-friendly) dans Paramètres !\n\n$localResponse"
+                } else {
+                    "⚠️ Groq et Gemini indisponibles. Mode basique activé.\n\n$localResponse"
+                }
+            } catch (localError: Exception) {
+                android.util.Log.e("ChatViewModel", "❌ Toutes les IA ont échoué", localError)
+                if (nsfwMode) {
+                    "Désolé, toutes les IA sont indisponibles.\n\n💡 Astuce : Configurez OpenRouter (gratuit) dans Paramètres pour des conversations NSFW cohérentes !"
+                } else {
+                    "Désolé, toutes les IA sont indisponibles.\n\n💡 Astuce : Configurez Gemini (gratuit) dans Paramètres pour des conversations cohérentes !"
+                }
+            }
         }
     }
     

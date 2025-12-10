@@ -30,6 +30,11 @@ class PreferencesManager(private val context: Context) {
         // Gemini API settings
         private val GEMINI_API_KEY = stringPreferencesKey("gemini_api_key")
         private val USE_GEMINI_API = booleanPreferencesKey("use_gemini_api")
+        
+        // OpenRouter API settings
+        private val OPENROUTER_API_KEY = stringPreferencesKey("openrouter_api_key")
+        private val OPENROUTER_MODEL_ID = stringPreferencesKey("openrouter_model_id")
+        private val USE_OPENROUTER_API = booleanPreferencesKey("use_openrouter_api")
     }
     
     val selectedModelId: Flow<String?> = context.dataStore.data.map { preferences ->
@@ -146,5 +151,36 @@ class PreferencesManager(private val context: Context) {
     
     val useGeminiApi: Flow<Boolean> = context.dataStore.data.map { preferences ->
         preferences[USE_GEMINI_API] ?: true  // Activé par défaut
+    }
+    
+    // OpenRouter API settings
+    suspend fun setOpenRouterApiKey(apiKey: String) {
+        context.dataStore.edit { preferences ->
+            preferences[OPENROUTER_API_KEY] = apiKey
+        }
+    }
+    
+    val openRouterApiKey: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[OPENROUTER_API_KEY] ?: ""
+    }
+    
+    suspend fun setOpenRouterModelId(modelId: String) {
+        context.dataStore.edit { preferences ->
+            preferences[OPENROUTER_MODEL_ID] = modelId
+        }
+    }
+    
+    val openRouterModelId: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[OPENROUTER_MODEL_ID] ?: "mistralai/mistral-7b-instruct"
+    }
+    
+    suspend fun setUseOpenRouterApi(use: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[USE_OPENROUTER_API] = use
+        }
+    }
+    
+    val useOpenRouterApi: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[USE_OPENROUTER_API] ?: true  // Activé par défaut
     }
 }
