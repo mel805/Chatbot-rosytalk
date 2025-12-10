@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,7 +20,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
+import coil.request.ImageRequest
+import coil.size.Scale
 import com.roleplayai.chatbot.data.model.Character
 import com.roleplayai.chatbot.data.model.CharacterGender
 import com.roleplayai.chatbot.ui.components.ImageViewerDialog
@@ -72,11 +77,27 @@ fun CharacterProfileScreen(
                         .height(300.dp)
                         .clip(RoundedCornerShape(16.dp))
                 ) {
-                    AsyncImage(
-                        model = character.imageUrl,
+                    // Image principale optimisée
+                    SubcomposeAsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(character.imageUrl)
+                            .crossfade(400) // Animation fluide
+                            .size(1024) // Taille optimale pour image principale
+                            .scale(Scale.FIT)
+                            .build(),
                         contentDescription = character.name,
                         modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
+                        contentScale = ContentScale.Crop,
+                        loading = {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
                     )
                     
                     // Gradient overlay
@@ -245,11 +266,46 @@ fun CharacterProfileScreen(
                                         .clickable { selectedImageUrl = imageUrl },
                                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                                 ) {
-                                    AsyncImage(
-                                        model = imageUrl,
+                                    // Image optimisée pour chargement rapide
+                                    SubcomposeAsyncImage(
+                                        model = ImageRequest.Builder(LocalContext.current)
+                                            .data(imageUrl)
+                                            .crossfade(300) // Animation fluide
+                                            .size(360) // Taille réduite pour miniature (2x pour haute densité)
+                                            .scale(Scale.FIT)
+                                            .build(),
                                         contentDescription = "Image de ${character.name}",
                                         modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
+                                        contentScale = ContentScale.Crop,
+                                        loading = {
+                                            // Placeholder pendant le chargement
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(24.dp),
+                                                    strokeWidth = 2.dp
+                                                )
+                                            }
+                                        },
+                                        error = {
+                                            // Affichage en cas d'erreur
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .background(MaterialTheme.colorScheme.errorContainer),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.BrokenImage,
+                                                    contentDescription = "Erreur",
+                                                    tint = MaterialTheme.colorScheme.onErrorContainer
+                                                )
+                                            }
+                                        }
                                     )
                                 }
                             }

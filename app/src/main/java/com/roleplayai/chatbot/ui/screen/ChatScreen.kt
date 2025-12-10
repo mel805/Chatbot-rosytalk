@@ -62,27 +62,25 @@ fun ChatScreen(
     }
     
     Box(modifier = Modifier.fillMaxSize()) {
-        // Image d'arrière-plan du personnage
+        // Image d'arrière-plan du personnage - COMPLÈTEMENT VISIBLE
         chat?.let { currentChat ->
             AsyncImage(
                 model = currentChat.characterImageUrl,
                 contentDescription = "${currentChat.characterName} background",
-                modifier = Modifier
-                    .fillMaxSize()
-                    .alpha(0.3f), // Transparence pour ne pas gêner la lecture
+                modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
             
-            // Gradient overlay léger pour améliorer la lisibilité
+            // Gradient overlay très léger pour la lisibilité des messages
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
-                                MaterialTheme.colorScheme.background.copy(alpha = 0.5f),
-                                MaterialTheme.colorScheme.background.copy(alpha = 0.7f),
-                                MaterialTheme.colorScheme.background.copy(alpha = 0.85f)
+                                Color.Transparent,
+                                MaterialTheme.colorScheme.background.copy(alpha = 0.3f),
+                                MaterialTheme.colorScheme.background.copy(alpha = 0.5f)
                             )
                         )
                     )
