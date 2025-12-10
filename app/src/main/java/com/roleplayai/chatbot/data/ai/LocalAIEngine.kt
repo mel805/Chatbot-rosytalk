@@ -44,29 +44,32 @@ class LocalAIEngine(
     companion object {
         init {
             try {
-                // System.loadLibrary("llama")
-                // System.loadLibrary("roleplay-ai-native")
-                Log.d("LocalAIEngine", "Native libraries would be loaded here")
+                System.loadLibrary("roleplay-ai-native")
+                Log.d("LocalAIEngine", "✅ Native library loaded successfully!")
             } catch (e: UnsatisfiedLinkError) {
-                Log.e("LocalAIEngine", "Failed to load native libraries", e)
+                Log.e("LocalAIEngine", "❌ Failed to load native library", e)
             }
         }
     }
     
     suspend fun loadModel(): Boolean = withContext(Dispatchers.IO) {
         try {
-            // TODO: Replace with actual JNI call
-            // isModelLoaded = nativeLoadModel(modelPath, config.threads, config.contextLength)
+            Log.d("LocalAIEngine", "===== Chargement du modèle llama.cpp =====")
+            Log.d("LocalAIEngine", "Chemin: $modelPath")
+            Log.d("LocalAIEngine", "Threads: ${config.threads}, Context: ${config.contextLength}")
             
-            // Simulate loading
-            Log.d("LocalAIEngine", "Loading model from: $modelPath")
-            kotlinx.coroutines.delay(1000) // Simulate loading time
-            isModelLoaded = true
+            // VRAIMENT charger le modèle via JNI
+            isModelLoaded = nativeLoadModel(modelPath, config.threads, config.contextLength)
             
-            Log.d("LocalAIEngine", "Model loaded successfully")
-            true
+            if (isModelLoaded) {
+                Log.i("LocalAIEngine", "✅ Modèle chargé avec succès!")
+            } else {
+                Log.e("LocalAIEngine", "❌ Échec du chargement du modèle")
+            }
+            
+            isModelLoaded
         } catch (e: Exception) {
-            Log.e("LocalAIEngine", "Failed to load model", e)
+            Log.e("LocalAIEngine", "❌ Exception lors du chargement", e)
             false
         }
     }
@@ -76,69 +79,105 @@ class LocalAIEngine(
         messages: List<Message>
     ): String = withContext(Dispatchers.IO) {
         if (!isModelLoaded) {
-            Log.w("LocalAIEngine", "Model not loaded, using fallback")
-            return@withContext getFallbackResponse(character)
+            Log.w("LocalAIEngine", "❌ Modèle non chargé, utilisation du fallback")
+            return@withContext contextualGenerator.generateContextualResponse(
+                userMessage = messages.lastOrNull { it.isUser }?.content ?: "",
+                character = character,
+                messages = messages
+            )
         }
         
         try {
-            // Build optimized prompt
-            val prompt = promptOptimizer.buildEnhancedPrompt(
-                character = character,
-                messages = messages,
-                maxContextLength = contextSize
-            )
+            Log.d("LocalAIEngine", "===== Génération avec llama.cpp =====")
             
-            val optimizedPrompt = promptOptimizer.optimizeForModel(prompt, contextSize)
+            // Construire le prompt système avec le générateur contextuel
+            val systemPrompt = contextualGenerator.buildSystemPrompt(character, messages)
             
-            Log.d("LocalAIEngine", "Generating response...")
+            // Construire le prompt complet au format chat
+            val fullPrompt = buildChatPrompt(systemPrompt, character, messages)
             
-            // TODO: Replace with actual JNI call
-            /*
-            val response = nativeGenerate(
-                prompt = optimizedPrompt,
+            Log.d("LocalAIEngine", "Prompt construit (${fullPrompt.length} caractères)")
+            Log.d("LocalAIEngine", "Premiers 200 car: ${fullPrompt.take(200)}...")
+            
+            // VRAIMENT générer via JNI avec llama.cpp
+            val rawResponse = nativeGenerate(
+                prompt = fullPrompt,
                 maxTokens = config.maxTokens,
                 temperature = config.temperature,
                 topP = config.topP,
                 topK = config.topK,
                 repeatPenalty = config.repeatPenalty
             )
-            */
             
-            // Utiliser le générateur contextuel pour des réponses EN LIEN avec le message
-            val lastUserMessage = messages.lastOrNull { it.isUser }?.content ?: ""
+            Log.d("LocalAIEngine", "Réponse brute reçue: ${rawResponse.take(100)}...")
             
-            // Générer une réponse CONTEXTUELLE basée sur le contenu du message
-            val intelligentResponse = contextualGenerator.generateContextualResponse(
-                userMessage = lastUserMessage,
+            if (rawResponse.isBlank()) {
+                Log.w("LocalAIEngine", "⚠️ Réponse vide du modèle, fallback")
+                return@withContext contextualGenerator.generateContextualResponse(
+                    userMessage = messages.lastOrNull { it.isUser }?.content ?: "",
+                    character = character,
+                    messages = messages
+                )
+            }
+            
+            // Post-process response
+            val cleaned = cleanResponse(rawResponse)
+            
+            Log.i("LocalAIEngine", "✅ Réponse générée avec succès!")
+            Log.d("LocalAIEngine", "Réponse finale: $cleaned")
+            
+            cleaned
+        } catch (e: Exception) {
+            Log.e("LocalAIEngine", "❌ Échec de la génération", e)
+            contextualGenerator.generateContextualResponse(
+                userMessage = messages.lastOrNull { it.isUser }?.content ?: "",
                 character = character,
                 messages = messages
             )
-            
-            // Post-process response
-            val cleaned = cleanResponse(intelligentResponse)
-            
-            // Valider et améliorer la cohérence
-            val userMessage = messages.lastOrNull { it.isUser }?.content ?: ""
-            val validated = responseValidator.improveResponse(userMessage, cleaned, character)
-            val enhanced = promptOptimizer.enhanceResponseCoherence(character, messages, validated)
-            
-            Log.d("LocalAIEngine", "Response generated: ${enhanced.take(50)}...")
-            enhanced
-            
-        } catch (e: Exception) {
-            Log.e("LocalAIEngine", "Error generating response", e)
-            getFallbackResponse(character)
         }
+    }
+    
+    /**
+     * Construire le prompt au format chat
+     */
+    private fun buildChatPrompt(systemPrompt: String, character: Character, messages: List<Message>): String {
+        val sb = StringBuilder()
+        
+        // Prompt système
+        sb.append("<|system|>\n")
+        sb.append(systemPrompt)
+        sb.append("\n")
+        
+        // Historique de conversation (5 derniers messages max pour ne pas dépasser le contexte)
+        val recentMessages = messages.takeLast(5)
+        
+        for (message in recentMessages) {
+            if (message.isUser) {
+                sb.append("<|user|>\n")
+                sb.append(message.content)
+                sb.append("\n")
+            } else {
+                sb.append("<|assistant|>\n")
+                sb.append(message.content)
+                sb.append("\n")
+            }
+        }
+        
+        // Début de la réponse de l'assistant
+        sb.append("<|assistant|>\n")
+        
+        return sb.toString()
     }
     
     fun unloadModel() {
         if (isModelLoaded) {
             try {
-                // nativeUnloadModel()
+                Log.d("LocalAIEngine", "===== Déchargement du modèle =====")
+                nativeUnloadModel()
                 isModelLoaded = false
-                Log.d("LocalAIEngine", "Model unloaded")
+                Log.i("LocalAIEngine", "✅ Modèle déchargé")
             } catch (e: Exception) {
-                Log.e("LocalAIEngine", "Error unloading model", e)
+                Log.e("LocalAIEngine", "❌ Erreur lors du déchargement", e)
             }
         }
     }

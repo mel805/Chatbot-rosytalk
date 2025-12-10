@@ -1,30 +1,31 @@
-/**
- * JNI Interface for llama.cpp
- * 
- * This file provides the bridge between Kotlin/Java and the native llama.cpp library.
- * It implements the native methods declared in LocalAIEngine.kt
- */
-
 #include <jni.h>
 #include <android/log.h>
 #include <string>
 #include <vector>
+#include <memory>
 
-// Include llama.cpp headers (when integrated)
-// #include "llama.h"
+// Inclure llama.cpp headers
+#include "llama.h"
 
 #define TAG "RolePlayAI-Native"
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__)
 
-// Global model context (when llama.cpp is integrated)
-// static llama_context* g_ctx = nullptr;
-// static llama_model* g_model = nullptr;
+// Contexte global pour le modèle
+struct ModelContext {
+    llama_model* model = nullptr;
+    llama_context* ctx = nullptr;
+    llama_sampler* sampler = nullptr;
+    int n_ctx = 2048;
+};
+
+static std::unique_ptr<ModelContext> g_model_ctx;
 
 extern "C" {
 
 /**
- * Load the LLM model from the specified path
+ * Charger le modèle LLM
  */
 JNIEXPORT jboolean JNICALL
 Java_com_roleplayai_chatbot_data_ai_LocalAIEngine_nativeLoadModel(
@@ -35,44 +36,81 @@ Java_com_roleplayai_chatbot_data_ai_LocalAIEngine_nativeLoadModel(
         jint contextSize) {
     
     const char* path = env->GetStringUTFChars(modelPath, nullptr);
-    LOGD("Loading model from: %s", path);
-    LOGD("Threads: %d, Context size: %d", threads, contextSize);
+    LOGI("===== Chargement du modèle =====");
+    LOGI("Chemin: %s", path);
+    LOGI("Threads: %d, Context: %d", threads, contextSize);
     
-    // TODO: Implement actual model loading with llama.cpp
-    /*
-    llama_backend_init(false);
-    
-    llama_model_params model_params = llama_model_default_params();
-    g_model = llama_load_model_from_file(path, model_params);
-    
-    if (g_model == nullptr) {
-        LOGE("Failed to load model");
+    try {
+        // Initialiser llama backend
+        llama_backend_init();
+        
+        // Créer le contexte
+        g_model_ctx = std::make_unique<ModelContext>();
+        g_model_ctx->n_ctx = contextSize;
+        
+        // Paramètres du modèle
+        llama_model_params model_params = llama_model_default_params();
+        model_params.n_gpu_layers = 0; // CPU uniquement sur Android
+        
+        // Charger le modèle
+        LOGI("Chargement du modèle depuis %s...", path);
+        g_model_ctx->model = llama_load_model_from_file(path, model_params);
+        
+        if (g_model_ctx->model == nullptr) {
+            LOGE("Échec du chargement du modèle");
+            g_model_ctx.reset();
+            env->ReleaseStringUTFChars(modelPath, path);
+            return JNI_FALSE;
+        }
+        
+        LOGI("Modèle chargé! Création du contexte...");
+        
+        // Paramètres du contexte
+        llama_context_params ctx_params = llama_context_default_params();
+        ctx_params.n_ctx = contextSize;
+        ctx_params.n_threads = threads;
+        ctx_params.n_threads_batch = threads;
+        
+        // Créer le contexte
+        g_model_ctx->ctx = llama_new_context_with_model(g_model_ctx->model, ctx_params);
+        
+        if (g_model_ctx->ctx == nullptr) {
+            LOGE("Échec de la création du contexte");
+            llama_free_model(g_model_ctx->model);
+            g_model_ctx.reset();
+            env->ReleaseStringUTFChars(modelPath, path);
+            return JNI_FALSE;
+        }
+        
+        // Créer le sampler
+        llama_sampler_chain_params sampler_params = llama_sampler_chain_default_params();
+        g_model_ctx->sampler = llama_sampler_chain_init(sampler_params);
+        
+        // Ajouter des samplers basiques
+        llama_sampler_chain_add(g_model_ctx->sampler, 
+                                llama_sampler_init_temp(0.8f));
+        llama_sampler_chain_add(g_model_ctx->sampler, 
+                                llama_sampler_init_top_k(40));
+        llama_sampler_chain_add(g_model_ctx->sampler, 
+                                llama_sampler_init_top_p(0.95f, 1));
+        llama_sampler_chain_add(g_model_ctx->sampler, 
+                                llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
+        
+        env->ReleaseStringUTFChars(modelPath, path);
+        
+        LOGI("===== Modèle chargé avec succès! =====");
+        return JNI_TRUE;
+        
+    } catch (const std::exception& e) {
+        LOGE("Exception lors du chargement: %s", e.what());
+        g_model_ctx.reset();
         env->ReleaseStringUTFChars(modelPath, path);
         return JNI_FALSE;
     }
-    
-    llama_context_params ctx_params = llama_context_default_params();
-    ctx_params.n_ctx = contextSize;
-    ctx_params.n_threads = threads;
-    
-    g_ctx = llama_new_context_with_model(g_model, ctx_params);
-    
-    if (g_ctx == nullptr) {
-        LOGE("Failed to create context");
-        llama_free_model(g_model);
-        g_model = nullptr;
-        env->ReleaseStringUTFChars(modelPath, path);
-        return JNI_FALSE;
-    }
-    */
-    
-    env->ReleaseStringUTFChars(modelPath, path);
-    LOGD("Model loaded successfully (placeholder)");
-    return JNI_TRUE;
 }
 
 /**
- * Generate text completion from the prompt
+ * Générer une complétion de texte
  */
 JNIEXPORT jstring JNICALL
 Java_com_roleplayai_chatbot_data_ai_LocalAIEngine_nativeGenerate(
@@ -85,76 +123,175 @@ Java_com_roleplayai_chatbot_data_ai_LocalAIEngine_nativeGenerate(
         jint topK,
         jfloat repeatPenalty) {
     
+    if (!g_model_ctx || !g_model_ctx->model || !g_model_ctx->ctx) {
+        LOGE("Modèle non chargé!");
+        return env->NewStringUTF("");
+    }
+    
     const char* promptStr = env->GetStringUTFChars(prompt, nullptr);
-    LOGD("Generating response for prompt (length: %zu)", strlen(promptStr));
+    LOGI("===== Génération de réponse =====");
+    LOGD("Prompt (premiers 100 car): %.100s...", promptStr);
+    LOGD("Paramètres: max_tokens=%d, temp=%.2f, top_p=%.2f, top_k=%d", 
+         maxTokens, temperature, topP, topK);
     
-    // TODO: Implement actual text generation with llama.cpp
-    /*
-    if (g_ctx == nullptr || g_model == nullptr) {
-        LOGE("Model not loaded");
+    try {
+        // Mettre à jour les paramètres du sampler
+        llama_sampler_free(g_model_ctx->sampler);
+        
+        llama_sampler_chain_params sampler_params = llama_sampler_chain_default_params();
+        g_model_ctx->sampler = llama_sampler_chain_init(sampler_params);
+        
+        llama_sampler_chain_add(g_model_ctx->sampler, 
+                                llama_sampler_init_temp(temperature));
+        llama_sampler_chain_add(g_model_ctx->sampler, 
+                                llama_sampler_init_top_k(topK));
+        llama_sampler_chain_add(g_model_ctx->sampler, 
+                                llama_sampler_init_top_p(topP, 1));
+        llama_sampler_chain_add(g_model_ctx->sampler, 
+                                llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
+        
+        // Tokenizer le prompt avec la nouvelle API
+        const llama_vocab* vocab = llama_model_get_vocab(g_model_ctx->model);
+        std::vector<llama_token> tokens;
+        
+        const int n_prompt_tokens = -llama_tokenize(
+            vocab,
+            promptStr,
+            strlen(promptStr),
+            nullptr,
+            0,
+            true,  // add_special
+            true   // parse_special
+        );
+        
+        tokens.resize(n_prompt_tokens);
+        
+        if (llama_tokenize(
+                vocab,
+                promptStr,
+                strlen(promptStr),
+                tokens.data(),
+                tokens.size(),
+                true,
+                true) < 0) {
+            LOGE("Échec de la tokenization");
+            env->ReleaseStringUTFChars(prompt, promptStr);
+            return env->NewStringUTF("");
+        }
+        
+        LOGI("Prompt tokenizé: %d tokens", (int)tokens.size());
+        
+        // Créer le batch
+        llama_batch batch = llama_batch_get_one(tokens.data(), tokens.size());
+        
+        // Décoder le prompt
+        if (llama_decode(g_model_ctx->ctx, batch) != 0) {
+            LOGE("Échec du décodage du prompt");
+            env->ReleaseStringUTFChars(prompt, promptStr);
+            return env->NewStringUTF("");
+        }
+        
+        // Générer les tokens
+        std::string response;
+        int n_cur = tokens.size();
+        int n_gen = 0;
+        
+        LOGI("Génération en cours...");
+        
+        while (n_gen < maxTokens) {
+            // Sampler le prochain token
+            llama_token new_token = llama_sampler_sample(g_model_ctx->sampler, g_model_ctx->ctx, -1);
+            
+            // Obtenir le vocab
+            const llama_vocab* vocab = llama_model_get_vocab(g_model_ctx->model);
+            
+            // Vérifier fin de génération
+            if (llama_vocab_is_eog(vocab, new_token)) {
+                LOGI("Token EOS détecté, arrêt de la génération");
+                break;
+            }
+            
+            // Décoder le token en texte
+            char buf[256];
+            int n = llama_token_to_piece(vocab, new_token, buf, sizeof(buf), 0, true);
+            if (n > 0) {
+                response.append(buf, n);
+            }
+            
+            // Préparer le prochain batch
+            batch = llama_batch_get_one(&new_token, 1);
+            
+            if (llama_decode(g_model_ctx->ctx, batch) != 0) {
+                LOGE("Échec du décodage à la position %d", n_cur);
+                break;
+            }
+            
+            n_cur++;
+            n_gen++;
+            
+            // Log progression tous les 10 tokens
+            if (n_gen % 10 == 0) {
+                LOGD("Généré %d/%d tokens", n_gen, maxTokens);
+            }
+        }
+        
         env->ReleaseStringUTFChars(prompt, promptStr);
-        return env->NewStringUTF("Error: Model not loaded");
+        
+        LOGI("Génération terminée: %d tokens générés", n_gen);
+        LOGD("Réponse: %s", response.c_str());
+        
+        return env->NewStringUTF(response.c_str());
+        
+    } catch (const std::exception& e) {
+        LOGE("Exception lors de la génération: %s", e.what());
+        env->ReleaseStringUTFChars(prompt, promptStr);
+        return env->NewStringUTF("");
     }
-    
-    // Tokenize prompt
-    std::vector<llama_token> tokens;
-    // ... tokenization code ...
-    
-    // Generate tokens
-    std::string response;
-    for (int i = 0; i < maxTokens; i++) {
-        // ... generation loop ...
-    }
-    */
-    
-    // Placeholder response
-    std::string response = "This is a placeholder response from native code. "
-                          "llama.cpp will be integrated here for actual AI inference.";
-    
-    env->ReleaseStringUTFChars(prompt, promptStr);
-    return env->NewStringUTF(response.c_str());
 }
 
 /**
- * Unload the model and free resources
+ * Décharger le modèle
  */
 JNIEXPORT void JNICALL
 Java_com_roleplayai_chatbot_data_ai_LocalAIEngine_nativeUnloadModel(
         JNIEnv* env,
         jobject /* this */) {
     
-    LOGD("Unloading model");
+    LOGI("===== Déchargement du modèle =====");
     
-    // TODO: Implement actual model unloading
-    /*
-    if (g_ctx != nullptr) {
-        llama_free(g_ctx);
-        g_ctx = nullptr;
-    }
-    
-    if (g_model != nullptr) {
-        llama_free_model(g_model);
-        g_model = nullptr;
+    if (g_model_ctx) {
+        if (g_model_ctx->sampler) {
+            llama_sampler_free(g_model_ctx->sampler);
+            g_model_ctx->sampler = nullptr;
+        }
+        
+        if (g_model_ctx->ctx) {
+            llama_free(g_model_ctx->ctx);
+            g_model_ctx->ctx = nullptr;
+        }
+        
+        if (g_model_ctx->model) {
+            llama_free_model(g_model_ctx->model);
+            g_model_ctx->model = nullptr;
+        }
+        
+        g_model_ctx.reset();
     }
     
     llama_backend_free();
-    */
     
-    LOGD("Model unloaded (placeholder)");
+    LOGI("Modèle déchargé");
 }
 
 /**
- * Check if model is loaded
+ * Vérifier si le modèle est chargé
  */
 JNIEXPORT jboolean JNICALL
 Java_com_roleplayai_chatbot_data_ai_LocalAIEngine_nativeIsLoaded(
         JNIEnv* env,
         jobject /* this */) {
     
-    // TODO: Check actual model state
-    // return (g_ctx != nullptr && g_model != nullptr) ? JNI_TRUE : JNI_FALSE;
-    
-    return JNI_FALSE; // Placeholder
+    return (g_model_ctx && g_model_ctx->model && g_model_ctx->ctx) ? JNI_TRUE : JNI_FALSE;
 }
 
 } // extern "C"
