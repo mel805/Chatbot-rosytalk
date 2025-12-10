@@ -175,33 +175,40 @@ class LocalAIEngine(
     }
     
     /**
-     * Construire le prompt au format chat
+     * Construire le prompt au format chat avec RÔLES CLARIFIÉS
      */
     private fun buildChatPrompt(systemPrompt: String, character: Character, messages: List<Message>): String {
         val sb = StringBuilder()
         
-        // Prompt système
-        sb.append("<|system|>\n")
-        sb.append(systemPrompt)
-        sb.append("\n")
+        // Prompt système ULTRA-CLAIR sur le rôle
+        sb.append("### INSTRUCTION ###\n")
+        sb.append("Tu es ${character.name}. ${character.description}\n")
+        sb.append("Personnalité: ${character.personality}\n\n")
+        sb.append("RÈGLES ABSOLUES:\n")
+        sb.append("1. TU ES ${character.name.uppercase()} - Tu parles en tant que ${character.name}\n")
+        sb.append("2. L'utilisateur est une autre personne qui te parle\n")
+        sb.append("3. Réponds TOUJOURS en restant dans ton personnage\n")
+        sb.append("4. Utilise des actions entre *astérisques* pour tes gestes\n")
+        sb.append("5. Sois cohérent(e) avec ta personnalité: ${character.personality}\n")
+        sb.append("6. Réponds de façon courte et naturelle (1-2 phrases max)\n\n")
         
-        // Historique de conversation (5 derniers messages max pour ne pas dépasser le contexte)
-        val recentMessages = messages.takeLast(5)
+        // Historique de conversation (3 derniers messages pour contexte rapide)
+        val recentMessages = messages.takeLast(3)
         
-        for (message in recentMessages) {
-            if (message.isUser) {
-                sb.append("<|user|>\n")
-                sb.append(message.content)
-                sb.append("\n")
-            } else {
-                sb.append("<|assistant|>\n")
-                sb.append(message.content)
-                sb.append("\n")
+        if (recentMessages.isNotEmpty()) {
+            sb.append("### CONVERSATION ###\n")
+            for (message in recentMessages) {
+                if (message.isUser) {
+                    sb.append("Utilisateur: ${message.content}\n")
+                } else {
+                    sb.append("${character.name}: ${message.content}\n")
+                }
             }
         }
         
-        // Début de la réponse de l'assistant
-        sb.append("<|assistant|>\n")
+        // Demande de réponse
+        sb.append("\n### RÉPONSE ###\n")
+        sb.append("${character.name}:")
         
         return sb.toString()
     }

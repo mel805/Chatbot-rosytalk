@@ -26,9 +26,9 @@ data class InferenceConfig(
     val temperature: Float = 0.7f,   // Plus déterministe pour cohérence
     val topP: Float = 0.9f,
     val topK: Int = 30,              // Réduit pour plus de cohérence
-    val repeatPenalty: Float = 1.2f, // Anti-répétition renforcé
+    val repeatPenalty: Float = 1.3f, // Anti-répétition renforcé
     val contextLength: Int = 1024,   // Réduit pour mobile (économise RAM)
-    val maxTokens: Int = 150,        // Réduit pour réponses plus rapides
+    val maxTokens: Int = 60,         // Très court pour rapidité mobile
     val threads: Int = 4,
     val batchSize: Int = 512
 )
