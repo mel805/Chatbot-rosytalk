@@ -3,60 +3,187 @@ package com.roleplayai.chatbot.ui.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.roleplayai.chatbot.data.auth.LocalAuthManager
-import com.roleplayai.chatbot.data.auth.User
-import com.roleplayai.chatbot.data.auth.UserPreferences
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
+import com.roleplayai.chatbot.data.auth.AuthManager
+import com.roleplayai.chatbot.data.auth.AuthResult
+import com.roleplayai.chatbot.data.model.User
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 
+/**
+ * ViewModel pour gérer l'authentification
+ */
 class AuthViewModel(application: Application) : AndroidViewModel(application) {
     
-    private val authManager = LocalAuthManager.getInstance(application)
+    private val authManager = AuthManager.getInstance(application)
     
+    // États d'authentification
     val currentUser: StateFlow<User?> = authManager.currentUser
-        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    val isLoggedIn: StateFlow<Boolean> = authManager.isLoggedIn
     
-    val isAdmin: StateFlow<Boolean> = authManager.isAdmin
+    // État admin (seul douvdouv21@gmail.com)
+    val isAdmin: StateFlow<Boolean> = currentUser.map { it?.isAdmin == true }
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
     
+    // États UI
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading = _isLoading.asStateFlow()
+    
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage = _errorMessage.asStateFlow()
+    
+    private val _successMessage = MutableStateFlow<String?>(null)
+    val successMessage = _successMessage.asStateFlow()
+    
     init {
-        // Charger l'utilisateur au démarrage
+        // Restaurer la session au démarrage
         viewModelScope.launch {
-            authManager.loadCurrentUser()
+            authManager.restoreSession()
         }
     }
     
-    suspend fun signIn(email: String, displayName: String = "", username: String = "", bio: String = "", age: String = ""): Result<User> {
-        return authManager.signIn(email, displayName, username, bio, age)
-    }
-    
-    suspend fun updateUserProfile(displayName: String, username: String, bio: String, age: String): Result<User> {
-        return authManager.updateUserProfile(displayName, username, bio, age)
-    }
-    
-    fun signOut() {
+    /**
+     * Inscription
+     */
+    fun register(
+        email: String,
+        password: String,
+        confirmPassword: String,
+        pseudo: String,
+        age: Int,
+        gender: String
+    ) {
         viewModelScope.launch {
-            authManager.signOut()
+            _isLoading.value = true
+            _errorMessage.value = null
+            _successMessage.value = null
+            
+            // Validation
+            if (password != confirmPassword) {
+                _errorMessage.value = "Les mots de passe ne correspondent pas"
+                _isLoading.value = false
+                return@launch
+            }
+            
+            // Inscription
+            when (val result = authManager.register(email, password, pseudo, age, gender)) {
+                is AuthResult.Success -> {
+                    _successMessage.value = "Inscription réussie ! Bienvenue ${result.user.pseudo} 👋"
+                    // Utilisateur automatiquement connecté
+                }
+                is AuthResult.Error -> {
+                    _errorMessage.value = result.message
+                }
+            }
+            
+            _isLoading.value = false
         }
     }
     
-    fun isUserAdmin(): Boolean {
-        return authManager.isAdmin()
-    }
-    
-    fun getUserPreferences(): UserPreferences? {
-        return authManager.getUserPreferences()
-    }
-    
-    fun saveUserPreferences(preferences: UserPreferences) {
+    /**
+     * Connexion
+     */
+    fun login(email: String, password: String) {
         viewModelScope.launch {
-            authManager.saveUserPreferences(preferences)
+            _isLoading.value = true
+            _errorMessage.value = null
+            _successMessage.value = null
+            
+            when (val result = authManager.login(email, password)) {
+                is AuthResult.Success -> {
+                    _successMessage.value = "Connexion réussie ! Bienvenue ${result.user.pseudo} 👋"
+                }
+                is AuthResult.Error -> {
+                    _errorMessage.value = result.message
+                }
+            }
+            
+            _isLoading.value = false
         }
     }
     
-    suspend fun getAllUsers(): List<User> {
-        return authManager.getAllUsers()
+    /**
+     * Déconnexion
+     */
+    fun logout() {
+        authManager.logout()
+        _successMessage.value = "Déconnecté"
+    }
+    
+    /**
+     * Met à jour le profil
+     */
+    fun updateProfile(
+        pseudo: String? = null,
+        age: Int? = null,
+        gender: String? = null,
+        isNsfwEnabled: Boolean? = null
+    ) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            
+            val success = authManager.updateProfile(pseudo, age, gender, isNsfwEnabled)
+            
+            if (success) {
+                _successMessage.value = "Profil mis à jour ✅"
+            } else {
+                _errorMessage.value = "Erreur lors de la mise à jour"
+            }
+            
+            _isLoading.value = false
+        }
+    }
+    
+    /**
+     * Active/désactive le mode NSFW
+     */
+    fun toggleNsfw(enabled: Boolean) {
+        viewModelScope.launch {
+            val user = currentUser.value
+            if (user != null) {
+                if (enabled && !user.isAdult()) {
+                    _errorMessage.value = "⚠️ Mode NSFW réservé aux 18+ ans"
+                    return@launch
+                }
+                
+                authManager.updateProfile(isNsfwEnabled = enabled)
+                _successMessage.value = if (enabled) {
+                    "Mode NSFW activé 🔞"
+                } else {
+                    "Mode NSFW désactivé"
+                }
+            }
+        }
+    }
+    
+    /**
+     * Efface les messages
+     */
+    fun clearMessages() {
+        _errorMessage.value = null
+        _successMessage.value = null
+    }
+    
+    /**
+     * Obtient le pseudo de l'utilisateur actuel
+     */
+    fun getCurrentPseudo(): String {
+        return currentUser.value?.pseudo ?: "Utilisateur"
+    }
+    
+    /**
+     * Obtient le sexe de l'utilisateur pour les prompts
+     */
+    fun getUserGenderForPrompt(): String {
+        return currentUser.value?.getGenderForPrompt() ?: "neutre"
+    }
+    
+    /**
+     * Vérifie si le mode NSFW est activé
+     */
+    fun isNsfwEnabled(): Boolean {
+        return currentUser.value?.isNsfwEnabled == true
     }
 }

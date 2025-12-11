@@ -9,15 +9,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.roleplayai.chatbot.ui.screen.CharacterListScreen
-import com.roleplayai.chatbot.ui.screen.CharacterProfileScreen
-import com.roleplayai.chatbot.ui.screen.ChatScreen
-import com.roleplayai.chatbot.ui.screen.LoginScreen
-import com.roleplayai.chatbot.ui.screen.MainScreen
-import com.roleplayai.chatbot.ui.screen.ModelSelectionScreen
-import com.roleplayai.chatbot.ui.screen.ProfileScreen
-import com.roleplayai.chatbot.ui.screen.SettingsScreen
-import com.roleplayai.chatbot.ui.screen.SplashScreen
+import com.roleplayai.chatbot.ui.screen.*
 import com.roleplayai.chatbot.ui.viewmodel.AuthViewModel
 import com.roleplayai.chatbot.ui.viewmodel.CharacterViewModel
 import com.roleplayai.chatbot.ui.viewmodel.ChatViewModel
@@ -33,6 +25,7 @@ sealed class Screen(val route: String) {
     object CharacterList : Screen("character_list")
     object Settings : Screen("settings")
     object Profile : Screen("user_profile")
+    object AdminUsers : Screen("admin_users")
     object Chat : Screen("chat/{characterId}") {
         fun createRoute(characterId: String) = "chat/$characterId"
     }
@@ -94,13 +87,14 @@ fun AppNavigation(
         }
         
         composable(Screen.Login.route) {
-            LoginScreen(
-                onLoginSuccess = {
-                    // Après connexion, naviguer vers sélection de modèle ou liste
+            AuthScreen(
+                onAuthSuccess = {
+                    // Après connexion/inscription, naviguer vers sélection de modèle
                     navController.navigate(Screen.ModelSelection.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
-                }
+                },
+                viewModel = authViewModel
             )
         }
         
@@ -136,6 +130,15 @@ fun AppNavigation(
                 },
                 onNavigateToProfile = {
                     navController.navigate(Screen.Profile.route)
+                },
+                onNavigateToAdminUsers = {
+                    navController.navigate(Screen.AdminUsers.route)
+                },
+                onLogout = {
+                    // Déconnexion : retour à l'écran de connexion
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
                 }
             )
         }
@@ -192,7 +195,20 @@ fun AppNavigation(
         }
         
         composable(Screen.Profile.route) {
-            ProfileScreen(
+            UserProfileScreen(
+                viewModel = authViewModel,
+                onBack = { navController.popBackStack() },
+                onLogout = {
+                    authViewModel.logout()
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            )
+        }
+        
+        composable(Screen.AdminUsers.route) {
+            AdminUsersScreen(
                 onBack = { navController.popBackStack() }
             )
         }
@@ -200,23 +216,8 @@ fun AppNavigation(
         composable(Screen.Chat.route) { backStackEntry ->
             val characterId = backStackEntry.arguments?.getString("characterId") ?: return@composable
             
-            // Initialiser le moteur local avec le modèle téléchargé
-            LaunchedEffect(Unit) {
-                val modelPath = modelViewModel.getModelPath()
-                if (modelPath != null) {
-                    // Modèle trouvé, l'initialiser
-                    chatViewModel.initializeLocalAI(modelPath)
-                } else {
-                    // Pas de modèle, essayer de charger le modèle sélectionné
-                    val selectedModel = modelViewModel.selectedModel.value
-                    if (selectedModel != null) {
-                        val path = modelViewModel.modelDownloader.getModelPath(selectedModel)
-                        if (path != null) {
-                            chatViewModel.initializeLocalAI(path)
-                        }
-                    }
-                }
-            }
+            // Initialisation LocalAI supprimée - utilisation uniquement d'APIs externes
+            // Pour améliorer les réponses, activez Groq, Together AI ou HuggingFace dans les paramètres
             
             ChatScreen(
                 viewModel = chatViewModel,
