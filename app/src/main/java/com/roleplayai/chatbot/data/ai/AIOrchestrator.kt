@@ -34,33 +34,24 @@ class AIOrchestrator(
      */
     enum class AIEngine {
         GROQ,           // API Groq (ultra-rapide, cloud)
-        OPENROUTER,     // OpenRouter (modèles NSFW non censurés, cloud)
-        GEMINI_NANO,    // Gemini Nano (on-device, Android 14+)
-        LLAMA_CPP,      // llama.cpp (modèles GGUF locaux)
-        TOGETHER_AI,    // Together AI (API gratuite)
-        SMART_LOCAL;    // SmartLocalAI (templates intelligents, fallback ultime)
+        GEMINI,         // Google Gemini (cloud, excellente qualité)
+        LLAMA_CPP;      // llama.cpp (modèles GGUF locaux)
         
         fun getDisplayName(): String = when(this) {
             GROQ -> "Groq API (Cloud)"
-            OPENROUTER -> "OpenRouter NSFW (Cloud)"
-            GEMINI_NANO -> "Gemini Nano (Local)"
+            GEMINI -> "Google Gemini (Cloud)"
             LLAMA_CPP -> "llama.cpp (Local)"
-            TOGETHER_AI -> "Together AI (Cloud)"
-            SMART_LOCAL -> "IA Locale Simple"
         }
         
         fun getDescription(): String = when(this) {
-            GROQ -> "Réponses ultra-rapides (1-2s), qualité maximale. Nécessite Internet."
-            OPENROUTER -> "Modèles non censurés pour NSFW. Idéal pour contenu adulte."
-            GEMINI_NANO -> "IA Google locale. Android 14+ uniquement. Excellente qualité."
-            LLAMA_CPP -> "Modèles locaux GGUF. Phi-3, Gemma, TinyLlama, etc."
-            TOGETHER_AI -> "API gratuite de secours. Qualité correcte."
-            SMART_LOCAL -> "Réponses locales basées sur templates. Toujours disponible."
+            GROQ -> "Ultra-rapide (1-2s), excellente qualité. Nécessite clé API gratuite."
+            GEMINI -> "Intelligence Google de haute qualité. Très cohérent. Nécessite clé API."
+            LLAMA_CPP -> "Modèles locaux GGUF. 100% privé, fonctionne hors-ligne."
         }
         
         fun isLocal(): Boolean = when(this) {
-            GROQ, OPENROUTER, TOGETHER_AI -> false
-            GEMINI_NANO, LLAMA_CPP, SMART_LOCAL -> true
+            GROQ, GEMINI -> false
+            LLAMA_CPP -> true
         }
         
         fun requiresInternet(): Boolean = !isLocal()
@@ -75,8 +66,8 @@ class AIOrchestrator(
         val nsfwMode: Boolean = false,
         val groqApiKey: String? = null,
         val groqModelId: String? = null,
-        val openRouterApiKey: String? = null,
-        val openRouterModelId: String? = null,
+        val geminiApiKey: String? = null,
+        val geminiModelId: String? = null,
         val llamaCppModelPath: String? = null
     )
     
@@ -170,23 +161,10 @@ class AIOrchestrator(
             }
         }
         
-        // Dernier recours absolu : SmartLocalAI (ne peut pas échouer)
-        Log.w(TAG, "🆘 Utilisation fallback ultime: SmartLocalAI")
-        val smartAI = SmartLocalAI(context, character, character.id, config.nsfwMode)
-        val response = smartAI.generateResponse(
-            messages.lastOrNull { it.isUser }?.content ?: "",
-            messages,
-            username
-        )
-        
+        // Aucun moteur disponible
         val duration = System.currentTimeMillis() - startTime
-        
-        return@withContext GenerationResult(
-            response = response,
-            usedEngine = AIEngine.SMART_LOCAL,
-            generationTimeMs = duration,
-            hadFallback = true
-        )
+        Log.e(TAG, "❌ Tous les moteurs IA ont échoué")
+        throw Exception("Tous les moteurs IA sont indisponibles. Vérifiez vos clés API et votre connexion Internet.")
     }
     
     /**
@@ -210,19 +188,11 @@ class AIOrchestrator(
                 groqEngine.generateResponse(character, messages, username, userGender, memoryContext)
             }
             
-            AIEngine.OPENROUTER -> {
-                val apiKey = config.openRouterApiKey ?: throw Exception("Clé API OpenRouter manquante")
-                val modelId = config.openRouterModelId ?: "nousresearch/nous-hermes-2-mixtral-8x7b-dpo"
+            AIEngine.GEMINI -> {
+                val apiKey = config.geminiApiKey ?: throw Exception("Clé API Gemini manquante")
+                val modelId = config.geminiModelId ?: "gemini-pro"
                 
-                val openRouterEngine = OpenRouterEngine(apiKey, modelId, config.nsfwMode)
-                openRouterEngine.generateResponse(character, messages, username, userGender, memoryContext)
-            }
-            
-            AIEngine.GEMINI_NANO -> {
-                val geminiEngine = GeminiNanoEngine(context, config.nsfwMode)
-                if (!geminiEngine.isAvailable()) {
-                    throw Exception("Gemini Nano non disponible (nécessite Android 14+)")
-                }
+                val geminiEngine = GeminiEngine(apiKey, modelId, config.nsfwMode)
                 geminiEngine.generateResponse(character, messages, username, userGender, memoryContext)
             }
             
@@ -244,23 +214,6 @@ class AIOrchestrator(
                 llamaEngine.generateResponse(character, messages, username, userGender, memoryContext)
             }
             
-            AIEngine.TOGETHER_AI -> {
-                val togetherEngine = TogetherAIEngine(
-                    apiKey = "",  // Gratuit
-                    model = "mistralai/Mistral-7B-Instruct-v0.2",
-                    nsfwMode = config.nsfwMode
-                )
-                togetherEngine.generateResponse(character, messages, username, userGender, memoryContext)
-            }
-            
-            AIEngine.SMART_LOCAL -> {
-                val smartAI = SmartLocalAI(context, character, character.id, config.nsfwMode)
-                smartAI.generateResponse(
-                    messages.lastOrNull { it.isUser }?.content ?: "",
-                    messages,
-                    username
-                )
-            }
         }
     }
     
@@ -270,33 +223,17 @@ class AIOrchestrator(
     private fun getFallbackCascade(primaryEngine: AIEngine): List<AIEngine> {
         return when (primaryEngine) {
             AIEngine.GROQ -> listOf(
-                AIEngine.OPENROUTER,
-                AIEngine.TOGETHER_AI,
-                AIEngine.GEMINI_NANO,
+                AIEngine.GEMINI,
                 AIEngine.LLAMA_CPP
             )
-            AIEngine.OPENROUTER -> listOf(
+            AIEngine.GEMINI -> listOf(
                 AIEngine.GROQ,
-                AIEngine.TOGETHER_AI,
-                AIEngine.GEMINI_NANO,
                 AIEngine.LLAMA_CPP
-            )
-            AIEngine.GEMINI_NANO -> listOf(
-                AIEngine.LLAMA_CPP,
-                AIEngine.TOGETHER_AI,
-                AIEngine.OPENROUTER
             )
             AIEngine.LLAMA_CPP -> listOf(
-                AIEngine.GEMINI_NANO,
-                AIEngine.TOGETHER_AI,
-                AIEngine.OPENROUTER
+                AIEngine.GROQ,
+                AIEngine.GEMINI
             )
-            AIEngine.TOGETHER_AI -> listOf(
-                AIEngine.OPENROUTER,
-                AIEngine.GEMINI_NANO,
-                AIEngine.LLAMA_CPP
-            )
-            AIEngine.SMART_LOCAL -> emptyList()
         }
     }
     
@@ -308,20 +245,12 @@ class AIOrchestrator(
             when (engine) {
                 AIEngine.GROQ -> config.groqApiKey?.isNotBlank() == true
                 
-                AIEngine.OPENROUTER -> config.openRouterApiKey?.isNotBlank() == true
-                
-                AIEngine.GEMINI_NANO -> {
-                    val geminiEngine = GeminiNanoEngine(context, false)
-                    geminiEngine.isAvailable()
-                }
+                AIEngine.GEMINI -> config.geminiApiKey?.isNotBlank() == true
                 
                 AIEngine.LLAMA_CPP -> {
-                    val llamaEngine = LlamaCppEngine(context, "", false)
-                    llamaEngine.getAvailableModels().isNotEmpty()
+                    val llamaEngine = LlamaCppEngine(context, config.llamaCppModelPath ?: "", false)
+                    llamaEngine.isAvailable()
                 }
-                
-                AIEngine.TOGETHER_AI -> true  // Toujours disponible (gratuit)
-                AIEngine.SMART_LOCAL -> true  // Toujours disponible
             }
         } catch (e: Exception) {
             Log.e(TAG, "Erreur vérification disponibilité ${engine.name}", e)

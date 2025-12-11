@@ -55,6 +55,10 @@ fun SettingsScreen(
     val groqModelId by settingsViewModel.groqModelId.collectAsState()
     val nsfwMode by settingsViewModel.nsfwMode.collectAsState()
     
+    // Gemini settings
+    val geminiApiKey by settingsViewModel.geminiApiKey.collectAsState()
+    val geminiModelId by settingsViewModel.geminiModelId.collectAsState()
+    
     // AI Engine settings
     val selectedAIEngine by settingsViewModel.selectedAIEngine.collectAsState()
     val enableAIFallbacks by settingsViewModel.enableAIFallbacks.collectAsState()
@@ -68,7 +72,9 @@ fun SettingsScreen(
     var showModelSelection by remember { mutableStateOf(false) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     var showGroqModels by remember { mutableStateOf(false) }
+    var showGeminiModels by remember { mutableStateOf(false) }
     var showAddKeyDialog by remember { mutableStateOf(false) }
+    var showGeminiKeyDialog by remember { mutableStateOf(false) }
     var newApiKeyInput by remember { mutableStateOf("") }
     var keyToDelete by remember { mutableStateOf<String?>(null) }
     var showAIEngineSelection by remember { mutableStateOf(false) }
@@ -752,6 +758,133 @@ fun SettingsScreen(
                 }
             }
             
+            // Section Gemini API (si sélectionné)
+            if (selectedAIEngine == "GEMINI") {
+                item {
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        "✨ Gemini API",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                
+                item {
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                "Google Gemini offre une intelligence de très haute qualité avec un contexte long (32k tokens). Idéal pour conversations complexes.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+                
+                // Configuration clé API Gemini
+                item {
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                "🔑 Clé API Gemini",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            
+                            if (geminiApiKey.isBlank()) {
+                                Text(
+                                    "Aucune clé configurée",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                FilledTonalButton(
+                                    onClick = { showGeminiKeyDialog = true }
+                                ) {
+                                    Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Ajouter une clé")
+                                }
+                                Spacer(Modifier.height(4.dp))
+                                TextButton(
+                                    onClick = { /* TODO: Ouvrir navigateur */ }
+                                ) {
+                                    Icon(Icons.Default.OpenInNew, null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Obtenir une clé gratuite", style = MaterialTheme.typography.bodySmall)
+                                }
+                            } else {
+                                Text(
+                                    "✅ Clé configurée: ${geminiApiKey.take(20)}...",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    FilledTonalButton(
+                                        onClick = { showGeminiKeyDialog = true }
+                                    ) {
+                                        Text("Modifier")
+                                    }
+                                    OutlinedButton(
+                                        onClick = { 
+                                            scope.launch { settingsViewModel.setGeminiApiKey("") }
+                                        }
+                                    ) {
+                                        Text("Supprimer", color = MaterialTheme.colorScheme.error)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Sélection modèle Gemini
+                if (geminiApiKey.isNotBlank()) {
+                    item {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showGeminiModels = true }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        "Modèle Gemini",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Spacer(Modifier.height(4.dp))
+                                    val currentModel = GeminiEngine.AVAILABLE_MODELS.find { it.id == geminiModelId }
+                                    Text(
+                                        currentModel?.name ?: geminiModelId,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
+                                        currentModel?.description ?: "",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Icon(Icons.Default.ChevronRight, null)
+                            }
+                        }
+                    }
+                }
+            }
+            
             // Section À propos
             item {
                 Spacer(Modifier.height(16.dp))
@@ -1251,6 +1384,137 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showLlamaCppModelSelection = false }) {
+                    Text("Fermer")
+                }
+            }
+        )
+    }
+    
+    // Dialog pour entrer la clé API Gemini
+    if (showGeminiKeyDialog) {
+        var keyInput by remember { mutableStateOf(geminiApiKey) }
+        
+        AlertDialog(
+            onDismissRequest = { showGeminiKeyDialog = false },
+            title = { Text("Clé API Gemini") },
+            text = {
+                Column {
+                    Text(
+                        "Entrez votre clé API Google Gemini (gratuite):",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = keyInput,
+                        onValueChange = { keyInput = it },
+                        label = { Text("Clé API") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "ℹ️ Obtenez votre clé sur: https://makersuite.google.com/app/apikey",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            settingsViewModel.setGeminiApiKey(keyInput)
+                            showGeminiKeyDialog = false
+                        }
+                    }
+                ) {
+                    Text("Enregistrer")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showGeminiKeyDialog = false }) {
+                    Text("Annuler")
+                }
+            }
+        )
+    }
+    
+    // Dialog de sélection du modèle Gemini
+    if (showGeminiModels) {
+        AlertDialog(
+            onDismissRequest = { showGeminiModels = false },
+            title = { Text("Choisir le modèle Gemini") },
+            text = {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(GeminiEngine.AVAILABLE_MODELS) { model ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    scope.launch {
+                                        settingsViewModel.setGeminiModelId(model.id)
+                                    }
+                                    showGeminiModels = false
+                                },
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (model.id == geminiModelId) {
+                                    MaterialTheme.colorScheme.primaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.surface
+                                }
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            model.name,
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        if (model.recommended) {
+                                            Spacer(Modifier.width(8.dp))
+                                            Text(
+                                                "⭐",
+                                                style = MaterialTheme.typography.bodySmall
+                                            )
+                                        }
+                                    }
+                                    Spacer(Modifier.height(2.dp))
+                                    Text(
+                                        model.description,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        "Context: ${model.contextLength / 1024}k tokens",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                if (model.id == geminiModelId) {
+                                    Icon(
+                                        Icons.Default.CheckCircle,
+                                        "Sélectionné",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showGeminiModels = false }) {
                     Text("Fermer")
                 }
             }

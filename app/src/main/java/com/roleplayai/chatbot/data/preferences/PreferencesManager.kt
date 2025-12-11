@@ -27,9 +27,9 @@ class PreferencesManager(private val context: Context) {
         private val NSFW_MODE_ENABLED = booleanPreferencesKey("nsfw_mode_enabled")
         private val USE_GROQ_API = booleanPreferencesKey("use_groq_api")
         
-        // OpenRouter API settings (NSFW)
-        private val OPENROUTER_API_KEY = stringPreferencesKey("openrouter_api_key")
-        private val OPENROUTER_MODEL_ID = stringPreferencesKey("openrouter_model_id")
+        // Gemini API settings
+        private val GEMINI_API_KEY = stringPreferencesKey("gemini_api_key")
+        private val GEMINI_MODEL_ID = stringPreferencesKey("gemini_model_id")
         
         // AI Engine selection
         private val SELECTED_AI_ENGINE = stringPreferencesKey("selected_ai_engine")
@@ -163,24 +163,24 @@ class PreferencesManager(private val context: Context) {
         preferences[LLAMA_CPP_MODEL_PATH] ?: ""
     }
     
-    // OpenRouter API settings
-    suspend fun setOpenRouterApiKey(apiKey: String) {
+    // Gemini API settings
+    suspend fun setGeminiApiKey(apiKey: String) {
         context.dataStore.edit { preferences ->
-            preferences[OPENROUTER_API_KEY] = apiKey
+            preferences[GEMINI_API_KEY] = apiKey
         }
     }
     
-    val openRouterApiKey: Flow<String> = context.dataStore.data.map { preferences ->
-        preferences[OPENROUTER_API_KEY] ?: ""
+    val geminiApiKey: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[GEMINI_API_KEY] ?: ""
     }
     
-    suspend fun setOpenRouterModelId(modelId: String) {
+    suspend fun setGeminiModelId(modelId: String) {
         context.dataStore.edit { preferences ->
-            preferences[OPENROUTER_MODEL_ID] = modelId
+            preferences[GEMINI_MODEL_ID] = modelId
         }
     }
     
-    val openRouterModelId: Flow<String> = context.dataStore.data.map { preferences ->
-        preferences[OPENROUTER_MODEL_ID] ?: "nousresearch/nous-hermes-2-mixtral-8x7b-dpo"
+    val geminiModelId: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[GEMINI_MODEL_ID] ?: "gemini-pro"
     }
 }

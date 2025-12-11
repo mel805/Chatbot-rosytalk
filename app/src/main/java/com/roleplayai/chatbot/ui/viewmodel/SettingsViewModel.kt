@@ -24,6 +24,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     val groqModelId = preferencesManager.groqModelId
         .stateIn(viewModelScope, SharingStarted.Eagerly, "llama-3.1-70b-versatile")
     
+    val geminiApiKey = preferencesManager.geminiApiKey
+        .stateIn(viewModelScope, SharingStarted.Eagerly, "")
+    
+    val geminiModelId = preferencesManager.geminiModelId
+        .stateIn(viewModelScope, SharingStarted.Eagerly, "gemini-pro")
+    
     val nsfwMode = preferencesManager.nsfwMode
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
     
@@ -71,6 +77,18 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setGroqModelId(modelId: String) {
         viewModelScope.launch {
             preferencesManager.setGroqModelId(modelId)
+        }
+    }
+    
+    fun setGeminiApiKey(apiKey: String) {
+        viewModelScope.launch {
+            preferencesManager.setGeminiApiKey(apiKey)
+        }
+    }
+    
+    fun setGeminiModelId(modelId: String) {
+        viewModelScope.launch {
+            preferencesManager.setGeminiModelId(modelId)
         }
     }
     
