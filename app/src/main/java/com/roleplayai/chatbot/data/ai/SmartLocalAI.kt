@@ -59,7 +59,7 @@ class SmartLocalAI(
         username: String = "Utilisateur"
     ): String {
         try {
-            Log.d(TAG, "🧠 Génération avec mémoire conversationnelle...")
+            Log.d(TAG, "🧠 SmartLocalAI: Génération avec mémoire...")
             
             // Récupérer le contexte mémoire
             val relationshipLevel = memory.getRelationshipLevel()
@@ -67,8 +67,7 @@ class SmartLocalAI(
             val facts = factsMap.values.toList()
             val memoryContext = memory.getRelevantContext(conversationHistory)
             
-            Log.d(TAG, "📊 Relation: $relationshipLevel/100, Faits: ${facts.size}")
-            Log.d(TAG, "💭 Contexte: ${memoryContext.take(100)}...")
+            Log.d(TAG, "📊 Relation: $relationshipLevel/100, ${facts.size} faits, NSFW: $nsfwMode")
             
             // Analyser le message utilisateur
             val intent = analyzeUserIntent(userMessage, relationshipLevel)
@@ -84,14 +83,14 @@ class SmartLocalAI(
                 emotion = emotion,
                 relationshipLevel = relationshipLevel,
                 facts = facts,
-                recentMessages = conversationHistory.takeLast(10)
+                recentMessages = conversationHistory.takeLast(15)  // Plus de contexte
             )
             
-            Log.d(TAG, "✅ Réponse: ${response.take(80)}...")
+            Log.d(TAG, "✅ SmartLocalAI réponse: ${response.take(80)}...")
             return response
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Erreur génération", e)
+            Log.e(TAG, "❌ Erreur SmartLocalAI", e)
             return generateFallbackResponse(username)
         }
     }
