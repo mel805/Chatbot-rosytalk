@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material3.*
 import androidx.compose.material3.Divider
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,7 +36,9 @@ import com.roleplayai.chatbot.ui.components.ImageViewerDialog
 fun CharacterProfileScreen(
     character: Character,
     onBack: () -> Unit,
-    onStartChat: () -> Unit,
+    onStartNewChat: () -> Unit,
+    onContinueChat: (() -> Unit)? = null,
+    hasExistingChat: Boolean = false,
     isNsfwMode: Boolean = false
 ) {
     var selectedImageUrl by remember { mutableStateOf<String?>(null) }
@@ -67,13 +70,65 @@ fun CharacterProfileScreen(
                 )
             )
         },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onStartChat,
-                icon = { Icon(Icons.Default.Chat, "Chat") },
-                text = { Text("Démarrer conversation") },
-                containerColor = MaterialTheme.colorScheme.primary
-            )
+        bottomBar = {
+            // Barre avec les boutons d'action
+            if (hasExistingChat && onContinueChat != null) {
+                // Deux boutons : Nouvelle conversation + Continuer
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Bouton Continuer la conversation
+                    Button(
+                        onClick = onContinueChat,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Icon(Icons.Default.Chat, "Continuer", modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Reprendre la conversation", style = MaterialTheme.typography.bodyLarge)
+                    }
+                    
+                    // Bouton Nouvelle conversation
+                    OutlinedButton(
+                        onClick = onStartNewChat,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Icon(Icons.Default.Add, "Nouvelle", modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Nouvelle conversation", style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            } else {
+                // Un seul bouton : Commencer conversation
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.surface,
+                    shadowElevation = 8.dp
+                ) {
+                    Button(
+                        onClick = onStartNewChat,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Icon(Icons.Default.Chat, "Démarrer", modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Commencer une conversation", style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
         }
     ) { paddingValues ->
         LazyColumn(

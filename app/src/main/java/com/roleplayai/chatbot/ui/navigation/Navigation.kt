@@ -161,14 +161,32 @@ fun AppNavigation(
             val character = characterViewModel.getCharacterById(characterId) ?: return@composable
             val isNsfwMode by settingsViewModel.nsfwMode.collectAsState()
             
+            // Vérifier s'il y a une conversation existante
+            val hasExistingChat = chatViewModel.hasExistingChat(characterId)
+            
             CharacterProfileScreen(
                 character = character,
                 onBack = { navController.popBackStack() },
-                onStartChat = {
+                onStartNewChat = {
+                    // Créer une NOUVELLE conversation (supprime l'ancienne)
+                    chatViewModel.createNewChat(characterId)
                     navController.navigate(Screen.Chat.createRoute(characterId)) {
                         popUpTo(Screen.Main.route)
                     }
                 },
+                onContinueChat = if (hasExistingChat) {
+                    {
+                        // Continuer la conversation existante
+                        val existingChat = chatViewModel.getExistingChat(characterId)
+                        if (existingChat != null) {
+                            chatViewModel.selectChat(existingChat.id)
+                            navController.navigate(Screen.Chat.createRoute(characterId)) {
+                                popUpTo(Screen.Main.route)
+                            }
+                        }
+                    }
+                } else null,
+                hasExistingChat = hasExistingChat,
                 isNsfwMode = isNsfwMode
             )
         }

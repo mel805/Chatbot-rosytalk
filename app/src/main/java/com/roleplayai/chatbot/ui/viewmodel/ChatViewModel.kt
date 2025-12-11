@@ -41,15 +41,25 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     
     val allChats = chatRepository.chats
     
-    fun createOrGetChat(characterId: String): Chat {
-        // Check if a chat already exists for this character
+    // Vérifier si une conversation existe pour ce personnage
+    fun hasExistingChat(characterId: String): Boolean {
+        return chatRepository.getChatsByCharacter(characterId).isNotEmpty()
+    }
+    
+    // Obtenir le chat existant (pour le continuer)
+    fun getExistingChat(characterId: String): Chat? {
+        return chatRepository.getChatsByCharacter(characterId).firstOrNull()
+    }
+    
+    // Créer un NOUVEAU chat (supprime l'ancien si existe)
+    fun createNewChat(characterId: String): Chat {
+        // Supprimer l'ancien chat s'il existe
         val existingChat = chatRepository.getChatsByCharacter(characterId).firstOrNull()
         if (existingChat != null) {
-            _currentChat.value = existingChat
-            return existingChat
+            chatRepository.deleteChat(existingChat.id)
         }
         
-        // Create new chat
+        // Créer nouveau chat
         val character = characterRepository.getCharacterById(characterId)
             ?: throw IllegalArgumentException("Character not found")
         
@@ -59,7 +69,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             characterImageUrl = character.imageUrl
         )
         
-        // Add greeting message
+        // Ajouter le message de salutation
         chatRepository.addMessage(
             chatId = newChat.id,
             content = character.greeting,
@@ -68,6 +78,19 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         
         _currentChat.value = chatRepository.getChatById(newChat.id)
         return _currentChat.value!!
+    }
+    
+    // Ancienne fonction pour compatibilité (cherche ou crée)
+    fun createOrGetChat(characterId: String): Chat {
+        // Check if a chat already exists for this character
+        val existingChat = chatRepository.getChatsByCharacter(characterId).firstOrNull()
+        if (existingChat != null) {
+            _currentChat.value = existingChat
+            return existingChat
+        }
+        
+        // Create new chat
+        return createNewChat(characterId)
     }
     
     fun selectChat(chatId: String) {
