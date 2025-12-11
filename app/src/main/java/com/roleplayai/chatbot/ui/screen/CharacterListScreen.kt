@@ -132,7 +132,7 @@ fun CharacterListScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp), // Plus de padding en bas pour éviter la barre de navigation
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(filteredCharacters) { character ->
@@ -141,6 +141,7 @@ fun CharacterListScreen(
                             onClick = { onCharacterSelected(character.id) },
                             onProfileClick = { 
                                 android.util.Log.d("CharacterList", "Clic profil pour: ${character.id}")
+                                android.util.Log.d("CharacterList", "Short description: ${character.shortDescription}")
                                 onCharacterProfileClick(character.id) 
                             }
                         )
@@ -190,19 +191,18 @@ fun CharacterCard(
                 Text(
                     text = character.name,
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 
-                // Short description avec style attractif
-                if (character.shortDescription.isNotEmpty()) {
-                    Text(
-                        text = character.shortDescription,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(top = 2.dp)
-                    )
-                }
+                // Short description avec style attractif - TOUJOURS VISIBLE
+                Text(
+                    text = character.shortDescription.ifEmpty { "Personnage" },
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
                 
                 Text(
                     text = character.description,
@@ -210,7 +210,7 @@ fun CharacterCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 6.dp)
+                    modifier = Modifier.padding(top = 8.dp)
                 )
                 
                 // Themes
