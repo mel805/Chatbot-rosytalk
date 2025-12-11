@@ -5,8 +5,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.roleplayai.chatbot.data.ai.GroqAIEngine
 import com.roleplayai.chatbot.data.ai.TogetherAIEngine
-import com.roleplayai.chatbot.data.ai.HuggingFaceAIEngine
+import com.roleplayai.chatbot.data.ai.SmartLocalAI
 import com.roleplayai.chatbot.data.memory.ConversationMemory
+import com.roleplayai.chatbot.data.manager.GroqKeyManager
 import com.roleplayai.chatbot.data.auth.LocalAuthManager
 import com.roleplayai.chatbot.data.model.Chat
 import com.roleplayai.chatbot.data.model.InferenceConfig
@@ -27,12 +28,15 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val preferencesManager = PreferencesManager(application)
     private val authManager = LocalAuthManager.getInstance(application)
     
-    // Moteurs d'IA (APIs uniquement - pas de templates locaux)
+    // Moteurs d'IA
     private var groqAIEngine: GroqAIEngine? = null
     private var togetherAIEngine: TogetherAIEngine? = null
-    private var huggingFaceEngine: HuggingFaceAIEngine? = null
+    private val smartLocalAIs = mutableMapOf<String, SmartLocalAI>()
     
-    // Mémoire conversationnelle long terme (v5.1.0)
+    // Gestionnaire de clés Groq avec rotation
+    private val groqKeyManager = GroqKeyManager(application)
+    
+    // Mémoire conversationnelle long terme
     private val conversationMemories = mutableMapOf<String, ConversationMemory>()
     
     private val _currentChat = MutableStateFlow<Chat?>(null)
@@ -147,10 +151,10 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     ?: authManager.currentUser.value?.displayName
                     ?: "Utilisateur"
                 
-                // CASCADE INTELLIGENTE D'IA : Groq → HuggingFace → LocalAI
-                // Groq = Principal (ultra-rapide, excellente qualité)
-                // HuggingFace = Fallback 1 (gratuit, bonne qualité, un peu plus lent)
-                // LocalAI = Fallback 2 (template intelligent, toujours disponible)
+                // CASCADE SIMPLIFIÉE : Groq (multi-clés) → Together AI → SmartLocalAI
+                // Groq = Principal (rotation automatique de clés)
+                // Together AI = Fallback 1 (API gratuite)
+                // SmartLocalAI = Fallback 2 (local, toujours disponible, avec mémoire)
                 
                 val useGroq = preferencesManager.useGroqApi.first()
                 
@@ -236,7 +240,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     /**
-     * STRATÉGIE 1 : Tenter Groq avec fallback automatique vers HuggingFace
+     * STRATÉGIE 1 : Tenter Groq avec rotation automatique de clés
      */
     private suspend fun tryGroqWithFallback(
         character: com.roleplayai.chatbot.data.model.Character,
@@ -244,35 +248,52 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         username: String,
         memoryContext: String
     ): String {
+        // Récupérer la clé actuelle du gestionnaire
+        val apiKey = groqKeyManager.getCurrentKey()
+        
+        if (apiKey == null) {
+            android.util.Log.w("ChatViewModel", "⚠️ Aucune clé Groq disponible, fallback Together AI...")
+            return tryFallbackEngines(character, messages, username, memoryContext)
+        }
+        
         return try {
-            // ÉTAPE 1 : Tenter Groq
-            android.util.Log.d("ChatViewModel", "1️⃣ Tentative Groq API...")
-            initializeGroqEngine()
+            val modelId = preferencesManager.groqModelId.first()
+            val nsfwMode = preferencesManager.nsfwMode.first()
             
-            val groqResponse = groqAIEngine?.generateResponse(character, messages, username)
-                ?: throw Exception("Groq API non configurée")
+            // Réinitialiser le moteur avec la clé actuelle
+            groqAIEngine = GroqAIEngine(
+                apiKey = apiKey,
+                model = modelId.takeIf { it.isNotBlank() } ?: "llama-3.1-70b-versatile",
+                nsfwMode = nsfwMode
+            )
             
-            // Vérifier si erreur de limite Groq
-            if (groqResponse.contains("rate limit", ignoreCase = true) ||
-                groqResponse.contains("limite", ignoreCase = true) ||
-                groqResponse.contains("quota", ignoreCase = true) ||
-                groqResponse.startsWith("Erreur", ignoreCase = true)) {
-                throw Exception("Limite Groq atteinte")
-            }
-            
-            android.util.Log.i("ChatViewModel", "✅ Réponse générée avec Groq")
-            groqResponse
+            val response = groqAIEngine!!.generateResponse(character, messages, username, memoryContext)
+            android.util.Log.i("ChatViewModel", "✅ Réponse Groq (${groqKeyManager.getAvailableKeysCount()}/${groqKeyManager.getTotalKeysCount()} clés dispo)")
+            response
             
         } catch (e: Exception) {
-            // ÉTAPE 2 : Groq a échoué, tenter HuggingFace
-            android.util.Log.w("ChatViewModel", "⚠️ Groq indisponible (${e.message}), tentative HuggingFace...")
-            tryHuggingFace(character, messages, username, memoryContext)
+            // Vérifier si c'est un rate limit (429)
+            if (e.message?.contains("429") == true || e.message?.contains("rate") == true) {
+                android.util.Log.w("ChatViewModel", "⚠️ Clé Groq rate limitée, rotation...")
+                groqKeyManager.markCurrentKeyAsRateLimited()
+                
+                // Réessayer avec la clé suivante si disponible
+                val nextKey = groqKeyManager.getCurrentKey()
+                if (nextKey != null) {
+                    android.util.Log.d("ChatViewModel", "🔄 Réessai avec clé suivante...")
+                    return tryGroqWithFallback(character, messages, username, memoryContext)
+                }
+            }
+            
+            // Fallback vers Together AI
+            android.util.Log.w("ChatViewModel", "⚠️ Groq indisponible (${e.message}), fallback Together AI...")
+            tryFallbackEngines(character, messages, username, memoryContext)
         }
     }
     
     /**
      * STRATÉGIE 2 : Utiliser directement les fallbacks (Groq désactivé)
-     * CASCADE : Together AI → HuggingFace (Phi-3 → Mistral)
+     * CASCADE : Together AI → SmartLocalAI (toujours disponible)
      */
     private suspend fun tryFallbackEngines(
         character: com.roleplayai.chatbot.data.model.Character,
@@ -282,15 +303,15 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     ): String {
         // ÉTAPE 1 : Tenter Together AI (API gratuite rapide)
         try {
-            android.util.Log.d("ChatViewModel", "1️⃣ Tentative Together AI (API gratuite)...")
+            android.util.Log.d("ChatViewModel", "1️⃣ Tentative Together AI...")
             return tryTogetherAI(character, messages, username, memoryContext)
         } catch (e: Exception) {
             android.util.Log.w("ChatViewModel", "⚠️ Together AI indisponible (${e.message})")
         }
         
-        // ÉTAPE 2 : Tenter HuggingFace
-        android.util.Log.d("ChatViewModel", "2️⃣ Tentative HuggingFace API...")
-        return tryHuggingFace(character, messages, username, memoryContext)
+        // ÉTAPE 2 : SmartLocalAI (ne peut jamais échouer)
+        android.util.Log.d("ChatViewModel", "2️⃣ Utilisation SmartLocalAI...")
+        return trySmartLocalAI(character, messages, username)
     }
     
     /**
@@ -319,48 +340,38 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     /**
-     * Tenter de générer avec HuggingFace Inference API (GRATUIT)
-     * Essaie d'abord le modèle rapide Phi-3, puis Mistral si échec
+     * Utilise SmartLocalAI (IA locale avec mémoire - NE PEUT JAMAIS ÉCHOUER)
      */
-    private suspend fun tryHuggingFace(
+    private suspend fun trySmartLocalAI(
         character: com.roleplayai.chatbot.data.model.Character,
         messages: List<Message>,
-        username: String,
-        memoryContext: String
+        username: String
     ): String {
         val nsfwMode = preferencesManager.nsfwMode.first()
         
-        // STRATÉGIE 1 : Essayer Phi-3 Mini (plus rapide)
         try {
-            android.util.Log.d("ChatViewModel", "🤗 Tentative avec Phi-3 Mini (rapide)...")
-            val phiEngine = HuggingFaceAIEngine(
-                apiKey = "",
-                model = "microsoft/Phi-3-mini-4k-instruct",  // Plus rapide
-                nsfwMode = nsfwMode
-            )
-            val response = phiEngine.generateResponse(character, messages, username, memoryContext, maxRetries = 1)
-            android.util.Log.i("ChatViewModel", "✅ Réponse générée avec Phi-3 Mini")
-            return response
-        } catch (e: Exception) {
-            android.util.Log.w("ChatViewModel", "⚠️ Phi-3 indisponible, essai Mistral...")
-        }
-        
-        // STRATÉGIE 2 : Essayer Mistral 7B (plus puissant mais plus lent)
-        try {
-            android.util.Log.d("ChatViewModel", "🤗 Tentative avec Mistral 7B...")
-            if (huggingFaceEngine == null) {
-                huggingFaceEngine = HuggingFaceAIEngine(
-                    apiKey = "",
-                    model = "mistralai/Mistral-7B-Instruct-v0.2",
+            android.util.Log.d("ChatViewModel", "🧠 Génération avec SmartLocalAI...")
+            
+            // Obtenir ou créer SmartLocalAI pour ce personnage
+            val smartAI = smartLocalAIs.getOrPut(character.id) {
+                SmartLocalAI(
+                    context = getApplication(),
+                    character = character,
+                    characterId = character.id,
                     nsfwMode = nsfwMode
                 )
             }
-            val response = huggingFaceEngine!!.generateResponse(character, messages, username, memoryContext, maxRetries = 2)
-            android.util.Log.i("ChatViewModel", "✅ Réponse générée avec Mistral 7B")
+            
+            // Extraire le dernier message utilisateur
+            val userMessage = messages.lastOrNull { it.isUser }?.content ?: ""
+            val response = smartAI.generateResponse(userMessage, messages, username)
+            android.util.Log.i("ChatViewModel", "✅ Réponse SmartLocalAI (avec mémoire)")
             return response
+            
         } catch (e: Exception) {
-            android.util.Log.e("ChatViewModel", "❌ HuggingFace complètement indisponible")
-            throw e
+            android.util.Log.e("ChatViewModel", "❌ Erreur SmartLocalAI", e)
+            // Fallback absolu
+            return "*sourit* Désolé(e), j'ai eu un petit bug. Tu peux répéter ?"
         }
     }
     
@@ -384,7 +395,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         // Nettoyer tous les moteurs d'IA
         groqAIEngine = null
         togetherAIEngine = null
-        huggingFaceEngine = null
+        smartLocalAIs.clear()
         conversationMemories.clear()
         android.util.Log.d("ChatViewModel", "🧹 Moteurs d'IA nettoyés")
     }
