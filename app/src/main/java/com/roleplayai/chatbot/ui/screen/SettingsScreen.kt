@@ -51,11 +51,17 @@ fun SettingsScreen(
     val groqModelId by settingsViewModel.groqModelId.collectAsState()
     val nsfwMode by settingsViewModel.nsfwMode.collectAsState()
     
+    // Clés partagées
+    val sharedGroqKeys by settingsViewModel.sharedGroqKeys.collectAsState()
+    val isLoading by settingsViewModel.isLoading.collectAsState()
+    val statusMessage by settingsViewModel.statusMessage.collectAsState()
+    
     var showModelSelection by remember { mutableStateOf(false) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     var showGroqModels by remember { mutableStateOf(false) }
-    var showApiKey by remember { mutableStateOf(false) }
-    var apiKeyInput by remember { mutableStateOf(groqApiKey) }
+    var showAddKeyDialog by remember { mutableStateOf(false) }
+    var newApiKeyInput by remember { mutableStateOf("") }
+    var keyToDelete by remember { mutableStateOf<String?>(null) }
     
     Column(
         modifier = Modifier
@@ -411,53 +417,118 @@ fun SettingsScreen(
                 }
                 
                 if (useGroqApi) {
-                    // Clé API Groq
+                    // Section Clés API Groq (Multi-clés partagées)
                     item {
                         Card(modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    "Clé API Groq",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Spacer(Modifier.height(8.dp))
-                                OutlinedTextField(
-                                    value = apiKeyInput,
-                                    onValueChange = { apiKeyInput = it },
-                                    label = { Text("gsk_...") },
-                                    placeholder = { Text("Collez votre clé API ici") },
-                                    visualTransformation = if (showApiKey) VisualTransformation.None else PasswordVisualTransformation(),
-                                    trailingIcon = {
-                                        Row {
-                                            IconButton(onClick = { showApiKey = !showApiKey }) {
-                                                Icon(
-                                                    if (showApiKey) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                                    "Afficher/Masquer"
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            "🔑 Clés API Groq Partagées",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            "${sharedGroqKeys.size} clé(s) • Rotation automatique",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                    FilledTonalButton(
+                                        onClick = { showAddKeyDialog = true },
+                                        enabled = !isLoading
+                                    ) {
+                                        Icon(Icons.Default.Add, "Ajouter", modifier = Modifier.size(18.dp))
+                                        Spacer(Modifier.width(4.dp))
+                                        Text("Ajouter")
+                                    }
+                                }
+                                
+                                if (statusMessage != null) {
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        statusMessage!!,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (statusMessage!!.startsWith("✅")) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.error
+                                        }
+                                    )
+                                }
+                                
+                                if (sharedGroqKeys.isEmpty()) {
+                                    Spacer(Modifier.height(12.dp))
+                                    Text(
+                                        "Aucune clé configurée. Ajoutez une clé pour activer Groq API.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(Modifier.height(4.dp))
+                                    TextButton(
+                                        onClick = { /* Ouvrir navigateur */ }
+                                    ) {
+                                        Icon(Icons.Default.OpenInNew, null, modifier = Modifier.size(16.dp))
+                                        Spacer(Modifier.width(4.dp))
+                                        Text("Obtenir une clé gratuite", style = MaterialTheme.typography.bodySmall)
+                                    }
+                                } else {
+                                    Spacer(Modifier.height(12.dp))
+                                    Column(
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        sharedGroqKeys.forEachIndexed { index, key ->
+                                            Card(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                colors = CardDefaults.cardColors(
+                                                    containerColor = MaterialTheme.colorScheme.secondaryContainer
                                                 )
-                                            }
-                                            if (apiKeyInput != groqApiKey) {
-                                                IconButton(
-                                                    onClick = {
-                                                        scope.launch {
-                                                            settingsViewModel.setGroqApiKey(apiKeyInput)
-                                                        }
-                                                    }
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(12.dp),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
                                                 ) {
-                                                    Icon(Icons.Default.Check, "Sauvegarder")
+                                                    Column(modifier = Modifier.weight(1f)) {
+                                                        Text(
+                                                            "Clé ${index + 1}",
+                                                            style = MaterialTheme.typography.labelMedium,
+                                                            fontWeight = FontWeight.Bold
+                                                        )
+                                                        Spacer(Modifier.height(2.dp))
+                                                        Text(
+                                                            "${key.take(20)}...",
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                                                        )
+                                                    }
+                                                    IconButton(
+                                                        onClick = { keyToDelete = key },
+                                                        enabled = !isLoading
+                                                    ) {
+                                                        Icon(
+                                                            Icons.Default.Delete,
+                                                            "Supprimer",
+                                                            tint = MaterialTheme.colorScheme.error
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
-                                    },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    singleLine = true
-                                )
-                                Spacer(Modifier.height(4.dp))
-                                TextButton(
-                                    onClick = { /* Ouvrir navigateur */ }
-                                ) {
-                                    Icon(Icons.Default.OpenInNew, null, modifier = Modifier.size(16.dp))
-                                    Spacer(Modifier.width(4.dp))
-                                    Text("Obtenir une clé gratuite sur console.groq.com", style = MaterialTheme.typography.bodySmall)
+                                    }
+                                    
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        "ℹ️ Ces clés sont partagées avec tous les utilisateurs et tournent automatiquement en cas de limite.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
                             }
                         }
@@ -717,6 +788,109 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirmation = false }) {
+                    Text("Annuler")
+                }
+            }
+        )
+    }
+    
+    // Dialog pour ajouter une clé Groq
+    if (showAddKeyDialog && isAdmin) {
+        AlertDialog(
+            onDismissRequest = { 
+                showAddKeyDialog = false
+                newApiKeyInput = ""
+            },
+            icon = { Icon(Icons.Default.Add, "Ajouter") },
+            title = { Text("Ajouter une clé API Groq") },
+            text = {
+                Column {
+                    Text(
+                        "Cette clé sera partagée avec tous les utilisateurs et fera partie de la rotation automatique.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = newApiKeyInput,
+                        onValueChange = { newApiKeyInput = it },
+                        label = { Text("Clé API") },
+                        placeholder = { Text("gsk_...") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(
+                        onClick = { /* Ouvrir console.groq.com */ }
+                    ) {
+                        Icon(Icons.Default.OpenInNew, null, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Obtenir une clé gratuite", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (newApiKeyInput.isNotBlank()) {
+                            settingsViewModel.addSharedGroqKey(newApiKeyInput)
+                            showAddKeyDialog = false
+                            newApiKeyInput = ""
+                        }
+                    },
+                    enabled = newApiKeyInput.isNotBlank() && !isLoading
+                ) {
+                    Text("Ajouter")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { 
+                        showAddKeyDialog = false
+                        newApiKeyInput = ""
+                    }
+                ) {
+                    Text("Annuler")
+                }
+            }
+        )
+    }
+    
+    // Dialog de confirmation de suppression de clé
+    if (keyToDelete != null && isAdmin) {
+        AlertDialog(
+            onDismissRequest = { keyToDelete = null },
+            icon = { Icon(Icons.Default.Warning, null) },
+            title = { Text("Supprimer cette clé ?") },
+            text = {
+                Column {
+                    Text("Cette clé ne sera plus accessible aux utilisateurs.")
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "${keyToDelete!!.take(20)}...",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        settingsViewModel.removeSharedGroqKey(keyToDelete!!)
+                        keyToDelete = null
+                    },
+                    enabled = !isLoading,
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Supprimer")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { keyToDelete = null }) {
                     Text("Annuler")
                 }
             }
