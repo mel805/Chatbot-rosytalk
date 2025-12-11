@@ -26,6 +26,11 @@ class PreferencesManager(private val context: Context) {
         private val GROQ_MODEL_ID = stringPreferencesKey("groq_model_id")
         private val NSFW_MODE_ENABLED = booleanPreferencesKey("nsfw_mode_enabled")
         private val USE_GROQ_API = booleanPreferencesKey("use_groq_api")
+        
+        // AI Engine selection
+        private val SELECTED_AI_ENGINE = stringPreferencesKey("selected_ai_engine")
+        private val ENABLE_AI_FALLBACKS = booleanPreferencesKey("enable_ai_fallbacks")
+        private val LLAMA_CPP_MODEL_PATH = stringPreferencesKey("llama_cpp_model_path")
     }
     
     val selectedModelId: Flow<String?> = context.dataStore.data.map { preferences ->
@@ -121,5 +126,36 @@ class PreferencesManager(private val context: Context) {
     
     val useGroqApi: Flow<Boolean> = context.dataStore.data.map { preferences ->
         preferences[USE_GROQ_API] ?: false
+    }
+    
+    // AI Engine selection
+    suspend fun setSelectedAIEngine(engine: String) {
+        context.dataStore.edit { preferences ->
+            preferences[SELECTED_AI_ENGINE] = engine
+        }
+    }
+    
+    val selectedAIEngine: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[SELECTED_AI_ENGINE] ?: "GROQ"  // Default to Groq
+    }
+    
+    suspend fun setEnableAIFallbacks(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[ENABLE_AI_FALLBACKS] = enabled
+        }
+    }
+    
+    val enableAIFallbacks: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[ENABLE_AI_FALLBACKS] ?: true  // Enabled by default
+    }
+    
+    suspend fun setLlamaCppModelPath(path: String) {
+        context.dataStore.edit { preferences ->
+            preferences[LLAMA_CPP_MODEL_PATH] = path
+        }
+    }
+    
+    val llamaCppModelPath: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[LLAMA_CPP_MODEL_PATH] ?: ""
     }
 }
