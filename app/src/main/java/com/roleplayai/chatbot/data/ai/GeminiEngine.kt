@@ -23,7 +23,7 @@ import kotlinx.coroutines.Dispatchers
  */
 class GeminiEngine(
     private val apiKey: String,
-    private val model: String = "gemini-pro",
+    private val model: String = "gemini-1.5-flash",
     private val nsfwMode: Boolean = false
 ) {
     
@@ -33,24 +33,31 @@ class GeminiEngine(
         // Modèles Gemini disponibles
         val AVAILABLE_MODELS = listOf(
             GeminiModel(
-                id = "gemini-pro",
-                name = "Gemini Pro",
-                description = "Haute qualité, rapide",
+                id = "gemini-1.5-flash",
+                name = "Gemini 1.5 Flash",
+                description = "Ultra-rapide, gratuit, 32k tokens",
                 contextLength = 32768,
                 recommended = true
             ),
             GeminiModel(
                 id = "gemini-1.5-pro",
                 name = "Gemini 1.5 Pro",
-                description = "Dernière version, contexte 1M",
-                contextLength = 1048576,
+                description = "Haute qualité, contexte 2M tokens",
+                contextLength = 2097152,
                 recommended = false
             ),
             GeminiModel(
-                id = "gemini-1.5-flash",
-                name = "Gemini 1.5 Flash",
-                description = "Ultra-rapide, léger",
+                id = "gemini-1.5-flash-latest",
+                name = "Gemini 1.5 Flash (Latest)",
+                description = "Dernière version Flash",
                 contextLength = 32768,
+                recommended = false
+            ),
+            GeminiModel(
+                id = "gemini-1.5-pro-latest",
+                name = "Gemini 1.5 Pro (Latest)",
+                description = "Dernière version Pro",
+                contextLength = 2097152,
                 recommended = false
             )
         )

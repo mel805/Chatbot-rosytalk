@@ -190,7 +190,7 @@ class AIOrchestrator(
             
             AIEngine.GEMINI -> {
                 val apiKey = config.geminiApiKey ?: throw Exception("Clé API Gemini manquante")
-                val modelId = config.geminiModelId ?: "gemini-pro"
+                val modelId = config.geminiModelId ?: "gemini-1.5-flash"
                 
                 val geminiEngine = GeminiEngine(apiKey, modelId, config.nsfwMode)
                 geminiEngine.generateResponse(character, messages, username, userGender, memoryContext)

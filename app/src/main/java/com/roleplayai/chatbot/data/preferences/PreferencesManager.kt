@@ -181,6 +181,6 @@ class PreferencesManager(private val context: Context) {
     }
     
     val geminiModelId: Flow<String> = context.dataStore.data.map { preferences ->
-        preferences[GEMINI_MODEL_ID] ?: "gemini-pro"
+        preferences[GEMINI_MODEL_ID] ?: "gemini-1.5-flash"
     }
 }

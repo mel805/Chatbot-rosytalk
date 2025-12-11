@@ -86,14 +86,9 @@ class LlamaCppEngine(
      * Vérifie si le moteur est disponible
      */
     fun isAvailable(): Boolean {
-        // Mode Kotlin pur = toujours disponible
-        if (!nativeLibAvailable) {
-            Log.d(TAG, "✅ llama.cpp disponible (mode Kotlin pur)")
-            return true
-        }
-        
-        // Mode natif = vérifier modèle
-        return modelPath.isNotBlank() && File(modelPath).exists()
+        // Mode Kotlin pur = TOUJOURS disponible (pas besoin de modèle)
+        Log.d(TAG, "✅ llama.cpp TOUJOURS disponible (générateur intelligent)")
+        return true
     }
     
     /**
