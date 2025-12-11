@@ -285,22 +285,45 @@ RAPPEL FINAL : Les pensées (parenthèses) sont OBLIGATOIRES dans CHAQUE répons
         return sb.toString()
     }
     
+    // Instance du système intelligent
+    private var smartAI: SmartLocalAI? = null
+    
     /**
-     * Génère une réponse INTELLIGENTE avec MÉMOIRE CONVERSATIONNELLE
-     * Analyse l'historique complet pour une cohérence maximale
+     * Génère une réponse INTELLIGENTE avec SmartLocalAI
+     * Utilise un moteur d'IA générative qui analyse le contexte
+     * et génère des réponses cohérentes adaptées à la personnalité
      * ROBUSTE - NE PEUT PAS ÉCHOUER
      * SUPPORT NSFW complet
      */
     private fun generateFallbackResponse(character: Character, messages: List<Message>, username: String = "Utilisateur"): String {
         return try {
-            // Extraire les derniers messages (15 max pour meilleur contexte)
+            val userMessage = messages.lastOrNull { it.isUser }?.content ?: ""
+            
+            Log.d(TAG, "🧠 Génération avec SmartLocalAI...")
+            Log.d(TAG, "📝 Message: ${userMessage.take(50)}...")
+            Log.d(TAG, "📚 Historique: ${messages.size} messages")
+            Log.d(TAG, "🔞 Mode NSFW: $nsfwMode")
+            
+            // Initialiser SmartLocalAI si nécessaire
+            if (smartAI == null) {
+                Log.d(TAG, "🎯 Initialisation SmartLocalAI pour ${character.name}...")
+                smartAI = SmartLocalAI(character, nsfwMode)
+            }
+            
+            // Générer la réponse avec l'IA intelligente
+            val response = smartAI!!.generateResponse(userMessage, messages, username)
+            
+            Log.d(TAG, "✅ Réponse générée par SmartLocalAI")
+            Log.d(TAG, "💬 Aperçu: ${response.take(80)}...")
+            
+            return response
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Erreur SmartLocalAI, fallback sécurisé", e)
+            // Fallback ultime simple mais garanti
             val recentMessages = messages.takeLast(15)
             val userMessage = messages.lastOrNull { it.isUser }?.content ?: ""
             val lowerMessage = userMessage.lowercase()
-            
-            Log.d(TAG, "📝 Analyse message: $userMessage")
-            Log.d(TAG, "📚 Historique: ${recentMessages.size} messages")
-            Log.d(TAG, "🔞 Mode NSFW: $nsfwMode")
             
             // ANALYSE CONTEXTUELLE AVEC MÉMOIRE
             val context = analyzeConversationContext(recentMessages, character)

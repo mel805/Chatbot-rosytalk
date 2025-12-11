@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.roleplayai.chatbot.data.ai.AIEngine
 import com.roleplayai.chatbot.data.ai.LocalAIEngine
 import com.roleplayai.chatbot.data.ai.GroqAIEngine
+import com.roleplayai.chatbot.data.ai.TogetherAIEngine
 import com.roleplayai.chatbot.data.ai.HuggingFaceAIEngine
 import com.roleplayai.chatbot.data.auth.LocalAuthManager
 import com.roleplayai.chatbot.data.model.Chat
@@ -29,6 +30,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val aiEngine = AIEngine(application)
     private var localAIEngine: LocalAIEngine? = null
     private var groqAIEngine: GroqAIEngine? = null
+    private var togetherAIEngine: TogetherAIEngine? = null  // NOUVELLE IA alternative gratuite
     private var huggingFaceEngine: HuggingFaceAIEngine? = null
     private var useLocalEngine = false
     
@@ -289,22 +291,56 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     
     /**
      * STRATÉGIE 2 : Utiliser directement les fallbacks (Groq désactivé)
+     * CASCADE COMPLÈTE : Together AI → HuggingFace → LocalAI (SmartAI)
      */
     private suspend fun tryFallbackEngines(
         character: com.roleplayai.chatbot.data.model.Character,
         messages: List<Message>,
         username: String
     ): String {
-        return try {
-            // ÉTAPE 1 : Tenter HuggingFace d'abord
-            android.util.Log.d("ChatViewModel", "1️⃣ Tentative HuggingFace API...")
-            tryHuggingFace(character, messages, username)
-            
+        // ÉTAPE 1 : Tenter Together AI (API gratuite rapide)
+        try {
+            android.util.Log.d("ChatViewModel", "1️⃣ Tentative Together AI (API gratuite)...")
+            return tryTogetherAI(character, messages, username)
         } catch (e: Exception) {
-            // ÉTAPE 2 : HuggingFace a échoué, utiliser LocalAI
-            android.util.Log.w("ChatViewModel", "⚠️ HuggingFace indisponible (${e.message}), utilisation LocalAI...")
-            tryLocalAI(character, messages, username)
+            android.util.Log.w("ChatViewModel", "⚠️ Together AI indisponible (${e.message})")
         }
+        
+        // ÉTAPE 2 : Tenter HuggingFace
+        try {
+            android.util.Log.d("ChatViewModel", "2️⃣ Tentative HuggingFace API...")
+            return tryHuggingFace(character, messages, username)
+        } catch (e: Exception) {
+            android.util.Log.w("ChatViewModel", "⚠️ HuggingFace indisponible (${e.message})")
+        }
+        
+        // ÉTAPE 3 : LocalAI avec SmartLocalAI (ne peut jamais échouer)
+        android.util.Log.d("ChatViewModel", "3️⃣ Utilisation SmartLocalAI (IA intelligente locale)...")
+        return tryLocalAI(character, messages, username)
+    }
+    
+    /**
+     * Tenter de générer avec Together AI (API GRATUITE rapide)
+     */
+    private suspend fun tryTogetherAI(
+        character: com.roleplayai.chatbot.data.model.Character,
+        messages: List<Message>,
+        username: String
+    ): String {
+        val nsfwMode = preferencesManager.nsfwMode.first()
+        
+        if (togetherAIEngine == null) {
+            android.util.Log.d("ChatViewModel", "🤝 Initialisation Together AI Engine...")
+            togetherAIEngine = TogetherAIEngine(
+                apiKey = "",  // Gratuit sans clé
+                model = "mistralai/Mistral-7B-Instruct-v0.2",
+                nsfwMode = nsfwMode
+            )
+        }
+        
+        val response = togetherAIEngine!!.generateResponse(character, messages, username, maxRetries = 2)
+        android.util.Log.i("ChatViewModel", "✅ Réponse générée avec Together AI")
+        return response
     }
     
     /**
@@ -394,6 +430,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         // Nettoyer tous les moteurs d'IA
         localAIEngine?.unloadModel()
         groqAIEngine = null
+        togetherAIEngine = null
         huggingFaceEngine = null
         android.util.Log.d("ChatViewModel", "🧹 Moteurs d'IA nettoyés")
     }
