@@ -20,6 +20,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.roleplayai.chatbot.data.ai.GroqAIEngine
+import com.roleplayai.chatbot.data.ai.GeminiEngine
 import com.roleplayai.chatbot.data.ai.AIOrchestrator
 import com.roleplayai.chatbot.data.model.ModelConfig
 import com.roleplayai.chatbot.data.model.ModelState

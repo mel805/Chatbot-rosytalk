@@ -197,20 +197,7 @@ class AIOrchestrator(
             }
             
             AIEngine.LLAMA_CPP -> {
-                val modelPath = config.llamaCppModelPath 
-                    ?: throw Exception("Chemin du modèle llama.cpp manquant")
-                
-                val llamaEngine = LlamaCppEngine(context, modelPath, config.nsfwMode)
-                
-                // Charger le modèle si pas déjà chargé
-                if (!llamaEngine.isModelLoaded()) {
-                    Log.d(TAG, "Chargement du modèle llama.cpp...")
-                    val loaded = llamaEngine.loadModel()
-                    if (!loaded) {
-                        throw Exception("Échec du chargement du modèle llama.cpp")
-                    }
-                }
-                
+                val llamaEngine = LlamaCppEngine(context, config.llamaCppModelPath ?: "", config.nsfwMode)
                 llamaEngine.generateResponse(character, messages, username, userGender, memoryContext)
             }
             
