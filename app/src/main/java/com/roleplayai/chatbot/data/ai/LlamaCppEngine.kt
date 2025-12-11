@@ -38,8 +38,9 @@ class LlamaCppEngine(
                 System.loadLibrary("llama-android")
                 Log.i(TAG, "✅ Bibliothèque llama-android chargée")
             } catch (e: UnsatisfiedLinkError) {
-                Log.e(TAG, "❌ Erreur chargement llama-android: ${e.message}")
-                Log.e(TAG, "Assurez-vous que le NDK est configuré et le projet buildé")
+                Log.e(TAG, "❌ llama.cpp natif non disponible: ${e.message}")
+                Log.w(TAG, "⚠️ llama.cpp nécessite compilation native avec sources")
+                Log.i(TAG, "📝 Utilisez Groq, OpenRouter ou Together AI à la place")
             }
         }
         
@@ -75,6 +76,16 @@ class LlamaCppEngine(
         if (isLoaded) {
             Log.d(TAG, "Modèle déjà chargé")
             return@withContext true
+        }
+        
+        // Vérifier que la bibliothèque native est disponible
+        try {
+            System.loadLibrary("llama-android")
+        } catch (e: UnsatisfiedLinkError) {
+            Log.e(TAG, "❌ Bibliothèque native llama-android non disponible")
+            Log.w(TAG, "⚠️ llama.cpp nécessite compilation avec sources llama.cpp")
+            Log.i(TAG, "📝 Solution : Utilisez Groq (gratuit) ou OpenRouter (NSFW)")
+            throw Exception("llama.cpp non compilé. Utilisez Groq ou OpenRouter.")
         }
         
         try {

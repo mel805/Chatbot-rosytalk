@@ -39,25 +39,11 @@ class GeminiNanoEngine(
     private var generativeModel: GenerativeModel? = null
     
     init {
-        try {
-            // Initialiser Gemini Nano (on-device)
-            // Note: Gemini Nano nécessite une clé API même pour on-device
-            // Utiliser une clé vide ou la clé de l'utilisateur
-            generativeModel = GenerativeModel(
-                modelName = MODEL_NAME,
-                apiKey = "", // On-device ne nécessite pas de vraie clé
-                generationConfig = generationConfig {
-                    temperature = 0.9f
-                    topK = 40
-                    topP = 0.95f
-                    maxOutputTokens = 400
-                }
-            )
-            Log.i(TAG, "✅ Gemini Nano initialisé")
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ Erreur initialisation Gemini Nano: ${e.message}")
-            Log.e(TAG, "Vérifiez que l'appareil supporte Gemini Nano (Android 14+)")
-        }
+        // NOTE: Gemini Nano on-device nécessite Google AI Edge SDK
+        // qui n'est pas encore intégré dans cette version.
+        // Cette implémentation utilise temporairement l'API cloud.
+        // TODO: Intégrer Google AI Edge SDK pour vrai on-device
+        Log.w(TAG, "⚠️ Gemini Nano en développement - utilisez Groq ou OpenRouter")
     }
     
     /**
@@ -194,18 +180,9 @@ RAPPEL : TOUJOURS inclure (pensées) !"""
      * Vérifie si Gemini Nano est disponible sur cet appareil
      */
     fun isAvailable(): Boolean {
-        return try {
-            // Vérifier Android 14+
-            if (android.os.Build.VERSION.SDK_INT < 34) {
-                Log.w(TAG, "Gemini Nano nécessite Android 14+ (API 34+)")
-                return false
-            }
-            
-            // Tenter d'initialiser
-            generativeModel != null
-        } catch (e: Exception) {
-            Log.e(TAG, "Gemini Nano non disponible: ${e.message}")
-            false
-        }
+        Log.w(TAG, "⚠️ Gemini Nano on-device n'est pas encore intégré")
+        Log.i(TAG, "📝 Nécessite Google AI Edge SDK (en développement)")
+        Log.i(TAG, "✅ Utilisez : Groq (gratuit), OpenRouter (NSFW), ou Together AI")
+        return false  // Désactivé temporairement
     }
 }
