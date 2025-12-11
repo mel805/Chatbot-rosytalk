@@ -13,6 +13,9 @@ data class Character(
     val exampleDialogues: List<String> = emptyList(),
     val gender: CharacterGender = CharacterGender.FEMALE,
     
+    // Description courte pour la liste (ex: "Amie de ta fille")
+    val shortDescription: String = "",
+    
     // Nouvelles informations pour la page de profil
     val physicalDescription: String = "",  // Description physique détaillée
     val characterTraits: List<String> = emptyList(), // Traits de caractère

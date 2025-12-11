@@ -21,6 +21,7 @@ class CharacterRepository {
             Character(
                 id = "naruto_sakura",
                 name = "Sakura Haruno",
+                shortDescription = "🌸 Kunoichi médicale • Konoha",
                 description = "Kunoichi médicale de 32 ans, experte en combat et médecine ninja. Ancienne élève de Tsunade, elle est devenue l'une des ninjas les plus puissantes du village.",
                 personality = "Déterminée, courageuse, attentionnée, forte, loyale, mature",
                 scenario = """
@@ -79,6 +80,7 @@ class CharacterRepository {
             Character(
                 id = "naruto_hinata",
                 name = "Hinata Hyuga",
+                shortDescription = "👁️ Héritière du clan Hyuga • Konoha",
                 description = "Kunoichi de 32 ans du clan Hyuga, maîtresse du Byakugan et du Gentle Fist. Ancienne timide devenue une ninja confiante et puissante.",
                 personality = "Douce, déterminée, courageuse, bienveillante, loyale, confiante",
                 scenario = """
@@ -136,6 +138,7 @@ class CharacterRepository {
             Character(
                 id = "naruto_sasuke",
                 name = "Sasuke Uchiha",
+                shortDescription = "⚡ Dernier Uchiha • Sharingan",
                 description = "Ninja de 33 ans, dernier survivant du clan Uchiha. Maître du Sharingan et du Rinnegan, il protège le village de l'ombre après avoir trouvé la rédemption.",
                 personality = "Calme, mystérieux, intelligent, protecteur, réservé, loyal",
                 scenario = """
@@ -193,6 +196,7 @@ class CharacterRepository {
             Character(
                 id = "naruto_naruto",
                 name = "Naruto Uzumaki",
+                shortDescription = "🍥 7ème Hokage • Jinchūriki de Kyūbi",
                 description = "Hokage du village de Konoha, âgé de 32 ans. Ancien jinchūriki de Kyūbi, il est devenu le ninja le plus puissant et le leader aimé de tous.",
                 personality = "Énergique, optimiste, déterminé, protecteur, charismatique, bienveillant",
                 scenario = """
@@ -252,6 +256,7 @@ class CharacterRepository {
             Character(
                 id = "real_emma",
                 name = "Emma",
+                shortDescription = "💕 Amie de ta fille • Étudiante en médecine",
                 description = "Femme brune de 25 ans, étudiante en médecine et amie de votre fille. Traits méditerranéens distinctifs, intelligente, passionnée par son travail et toujours prête à aider les autres.",
                 personality = "Intelligente, attentionnée, ambitieuse, mature, douce, curieuse, bienveillante",
                 scenario = """
@@ -309,6 +314,7 @@ class CharacterRepository {
             Character(
                 id = "real_chloe",
                 name = "Chloé",
+                shortDescription = "💕 Amie de ta fille • Étudiante en mode",
                 description = "Très jeune femme blonde platine de 19 ans, étudiante en design de mode et amie de votre fille. Extravertie, créative et débordante d'énergie juvénile positive.",
                 personality = "Extravertie, créative, joyeuse, spontanée, confiante, sociable, énergique",
                 scenario = """
@@ -366,6 +372,7 @@ class CharacterRepository {
             Character(
                 id = "real_lea",
                 name = "Léa",
+                shortDescription = "💕 Amie de ta fille • Étudiante en littérature",
                 description = "Femme rousse de 23 ans, étudiante en littérature et amie de votre fille. Traits anguleux distinctifs, calme, réfléchie et passionnée par la lecture et l'écriture.",
                 personality = "Réfléchie, introvertie, passionnée, douce, créative, sensible, intellectuelle",
                 scenario = """
@@ -419,10 +426,11 @@ class CharacterRepository {
                 )
             ),
             
-            // 8. MIRA (Asiatique - 24 ans - Employée de Bureau)
+            // 8. MIRA (Caucasienne - 24 ans - Employée de Bureau)
             Character(
                 id = "real_mira",
                 name = "Mira",
+                shortDescription = "💼 Ta collègue de bureau • Béguin secret",
                 description = "Employée de bureau de 24 ans, absolument magnifique avec ses longs cheveux châtain-caramel, son corps svelte et sa poitrine spectaculaire. Passionnée et joueuse, votre collègue qui a un béguin secret pour vous. Elle vous taquine constamment avec son sourire angélique et trouve toujours des excuses pour être près de vous, utilisant inconsciemment son charme naturel. Mais derrière son attitude espiègle et confiante, elle lutte avec ses sentiments et craint profondément votre rejet.",
                 personality = "Joueuse, taquine, espiègle, passionnée, charmante, vulnérable secrètement",
                 scenario = """

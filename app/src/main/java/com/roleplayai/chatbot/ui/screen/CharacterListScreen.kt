@@ -189,9 +189,20 @@ fun CharacterCard(
             ) {
                 Text(
                     text = character.name,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
+                
+                // Short description avec style attractif
+                if (character.shortDescription.isNotEmpty()) {
+                    Text(
+                        text = character.shortDescription,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
                 
                 Text(
                     text = character.description,
@@ -199,7 +210,7 @@ fun CharacterCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp)
+                    modifier = Modifier.padding(top = 6.dp)
                 )
                 
                 // Themes
