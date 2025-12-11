@@ -59,7 +59,13 @@ class CharacterRepository {
                     getDrawableUri("sakura_1007"),
                     getDrawableUri("sakura_1008"),
                     getDrawableUri("sakura_1009"),
-                    getDrawableUri("sakura_1010")
+                    getDrawableUri("sakura_1010"),
+                    // Images sexy (robes moulantes, full body)
+                    getDrawableUri("sakura_sexy_1"),
+                    getDrawableUri("sakura_sexy_2"),
+                    getDrawableUri("sakura_sexy_3"),
+                    getDrawableUri("sakura_sexy_4"),
+                    getDrawableUri("sakura_sexy_5")
                 ),
                 // Images NSFW
                 nsfwImageUrl = getDrawableUri("sakura_1012"),
@@ -72,7 +78,13 @@ class CharacterRepository {
                     getDrawableUri("sakura_1018"),
                     getDrawableUri("sakura_1019"),
                     getDrawableUri("sakura_1020"),
-                    getDrawableUri("sakura_1021")
+                    getDrawableUri("sakura_1021"),
+                    // Images explicit (full body nude, genitals visible)
+                    getDrawableUri("sakura_explicit_1"),
+                    getDrawableUri("sakura_explicit_2"),
+                    getDrawableUri("sakura_explicit_3"),
+                    getDrawableUri("sakura_explicit_4"),
+                    getDrawableUri("sakura_explicit_5")
                 )
             ),
             
@@ -117,7 +129,12 @@ class CharacterRepository {
                     getDrawableUri("hinata_2007"),
                     getDrawableUri("hinata_2008"),
                     getDrawableUri("hinata_2009"),
-                    getDrawableUri("hinata_2010")
+                    getDrawableUri("hinata_2010"),
+                    getDrawableUri("hinata_sexy_1"),
+                    getDrawableUri("hinata_sexy_2"),
+                    getDrawableUri("hinata_sexy_3"),
+                    getDrawableUri("hinata_sexy_4"),
+                    getDrawableUri("hinata_sexy_5")
                 ),
                 // Images NSFW
                 nsfwImageUrl = getDrawableUri("hinata_2012"),
@@ -130,7 +147,12 @@ class CharacterRepository {
                     getDrawableUri("hinata_2018"),
                     getDrawableUri("hinata_2019"),
                     getDrawableUri("hinata_2020"),
-                    getDrawableUri("hinata_2021")
+                    getDrawableUri("hinata_2021"),
+                    getDrawableUri("hinata_explicit_1"),
+                    getDrawableUri("hinata_explicit_2"),
+                    getDrawableUri("hinata_explicit_3"),
+                    getDrawableUri("hinata_explicit_4"),
+                    getDrawableUri("hinata_explicit_5")
                 )
             ),
             
