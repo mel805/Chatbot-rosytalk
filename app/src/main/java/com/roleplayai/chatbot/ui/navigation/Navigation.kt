@@ -13,21 +13,26 @@ import com.roleplayai.chatbot.ui.screen.CharacterListScreen
 import com.roleplayai.chatbot.ui.screen.CharacterProfileScreen
 import com.roleplayai.chatbot.ui.screen.ChatScreen
 import com.roleplayai.chatbot.ui.screen.LoginScreen
+import com.roleplayai.chatbot.ui.screen.MainScreen
 import com.roleplayai.chatbot.ui.screen.ModelSelectionScreen
+import com.roleplayai.chatbot.ui.screen.ProfileScreen
 import com.roleplayai.chatbot.ui.screen.SettingsScreen
 import com.roleplayai.chatbot.ui.screen.SplashScreen
 import com.roleplayai.chatbot.ui.viewmodel.AuthViewModel
 import com.roleplayai.chatbot.ui.viewmodel.CharacterViewModel
 import com.roleplayai.chatbot.ui.viewmodel.ChatViewModel
 import com.roleplayai.chatbot.ui.viewmodel.ModelViewModel
+import com.roleplayai.chatbot.ui.viewmodel.SettingsViewModel
 import kotlinx.coroutines.delay
 
 sealed class Screen(val route: String) {
     object Splash : Screen("splash")
     object Login : Screen("login")
     object ModelSelection : Screen("model_selection")
+    object Main : Screen("main")
     object CharacterList : Screen("character_list")
     object Settings : Screen("settings")
+    object Profile : Screen("user_profile")
     object Chat : Screen("chat/{characterId}") {
         fun createRoute(characterId: String) = "chat/$characterId"
     }
@@ -42,7 +47,8 @@ fun AppNavigation(
     characterViewModel: CharacterViewModel = viewModel(),
     chatViewModel: ChatViewModel = viewModel(),
     modelViewModel: ModelViewModel = viewModel(),
-    authViewModel: AuthViewModel = viewModel()
+    authViewModel: AuthViewModel = viewModel(),
+    settingsViewModel: SettingsViewModel = viewModel()
 ) {
     val currentUser by authViewModel.currentUser.collectAsState()
     
@@ -78,8 +84,8 @@ fun AppNavigation(
                             popUpTo(Screen.Splash.route) { inclusive = true }
                         }
                     } else {
-                        // Lancement normal : aller directement vers la liste
-                        navController.navigate(Screen.CharacterList.route) {
+                        // Lancement normal : aller directement vers l'écran principal
+                        navController.navigate(Screen.Main.route) {
                             popUpTo(Screen.Splash.route) { inclusive = true }
                         }
                     }
@@ -102,7 +108,7 @@ fun AppNavigation(
             ModelSelectionScreen(
                 viewModel = modelViewModel,
                 onModelReady = {
-                    navController.navigate(Screen.CharacterList.route) {
+                    navController.navigate(Screen.Main.route) {
                         popUpTo(Screen.ModelSelection.route) { inclusive = true }
                     }
                 }
@@ -116,6 +122,25 @@ fun AppNavigation(
             }
         }
         
+        composable(Screen.Main.route) {
+            MainScreen(
+                onCharacterClick = { characterId ->
+                    navController.navigate(Screen.Chat.createRoute(characterId))
+                },
+                onCharacterProfileClick = { characterId ->
+                    navController.navigate(Screen.CharacterProfile.createRoute(characterId))
+                },
+                onChatClick = { characterId ->
+                    // Naviguer vers le chat du personnage
+                    navController.navigate(Screen.Chat.createRoute(characterId))
+                },
+                onNavigateToProfile = {
+                    navController.navigate(Screen.Profile.route)
+                }
+            )
+        }
+        
+        // Garder CharacterList pour compatibilité (optionnel)
         composable(Screen.CharacterList.route) {
             CharacterListScreen(
                 viewModel = characterViewModel,
@@ -126,7 +151,7 @@ fun AppNavigation(
                     navController.navigate(Screen.CharacterProfile.createRoute(characterId))
                 },
                 onSettingsClick = {
-                    navController.navigate(Screen.Settings.route)
+                    navController.navigate(Screen.Main.route)
                 }
             )
         }
@@ -134,21 +159,40 @@ fun AppNavigation(
         composable(Screen.CharacterProfile.route) { backStackEntry ->
             val characterId = backStackEntry.arguments?.getString("characterId") ?: return@composable
             val character = characterViewModel.getCharacterById(characterId) ?: return@composable
+            val isNsfwMode by settingsViewModel.nsfwMode.collectAsState()
+            
+            // Vérifier s'il y a une conversation existante
+            val hasExistingChat = chatViewModel.hasExistingChat(characterId)
             
             CharacterProfileScreen(
                 character = character,
                 onBack = { navController.popBackStack() },
-                onStartChat = {
+                onStartNewChat = {
+                    // Créer une NOUVELLE conversation (supprime l'ancienne)
+                    chatViewModel.createNewChat(characterId)
                     navController.navigate(Screen.Chat.createRoute(characterId)) {
-                        popUpTo(Screen.CharacterList.route)
+                        popUpTo(Screen.Main.route)
                     }
-                }
+                },
+                onContinueChat = if (hasExistingChat) {
+                    {
+                        // Continuer la conversation existante
+                        val existingChat = chatViewModel.getExistingChat(characterId)
+                        if (existingChat != null) {
+                            chatViewModel.selectChat(existingChat.id)
+                            navController.navigate(Screen.Chat.createRoute(characterId)) {
+                                popUpTo(Screen.Main.route)
+                            }
+                        }
+                    }
+                } else null,
+                hasExistingChat = hasExistingChat,
+                isNsfwMode = isNsfwMode
             )
         }
         
-        composable(Screen.Settings.route) {
-            SettingsScreen(
-                viewModel = modelViewModel,
+        composable(Screen.Profile.route) {
+            ProfileScreen(
                 onBack = { navController.popBackStack() }
             )
         }

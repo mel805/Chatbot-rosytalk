@@ -28,6 +28,7 @@ fun LoginScreen(
     
     var email by remember { mutableStateOf("") }
     var displayName by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     
@@ -108,11 +109,25 @@ fun LoginScreen(
             OutlinedTextField(
                 value = displayName,
                 onValueChange = { displayName = it },
-                label = { Text("Nom (optionnel)") },
+                label = { Text("Nom complet (optionnel)") },
                 leadingIcon = { Icon(Icons.Default.Person, "Nom") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 enabled = !isLoading
+            )
+            
+            Spacer(Modifier.height(16.dp))
+            
+            // Champ Pseudo
+            OutlinedTextField(
+                value = username,
+                onValueChange = { username = it },
+                label = { Text("Pseudo (pour les conversations)") },
+                leadingIcon = { Icon(Icons.Default.Person, "Pseudo") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                enabled = !isLoading,
+                placeholder = { Text("Comment voulez-vous être appelé ?") }
             )
             
             Spacer(Modifier.height(32.dp))
@@ -129,7 +144,11 @@ fun LoginScreen(
                         isLoading = true
                         errorMessage = null
                         
-                        val result = authViewModel.signIn(email.trim(), displayName.trim())
+                        val result = authViewModel.signIn(
+                            email = email.trim(),
+                            displayName = displayName.trim(),
+                            username = username.trim()
+                        )
                         
                         result.fold(
                             onSuccess = {
@@ -191,7 +210,9 @@ fun LoginScreen(
                     Spacer(Modifier.height(8.dp))
                     Text(
                         text = "• Connexion simple avec votre email\n" +
-                               "• Vos préférences sont sauvegardées localement\n" +
+                               "• Choisissez votre pseudo pour les conversations\n" +
+                               "• Vos conversations sont sauvegardées\n" +
+                               "• Les personnages vous appelleront par votre pseudo\n" +
                                "• Vous pouvez activer le mode NSFW\n" +
                                "• Conversations privées et sécurisées\n" +
                                "• Aucune donnée envoyée sur Internet",

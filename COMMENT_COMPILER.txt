@@ -1,0 +1,153 @@
+═══════════════════════════════════════════════════════════════════════════
+   COMMENT COMPILER ET CRÉER LA RELEASE - RolePlay AI v1.4.0
+═══════════════════════════════════════════════════════════════════════════
+
+⚠️  IMPORTANT : La compilation nécessite le SDK Android installé sur VOTRE machine locale.
+    L'environnement cloud Cursor n'a pas le SDK Android.
+
+═══════════════════════════════════════════════════════════════════════════
+🚀 MÉTHODE RAPIDE - Script automatique (recommandé)
+═══════════════════════════════════════════════════════════════════════════
+
+Sur votre machine locale, dans le dossier du projet :
+
+1. Récupérez les modifications :
+   git pull origin cursor/ajouter-m-moire-conversation-et-inscription-5382
+
+2. Exécutez le script :
+   ./build-and-release.sh
+
+Le script fera TOUT automatiquement :
+- Nettoyage
+- Compilation Debug (pour test)
+- Compilation Release
+- Commit Git
+- Création du tag
+- Push vers GitHub
+- Création de la release GitHub (si gh CLI est installé)
+
+═══════════════════════════════════════════════════════════════════════════
+📝 MÉTHODE MANUELLE - Étape par étape
+═══════════════════════════════════════════════════════════════════════════
+
+ÉTAPE 1 : Préparer l'environnement
+-----------------------------------
+a) Créez le fichier local.properties à la racine :
+   
+   Windows :
+   sdk.dir=C\:\\Users\\VotreNom\\AppData\\Local\\Android\\Sdk
+   
+   Mac/Linux :
+   sdk.dir=/Users/VotreNom/Library/Android/sdk
+
+b) Vérifiez que vous avez :
+   - Android Studio
+   - SDK Android (API 24-34)
+   - NDK Android (26.1.10909125)
+   - Java JDK 8+
+
+ÉTAPE 2 : Compiler l'APK
+-------------------------
+Pour une version Debug (tests) :
+   ./gradlew assembleDebug
+   → APK dans : app/build/outputs/apk/debug/app-debug.apk
+
+Pour une version Release (publication) :
+   ./gradlew assembleRelease
+   → APK dans : app/build/outputs/apk/release/app-release.apk
+
+ÉTAPE 3 : Tester l'APK
+-----------------------
+   adb install app/build/outputs/apk/release/app-release.apk
+
+ÉTAPE 4 : Créer le commit et tag Git
+-------------------------------------
+   git add .
+   git commit -m "feat: v1.4.0 - mémoire, profil, personnalisation"
+   git tag -a v1.4.0 -m "Version 1.4.0"
+   git push origin cursor/ajouter-m-moire-conversation-et-inscription-5382
+   git push origin v1.4.0
+
+ÉTAPE 5 : Créer la release GitHub
+----------------------------------
+Option A - Via le site GitHub :
+   1. https://github.com/VOTRE_USERNAME/VOTRE_REPO/releases/new
+   2. Tag : v1.4.0
+   3. Titre : Version 1.4.0 - Mémoire, Profil et Personnalisation
+   4. Description : Copiez le contenu de RELEASE_NOTES_v1.4.0.md
+   5. Upload : Renommez app-release.apk en RolePlayAI-v1.4.0.apk
+   6. Publiez !
+
+Option B - Via GitHub CLI :
+   gh release create v1.4.0 \
+     app/build/outputs/apk/release/app-release.apk#RolePlayAI-v1.4.0.apk \
+     --title "Version 1.4.0 - Mémoire, Profil et Personnalisation" \
+     --notes-file RELEASE_NOTES_v1.4.0.md
+
+═══════════════════════════════════════════════════════════════════════════
+📚 FICHIERS UTILES CRÉÉS
+═══════════════════════════════════════════════════════════════════════════
+
+✅ build-and-release.sh
+   → Script automatique complet (RECOMMANDÉ)
+
+✅ GUIDE_COMPILATION_RELEASE.md
+   → Guide détaillé étape par étape
+
+✅ RELEASE_NOTES_v1.4.0.md
+   → Notes de release prêtes à publier
+
+✅ NOUVELLES_FONCTIONNALITES.md
+   → Documentation des modifications
+
+✅ COMMENT_COMPILER.txt
+   → Ce fichier (aide rapide)
+
+═══════════════════════════════════════════════════════════════════════════
+❓ PROBLÈMES FRÉQUENTS
+═══════════════════════════════════════════════════════════════════════════
+
+ERREUR : "SDK location not found"
+   → Créez local.properties avec sdk.dir=...
+
+ERREUR : "ANDROID_HOME not set"
+   → Export ANDROID_HOME=/chemin/vers/sdk
+   → Ou créez local.properties
+
+Build très lent
+   → Première compilation normale (télécharge dépendances)
+   → Compilations suivantes plus rapides
+
+APK non signé
+   → Créez keystore.properties pour signer
+   → Voir GUIDE_COMPILATION_RELEASE.md section 3
+
+═══════════════════════════════════════════════════════════════════════════
+🎯 RÉSUMÉ ULTRA-RAPIDE
+═══════════════════════════════════════════════════════════════════════════
+
+1. git pull origin cursor/ajouter-m-moire-conversation-et-inscription-5382
+2. ./build-and-release.sh
+3. Suivez les instructions du script
+4. Récupérez le lien de la release GitHub
+
+OU en une seule commande (si tout est configuré) :
+
+./gradlew assembleRelease && \
+git add . && \
+git commit -m "feat: v1.4.0" && \
+git tag v1.4.0 && \
+git push origin cursor/ajouter-m-moire-conversation-et-inscription-5382 && \
+git push origin v1.4.0 && \
+gh release create v1.4.0 app/build/outputs/apk/release/app-release.apk \
+  --title "Version 1.4.0" --notes-file RELEASE_NOTES_v1.4.0.md
+
+═══════════════════════════════════════════════════════════════════════════
+📞 BESOIN D'AIDE ?
+═══════════════════════════════════════════════════════════════════════════
+
+Consultez les fichiers de documentation :
+- GUIDE_COMPILATION_RELEASE.md (complet)
+- BUILD_INSTRUCTIONS.md (instructions build originales)
+
+Bon build ! 🚀

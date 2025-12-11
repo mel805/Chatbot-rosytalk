@@ -9,7 +9,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material3.*
+import androidx.compose.material3.Divider
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,7 +22,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
+import coil.request.ImageRequest
+import coil.size.Scale
 import com.roleplayai.chatbot.data.model.Character
 import com.roleplayai.chatbot.data.model.CharacterGender
 import com.roleplayai.chatbot.ui.components.ImageViewerDialog
@@ -29,9 +36,24 @@ import com.roleplayai.chatbot.ui.components.ImageViewerDialog
 fun CharacterProfileScreen(
     character: Character,
     onBack: () -> Unit,
-    onStartChat: () -> Unit
+    onStartNewChat: () -> Unit,
+    onContinueChat: (() -> Unit)? = null,
+    hasExistingChat: Boolean = false,
+    isNsfwMode: Boolean = false
 ) {
     var selectedImageUrl by remember { mutableStateOf<String?>(null) }
+    
+    // Utiliser les images appropriées selon le mode NSFW
+    val (mainImageUrl, additionalImageUrls) = remember(character, isNsfwMode) {
+        if (isNsfwMode && character.nsfwImageUrl.isNotEmpty()) {
+            // En mode NSFW : combiner les images SFW + NSFW
+            val combinedImages = character.additionalImages + character.nsfwAdditionalImages
+            Pair(character.imageUrl, combinedImages)
+        } else {
+            // Mode normal : seulement les images SFW
+            Pair(character.imageUrl, character.additionalImages)
+        }
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -48,13 +70,65 @@ fun CharacterProfileScreen(
                 )
             )
         },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onStartChat,
-                icon = { Icon(Icons.Default.Chat, "Chat") },
-                text = { Text("Démarrer conversation") },
-                containerColor = MaterialTheme.colorScheme.primary
-            )
+        bottomBar = {
+            // Barre avec les boutons d'action
+            if (hasExistingChat && onContinueChat != null) {
+                // Deux boutons : Nouvelle conversation + Continuer
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Bouton Continuer la conversation
+                    Button(
+                        onClick = onContinueChat,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Icon(Icons.Default.Chat, "Continuer", modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Reprendre la conversation", style = MaterialTheme.typography.bodyLarge)
+                    }
+                    
+                    // Bouton Nouvelle conversation
+                    OutlinedButton(
+                        onClick = onStartNewChat,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Icon(Icons.Default.Add, "Nouvelle", modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Nouvelle conversation", style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            } else {
+                // Un seul bouton : Commencer conversation
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.surface,
+                    shadowElevation = 8.dp
+                ) {
+                    Button(
+                        onClick = onStartNewChat,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Icon(Icons.Default.Chat, "Démarrer", modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Commencer une conversation", style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
         }
     ) { paddingValues ->
         LazyColumn(
@@ -72,11 +146,27 @@ fun CharacterProfileScreen(
                         .height(300.dp)
                         .clip(RoundedCornerShape(16.dp))
                 ) {
-                    AsyncImage(
-                        model = character.imageUrl,
+                    // Image principale optimisée
+                    SubcomposeAsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(mainImageUrl)
+                            .crossfade(400) // Animation fluide
+                            .size(1024) // Taille optimale pour image principale
+                            .scale(Scale.FIT)
+                            .build(),
                         contentDescription = character.name,
                         modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
+                        contentScale = ContentScale.Crop,
+                        loading = {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
                     )
                     
                     // Gradient overlay
@@ -144,6 +234,51 @@ fun CharacterProfileScreen(
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurface
                     )
+                }
+            }
+            
+            // Scénario de départ
+            if (character.scenario.isNotBlank()) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        ),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.AutoStories,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = "🎬 Scénario de Départ",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            Divider(
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                                thickness = 1.dp
+                            )
+                            Text(
+                                text = character.scenario,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.4
+                            )
+                        }
+                    }
                 }
             }
             
@@ -223,14 +358,14 @@ fun CharacterProfileScreen(
             }
             
             // Galerie d'images générées par IA (cliquables pour zoom)
-            if (character.additionalImages.isNotEmpty()) {
+            if (additionalImageUrls.isNotEmpty()) {
                 item {
                     ProfileSection(
-                        title = "🖼️ Galerie (${character.additionalImages.size} images)",
+                        title = if (isNsfwMode) "🔞 Galerie Complète (${additionalImageUrls.size} images)" else "🖼️ Galerie (${additionalImageUrls.size} images)",
                         icon = Icons.Default.PhotoLibrary
                     ) {
                         Text(
-                            "Cliquez sur une image pour l'agrandir (les images se génèrent à la demande)",
+                            if (isNsfwMode) "Mode NSFW : Toutes les images SFW + NSFW" else "Cliquez sur une image pour l'agrandir",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(bottom = 12.dp)
@@ -238,18 +373,53 @@ fun CharacterProfileScreen(
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            items(character.additionalImages) { imageUrl ->
+                            items(additionalImageUrls) { imageUrl ->
                                 Card(
                                     modifier = Modifier
                                         .size(180.dp)
                                         .clickable { selectedImageUrl = imageUrl },
                                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                                 ) {
-                                    AsyncImage(
-                                        model = imageUrl,
+                                    // Image optimisée pour chargement rapide
+                                    SubcomposeAsyncImage(
+                                        model = ImageRequest.Builder(LocalContext.current)
+                                            .data(imageUrl)
+                                            .crossfade(300) // Animation fluide
+                                            .size(360) // Taille réduite pour miniature (2x pour haute densité)
+                                            .scale(Scale.FIT)
+                                            .build(),
                                         contentDescription = "Image de ${character.name}",
                                         modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
+                                        contentScale = ContentScale.Crop,
+                                        loading = {
+                                            // Placeholder pendant le chargement
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(24.dp),
+                                                    strokeWidth = 2.dp
+                                                )
+                                            }
+                                        },
+                                        error = {
+                                            // Affichage en cas d'erreur
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .background(MaterialTheme.colorScheme.errorContainer),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.BrokenImage,
+                                                    contentDescription = "Erreur",
+                                                    tint = MaterialTheme.colorScheme.onErrorContainer
+                                                )
+                                            }
+                                        }
                                     )
                                 }
                             }

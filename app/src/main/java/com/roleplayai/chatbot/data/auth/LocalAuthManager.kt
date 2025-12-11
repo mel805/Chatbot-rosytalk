@@ -80,23 +80,40 @@ class LocalAuthManager(private val context: Context) {
     /**
      * Connexion avec email (création automatique si nouveau)
      */
-    suspend fun signIn(email: String, displayName: String = ""): Result<User> {
+    suspend fun signIn(email: String, displayName: String = "", username: String = "", bio: String = "", age: String = ""): Result<User> {
         return try {
             // Valider l'email
             if (!isValidEmail(email)) {
                 return Result.failure(Exception("Email invalide"))
             }
             
-            // Créer ou récupérer l'utilisateur
-            val user = User(
-                email = email,
-                displayName = displayName.ifEmpty { email.split("@")[0] },
-                isAdmin = email == ADMIN_EMAIL,
-                nsfwEnabled = false,
-                groqApiKey = "",
-                groqModelId = "llama-3.1-8b-instant",
-                createdAt = System.currentTimeMillis()
-            )
+            // Vérifier si l'utilisateur existe déjà
+            val existingUser = getUserByEmail(email)
+            
+            // Créer ou mettre à jour l'utilisateur
+            val user = if (existingUser != null) {
+                // Utilisateur existant - mettre à jour les infos si fournies
+                existingUser.copy(
+                    displayName = if (displayName.isNotEmpty()) displayName else existingUser.displayName,
+                    username = if (username.isNotEmpty()) username else existingUser.username,
+                    bio = if (bio.isNotEmpty()) bio else existingUser.bio,
+                    age = if (age.isNotEmpty()) age else existingUser.age
+                )
+            } else {
+                // Nouvel utilisateur
+                User(
+                    email = email,
+                    displayName = displayName.ifEmpty { email.split("@")[0] },
+                    username = username.ifEmpty { email.split("@")[0] },
+                    bio = bio,
+                    age = age,
+                    isAdmin = email == ADMIN_EMAIL,
+                    nsfwEnabled = false,
+                    groqApiKey = "",
+                    groqModelId = "llama-3.1-8b-instant",
+                    createdAt = System.currentTimeMillis()
+                )
+            }
             
             // Sauvegarder dans les utilisateurs existants
             saveUser(user)
@@ -230,6 +247,53 @@ class LocalAuthManager(private val context: Context) {
     }
     
     /**
+     * Obtenir un utilisateur par email
+     */
+    private suspend fun getUserByEmail(email: String): User? {
+        return try {
+            val prefs = context.userDataStore.data.first()
+            val usersJson = prefs[USERS_KEY] ?: "[]"
+            val users = json.decodeFromString<List<User>>(usersJson)
+            users.find { it.email == email }
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Erreur lecture utilisateur", e)
+            null
+        }
+    }
+    
+    /**
+     * Mettre à jour le profil de l'utilisateur actuel
+     */
+    suspend fun updateUserProfile(displayName: String, username: String, bio: String, age: String): Result<User> {
+        val user = _currentUser.value ?: return Result.failure(Exception("Aucun utilisateur connecté"))
+        
+        return try {
+            val updatedUser = user.copy(
+                displayName = displayName,
+                username = username,
+                bio = bio,
+                age = age
+            )
+            
+            // Sauvegarder dans la liste des utilisateurs
+            saveUser(updatedUser)
+            
+            // Mettre à jour l'utilisateur actuel
+            context.userDataStore.edit { prefs ->
+                prefs[CURRENT_USER_KEY] = json.encodeToString(updatedUser)
+            }
+            
+            _currentUser.value = updatedUser
+            
+            Log.i(TAG, "✅ Profil mis à jour pour ${user.email}")
+            Result.success(updatedUser)
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Erreur mise à jour profil", e)
+            Result.failure(e)
+        }
+    }
+    
+    /**
      * Valider l'email
      */
     private fun isValidEmail(email: String): Boolean {
@@ -244,6 +308,9 @@ class LocalAuthManager(private val context: Context) {
 data class User(
     val email: String,
     val displayName: String,
+    val username: String = "",  // Pseudo pour être appelé dans les conversations
+    val bio: String = "",  // Biographie/description personnelle
+    val age: String = "",  // Âge (optionnel)
     val isAdmin: Boolean = false,
     val nsfwEnabled: Boolean = false,
     val groqApiKey: String = "",

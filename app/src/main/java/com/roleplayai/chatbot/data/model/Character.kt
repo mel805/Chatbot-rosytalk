@@ -13,10 +13,17 @@ data class Character(
     val exampleDialogues: List<String> = emptyList(),
     val gender: CharacterGender = CharacterGender.FEMALE,
     
+    // Description courte pour la liste (ex: "Amie de ta fille")
+    val shortDescription: String = "",
+    
     // Nouvelles informations pour la page de profil
     val physicalDescription: String = "",  // Description physique détaillée
     val characterTraits: List<String> = emptyList(), // Traits de caractère
-    val additionalImages: List<String> = emptyList() // URLs d'images supplémentaires
+    val additionalImages: List<String> = emptyList(), // URLs d'images supplémentaires
+    
+    // Images NSFW (utilisées uniquement si le mode NSFW est activé)
+    val nsfwImageUrl: String = "",  // Image principale NSFW
+    val nsfwAdditionalImages: List<String> = emptyList() // Images additionnelles NSFW
 )
 
 enum class CharacterGender {

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.roleplayai.chatbot.data.ai.AIEngine
 import com.roleplayai.chatbot.data.ai.LocalAIEngine
 import com.roleplayai.chatbot.data.ai.GroqAIEngine
+import com.roleplayai.chatbot.data.auth.LocalAuthManager
 import com.roleplayai.chatbot.data.model.Chat
 import com.roleplayai.chatbot.data.model.InferenceConfig
 import com.roleplayai.chatbot.data.model.Message
@@ -20,9 +21,10 @@ import kotlinx.coroutines.launch
 
 class ChatViewModel(application: Application) : AndroidViewModel(application) {
     
-    private val chatRepository = ChatRepository()
+    private val chatRepository = ChatRepository(application)
     private val characterRepository = CharacterRepository()
     private val preferencesManager = PreferencesManager(application)
+    private val authManager = LocalAuthManager.getInstance(application)
     private val aiEngine = AIEngine(application)
     private var localAIEngine: LocalAIEngine? = null
     private var groqAIEngine: GroqAIEngine? = null
@@ -39,15 +41,25 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     
     val allChats = chatRepository.chats
     
-    fun createOrGetChat(characterId: String): Chat {
-        // Check if a chat already exists for this character
+    // Vérifier si une conversation existe pour ce personnage
+    fun hasExistingChat(characterId: String): Boolean {
+        return chatRepository.getChatsByCharacter(characterId).isNotEmpty()
+    }
+    
+    // Obtenir le chat existant (pour le continuer)
+    fun getExistingChat(characterId: String): Chat? {
+        return chatRepository.getChatsByCharacter(characterId).firstOrNull()
+    }
+    
+    // Créer un NOUVEAU chat (supprime l'ancien si existe)
+    fun createNewChat(characterId: String): Chat {
+        // Supprimer l'ancien chat s'il existe
         val existingChat = chatRepository.getChatsByCharacter(characterId).firstOrNull()
         if (existingChat != null) {
-            _currentChat.value = existingChat
-            return existingChat
+            chatRepository.deleteChat(existingChat.id)
         }
         
-        // Create new chat
+        // Créer nouveau chat
         val character = characterRepository.getCharacterById(characterId)
             ?: throw IllegalArgumentException("Character not found")
         
@@ -57,7 +69,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             characterImageUrl = character.imageUrl
         )
         
-        // Add greeting message
+        // Ajouter le message de salutation
         chatRepository.addMessage(
             chatId = newChat.id,
             content = character.greeting,
@@ -66,6 +78,19 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         
         _currentChat.value = chatRepository.getChatById(newChat.id)
         return _currentChat.value!!
+    }
+    
+    // Ancienne fonction pour compatibilité (cherche ou crée)
+    fun createOrGetChat(characterId: String): Chat {
+        // Check if a chat already exists for this character
+        val existingChat = chatRepository.getChatsByCharacter(characterId).firstOrNull()
+        if (existingChat != null) {
+            _currentChat.value = existingChat
+            return existingChat
+        }
+        
+        // Create new chat
+        return createNewChat(characterId)
     }
     
     fun selectChat(chatId: String) {
@@ -97,6 +122,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 
                 val updatedChat = chatRepository.getChatById(chat.id)!!
                 
+                // Obtenir le pseudo de l'utilisateur
+                val username = authManager.currentUser.value?.username?.takeIf { it.isNotBlank() }
+                    ?: authManager.currentUser.value?.displayName
+                    ?: "Utilisateur"
+                
                 // Vérifier si Groq API est activée
                 val useGroq = preferencesManager.useGroqApi.first()
                 
@@ -106,7 +136,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                         // TOUJOURS réinitialiser pour prendre en compte les changements de modèle
                         initializeGroqEngine()
                         
-                        val groqResponse = groqAIEngine?.generateResponse(character, updatedChat.messages)
+                        val groqResponse = groqAIEngine?.generateResponse(character, updatedChat.messages, username)
                             ?: throw Exception("Groq API non configurée")
                         
                         // Vérifier si erreur de limite Groq
@@ -121,7 +151,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     } catch (e: Exception) {
                         // Basculement vers IA locale
                         android.util.Log.w("ChatViewModel", "⚠️ Groq indisponible (${e.message}), basculement vers IA locale...")
-                        fallbackToLocalAI(character, updatedChat.messages)
+                        fallbackToLocalAI(character, updatedChat.messages, username)
                     }
                 } else {
                     // Groq désactivé, utiliser LocalAI
@@ -139,7 +169,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                         }
                         
                         // Générer avec LocalAI
-                        localAIEngine!!.generateResponse(character, updatedChat.messages)
+                        localAIEngine!!.generateResponse(character, updatedChat.messages, username)
                     } catch (e: Exception) {
                         android.util.Log.e("ChatViewModel", "❌ Erreur LocalAI (Groq désactivé)", e)
                         "Erreur de l'IA locale.\n\n💡 Astuce : Téléchargez un modèle local dans Paramètres > Modèle IA pour de meilleures réponses, ou activez Groq API pour des réponses ultra-rapides !"
@@ -249,7 +279,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     /**
      * Fallback vers IA locale (llama.cpp ou templates intelligents)
      */
-    private suspend fun fallbackToLocalAI(character: com.roleplayai.chatbot.data.model.Character, messages: List<Message>): String {
+    private suspend fun fallbackToLocalAI(character: com.roleplayai.chatbot.data.model.Character, messages: List<Message>, username: String = "Utilisateur"): String {
         val nsfwMode = preferencesManager.nsfwMode.first()
         
         return try {
@@ -265,7 +295,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 localAIEngine!!.loadModel()
             }
             
-            val localResponse = localAIEngine!!.generateResponse(character, messages)
+            val localResponse = localAIEngine!!.generateResponse(character, messages, username)
             android.util.Log.i("ChatViewModel", "✅ IA locale activée")
             localResponse
             
