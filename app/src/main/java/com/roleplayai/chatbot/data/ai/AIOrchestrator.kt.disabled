@@ -1,0 +1,350 @@
+package com.roleplayai.chatbot.data.ai
+
+import android.content.Context
+import android.util.Log
+import com.roleplayai.chatbot.data.memory.ConversationMemory
+import com.roleplayai.chatbot.data.model.Character
+import com.roleplayai.chatbot.data.model.Message
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+/**
+ * AI Orchestrator - Gestionnaire Intelligent d'IA
+ * 
+ * Choisit automatiquement la MEILLEURE IA disponible :
+ * 1. Groq (si activé et disponible)
+ * 2. Gemini Nano (IA on-device Google)
+ * 3. LLM Local (Phi-3/Gemma/TinyLlama avec llama.cpp)
+ * 4. Together AI (API gratuite)
+ * 5. HuggingFace (API gratuite)
+ * 6. SmartLocalAI (fallback intelligent)
+ * 
+ * Intègre ConversationMemory pour TOUS les moteurs
+ * pour garantir cohérence et mémoire long terme.
+ */
+class AIOrchestrator(
+    private val context: Context,
+    private val characterId: String,
+    private val nsfwMode: Boolean = false
+) {
+    
+    companion object {
+        private const val TAG = "AIOrchestrator"
+    }
+    
+    // Moteurs d'IA disponibles
+    private var groqEngine: GroqAIEngine? = null
+    private var geminiNanoEngine: GeminiNanoEngine? = null
+    private var localLLMEngine: OptimizedLocalLLM? = null
+    private var togetherEngine: TogetherAIEngine? = null
+    private var huggingFaceEngine: HuggingFaceAIEngine? = null
+    private var smartLocalEngine: SmartLocalAI? = null
+    
+    // Mémoire conversationnelle (partagée entre tous les moteurs)
+    private val memory = ConversationMemory(context, characterId)
+    
+    // Configuration
+    data class AIConfig(
+        var useGroq: Boolean = true,
+        var groqApiKey: String = "",
+        var preferLocalLLM: Boolean = true,  // Préférer LLM local si disponible
+        var localModelPath: String = ""
+    )
+    
+    private var config = AIConfig()
+    
+    // Statistiques
+    data class Stats(
+        var groqCalls: Int = 0,
+        var geminiNanoCalls: Int = 0,
+        var localLLMCalls: Int = 0,
+        var togetherCalls: Int = 0,
+        var huggingFaceCalls: Int = 0,
+        var smartLocalCalls: Int = 0,
+        var totalCalls: Int = 0
+    )
+    
+    private val stats = Stats()
+    
+    /**
+     * Configure l'orchestrateur
+     */
+    fun configure(config: AIConfig) {
+        this.config = config
+        Log.d(TAG, "⚙️ Configuration: Groq=${config.useGroq}, LocalLLM=${config.preferLocalLLM}")
+    }
+    
+    /**
+     * Initialise les moteurs disponibles
+     */
+    suspend fun initialize(character: Character) = withContext(Dispatchers.IO) {
+        Log.d(TAG, "🔄 Initialisation des moteurs d'IA...")
+        
+        // 1. Initialiser Groq si configuré
+        if (config.useGroq && config.groqApiKey.isNotEmpty()) {
+            try {
+                groqEngine = GroqAIEngine(config.groqApiKey, nsfwMode)
+                Log.i(TAG, "✅ Groq initialisé")
+            } catch (e: Exception) {
+                Log.w(TAG, "⚠️ Groq non disponible: ${e.message}")
+            }
+        }
+        
+        // 2. Vérifier Gemini Nano (désactivé temporairement - nécessite Android 14+)
+        /*
+        try {
+            val gemini = GeminiNanoEngine(context, nsfwMode)
+            if (gemini.checkAvailability()) {
+                geminiNanoEngine = gemini
+                Log.i(TAG, "✅ Gemini Nano disponible")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "⚠️ Gemini Nano non disponible: ${e.message}")
+        }
+        */
+        Log.d(TAG, "ℹ️ Gemini Nano désactivé (nécessite Android 14+)")
+        
+        // 3. Charger LLM local si disponible
+        if (config.localModelPath.isNotEmpty()) {
+            try {
+                val llm = OptimizedLocalLLM(context, config.localModelPath, nsfwMode)
+                if (llm.loadModel(characterId)) {
+                    localLLMEngine = llm
+                    Log.i(TAG, "✅ LLM local chargé")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "⚠️ LLM local non disponible: ${e.message}")
+            }
+        }
+        
+        // 4. Together AI (toujours initialisé en fallback)
+        togetherEngine = TogetherAIEngine("", "mistralai/Mistral-7B-Instruct-v0.2", nsfwMode)
+        Log.d(TAG, "✅ Together AI initialisé")
+        
+        // 5. HuggingFace (toujours initialisé en fallback)
+        huggingFaceEngine = HuggingFaceAIEngine("", "microsoft/Phi-3-mini-4k-instruct", nsfwMode)
+        Log.d(TAG, "✅ HuggingFace initialisé")
+        
+        // 6. SmartLocalAI (fallback ultime, toujours disponible)
+        smartLocalEngine = SmartLocalAI(character, nsfwMode)
+        Log.d(TAG, "✅ SmartLocalAI initialisé")
+        
+        logAvailableEngines()
+    }
+    
+    /**
+     * Génère une réponse avec la meilleure IA disponible
+     */
+    suspend fun generateResponse(
+        character: Character,
+        messages: List<Message>,
+        username: String = "Utilisateur"
+    ): String = withContext(Dispatchers.IO) {
+        stats.totalCalls++
+        
+        // Ajouter les messages à la mémoire
+        messages.takeLast(3).forEach { msg ->
+            memory.addMessage(msg)
+        }
+        
+        Log.d(TAG, "===== Génération réponse (appel #${stats.totalCalls}) =====")
+        Log.d(TAG, "🧠 Mémoire: ${memory.getRelationshipLevel()}/100, ${memory.getFacts().size} faits")
+        
+        // Enrichir les messages avec le contexte de mémoire
+        val enrichedMessages = enrichMessagesWithMemory(messages)
+        
+        // Cascade intelligente
+        val response = try {
+            when {
+                // NIVEAU 1 : Groq (si activé)
+                config.useGroq && groqEngine != null -> {
+                    Log.d(TAG, "1️⃣ Tentative Groq...")
+                    tryGroq(character, enrichedMessages, username)
+                }
+                
+                // NIVEAU 2 : Gemini Nano (préféré si pas Groq)
+                geminiNanoEngine != null -> {
+                    Log.d(TAG, "1️⃣ Tentative Gemini Nano (on-device)...")
+                    tryGeminiNano(character, enrichedMessages, username)
+                }
+                
+                // NIVEAU 3 : LLM Local (si disponible et préféré)
+                config.preferLocalLLM && localLLMEngine != null -> {
+                    Log.d(TAG, "1️⃣ Tentative LLM Local...")
+                    tryLocalLLM(character, enrichedMessages, username)
+                }
+                
+                // NIVEAU 4 : APIs gratuites (Together, HuggingFace)
+                else -> {
+                    Log.d(TAG, "1️⃣ Tentative APIs gratuites...")
+                    tryFreeAPIs(character, enrichedMessages, username)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Erreur cascade principale: ${e.message}")
+            // Fallback absolu
+            trySmartLocal(character, enrichedMessages, username)
+        }
+        
+        // Ajouter la réponse à la mémoire
+        memory.addMessage(Message(
+            id = "",
+            chatId = "",
+            content = response,
+            isUser = false,
+            timestamp = System.currentTimeMillis()
+        ))
+        
+        logStats()
+        response
+    }
+    
+    /**
+     * Enrichit les messages avec le contexte de mémoire
+     */
+    private fun enrichMessagesWithMemory(messages: List<Message>): List<Message> {
+        val relevantContext = memory.getRelevantContext(messages)
+        
+        if (relevantContext.isEmpty()) {
+            return messages
+        }
+        
+        // Ajouter un message système avec le contexte
+        val contextMessage = Message(
+            content = "[CONTEXTE MÉMOIRE]\n$relevantContext",
+            isUser = false,
+            timestamp = 0
+        )
+        
+        return listOf(contextMessage) + messages
+    }
+    
+    // Tentatives individuelles avec fallback
+    
+    private suspend fun tryGroq(character: Character, messages: List<Message>, username: String): String {
+        return try {
+            val response = groqEngine!!.generateResponse(character, messages, username)
+            stats.groqCalls++
+            Log.i(TAG, "✅ Réponse générée par Groq")
+            response
+        } catch (e: Exception) {
+            Log.w(TAG, "⚠️ Groq échoué, essai suivant...")
+            tryGeminiNanoOrNext(character, messages, username)
+        }
+    }
+    
+    private suspend fun tryGeminiNano(character: Character, messages: List<Message>, username: String): String {
+        return try {
+            val response = geminiNanoEngine!!.generateResponse(character, messages, username)
+            stats.geminiNanoCalls++
+            Log.i(TAG, "✅ Réponse générée par Gemini Nano")
+            response
+        } catch (e: Exception) {
+            Log.w(TAG, "⚠️ Gemini Nano échoué, essai suivant...")
+            tryLocalLLMOrNext(character, messages, username)
+        }
+    }
+    
+    private suspend fun tryLocalLLM(character: Character, messages: List<Message>, username: String): String {
+        return try {
+            val response = localLLMEngine!!.generateResponse(character, messages, username)
+            stats.localLLMCalls++
+            Log.i(TAG, "✅ Réponse générée par LLM Local")
+            response
+        } catch (e: Exception) {
+            Log.w(TAG, "⚠️ LLM Local échoué, essai suivant...")
+            tryFreeAPIs(character, messages, username)
+        }
+    }
+    
+    private suspend fun tryFreeAPIs(character: Character, messages: List<Message>, username: String): String {
+        // Together AI
+        try {
+            val response = togetherEngine!!.generateResponse(character, messages, username, maxRetries = 1)
+            stats.togetherCalls++
+            Log.i(TAG, "✅ Réponse générée par Together AI")
+            return response
+        } catch (e: Exception) {
+            Log.w(TAG, "⚠️ Together AI échoué")
+        }
+        
+        // HuggingFace
+        try {
+            val response = huggingFaceEngine!!.generateResponse(character, messages, username, maxRetries = 1)
+            stats.huggingFaceCalls++
+            Log.i(TAG, "✅ Réponse générée par HuggingFace")
+            return response
+        } catch (e: Exception) {
+            Log.w(TAG, "⚠️ HuggingFace échoué")
+        }
+        
+        // Fallback SmartLocal
+        return trySmartLocal(character, messages, username)
+    }
+    
+    private suspend fun tryGeminiNanoOrNext(character: Character, messages: List<Message>, username: String): String {
+        return if (geminiNanoEngine != null) {
+            tryGeminiNano(character, messages, username)
+        } else {
+            tryLocalLLMOrNext(character, messages, username)
+        }
+    }
+    
+    private suspend fun tryLocalLLMOrNext(character: Character, messages: List<Message>, username: String): String {
+        return if (localLLMEngine != null) {
+            tryLocalLLM(character, messages, username)
+        } else {
+            tryFreeAPIs(character, messages, username)
+        }
+    }
+    
+    private suspend fun trySmartLocal(character: Character, messages: List<Message>, username: String): String {
+        val response = smartLocalEngine!!.generateResponse(
+            messages.last { it.isUser }.content,
+            messages,
+            username
+        )
+        stats.smartLocalCalls++
+        Log.i(TAG, "✅ Réponse générée par SmartLocalAI (fallback)")
+        return response
+    }
+    
+    /**
+     * Logs
+     */
+    private fun logAvailableEngines() {
+        Log.i(TAG, "===== Moteurs Disponibles =====")
+        Log.i(TAG, "  Groq: ${if (groqEngine != null) "✅" else "❌"}")
+        Log.i(TAG, "  Gemini Nano: ${if (geminiNanoEngine != null) "✅" else "❌"}")
+        Log.i(TAG, "  LLM Local: ${if (localLLMEngine != null) "✅" else "❌"}")
+        Log.i(TAG, "  Together AI: ✅")
+        Log.i(TAG, "  HuggingFace: ✅")
+        Log.i(TAG, "  SmartLocal: ✅")
+        Log.i(TAG, "==============================")
+    }
+    
+    private fun logStats() {
+        Log.d(TAG, "📊 Statistiques: Total=${stats.totalCalls}, Groq=${stats.groqCalls}, " +
+                "GeminiNano=${stats.geminiNanoCalls}, LocalLLM=${stats.localLLMCalls}, " +
+                "Together=${stats.togetherCalls}, HF=${stats.huggingFaceCalls}, " +
+                "SmartLocal=${stats.smartLocalCalls}")
+    }
+    
+    /**
+     * Obtient la mémoire conversationnelle
+     */
+    fun getMemory(): ConversationMemory = memory
+    
+    /**
+     * Nettoie les ressources
+     */
+    fun cleanup() {
+        localLLMEngine?.unloadModel()
+        groqEngine = null
+        geminiNanoEngine = null
+        togetherEngine = null
+        huggingFaceEngine = null
+        smartLocalEngine = null
+        Log.d(TAG, "🧹 Orchestrateur nettoyé")
+    }
+}

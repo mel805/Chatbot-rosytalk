@@ -8,6 +8,7 @@ import com.roleplayai.chatbot.data.ai.LocalAIEngine
 import com.roleplayai.chatbot.data.ai.GroqAIEngine
 import com.roleplayai.chatbot.data.ai.TogetherAIEngine
 import com.roleplayai.chatbot.data.ai.HuggingFaceAIEngine
+import com.roleplayai.chatbot.data.memory.ConversationMemory
 import com.roleplayai.chatbot.data.auth.LocalAuthManager
 import com.roleplayai.chatbot.data.model.Chat
 import com.roleplayai.chatbot.data.model.InferenceConfig
@@ -33,6 +34,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private var togetherAIEngine: TogetherAIEngine? = null  // NOUVELLE IA alternative gratuite
     private var huggingFaceEngine: HuggingFaceAIEngine? = null
     private var useLocalEngine = false
+    
+    // Mémoire conversationnelle long terme (v5.0.0)
+    private val conversationMemories = mutableMapOf<String, ConversationMemory>()
     
     private val _currentChat = MutableStateFlow<Chat?>(null)
     val currentChat: StateFlow<Chat?> = _currentChat.asStateFlow()
@@ -126,6 +130,17 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 
                 val updatedChat = chatRepository.getChatById(chat.id)!!
                 
+                // Obtenir ou créer la mémoire conversationnelle pour ce personnage
+                val memory = conversationMemories.getOrPut(chat.characterId) {
+                    ConversationMemory(getApplication(), chat.characterId)
+                }
+                
+                // Ajouter le message utilisateur à la mémoire long terme
+                updatedChat.messages.lastOrNull { it.isUser }?.let { userMsg ->
+                    memory.addMessage(userMsg)
+                    android.util.Log.d("ChatViewModel", "🧠 Mémoire: Niveau ${memory.getRelationshipLevel()}/100, ${memory.getFacts().size} faits enregistrés")
+                }
+                
                 // Obtenir le pseudo de l'utilisateur
                 val username = authManager.currentUser.value?.username?.takeIf { it.isNotBlank() }
                     ?: authManager.currentUser.value?.displayName
@@ -157,6 +172,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 
                 // Update current chat
                 _currentChat.value = chatRepository.getChatById(chat.id)
+                
+                // Ajouter la réponse IA à la mémoire
+                chatRepository.getChatById(chat.id)?.messages?.lastOrNull { !it.isUser }?.let { aiMsg ->
+                    memory.addMessage(aiMsg)
+                }
                 
             } catch (e: Exception) {
                 _error.value = "Erreur lors de la génération de la réponse: ${e.message}"
