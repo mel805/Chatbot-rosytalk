@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.roleplayai.chatbot.data.ai.AIEngine
 import com.roleplayai.chatbot.data.ai.LocalAIEngine
 import com.roleplayai.chatbot.data.ai.GroqAIEngine
+import com.roleplayai.chatbot.data.ai.HuggingFaceAIEngine
 import com.roleplayai.chatbot.data.auth.LocalAuthManager
 import com.roleplayai.chatbot.data.model.Chat
 import com.roleplayai.chatbot.data.model.InferenceConfig
@@ -28,6 +29,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val aiEngine = AIEngine(application)
     private var localAIEngine: LocalAIEngine? = null
     private var groqAIEngine: GroqAIEngine? = null
+    private var huggingFaceEngine: HuggingFaceAIEngine? = null
     private var useLocalEngine = false
     
     private val _currentChat = MutableStateFlow<Chat?>(null)
@@ -127,53 +129,21 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     ?: authManager.currentUser.value?.displayName
                     ?: "Utilisateur"
                 
-                // Vérifier si Groq API est activée
+                // CASCADE INTELLIGENTE D'IA : Groq → HuggingFace → LocalAI
+                // Groq = Principal (ultra-rapide, excellente qualité)
+                // HuggingFace = Fallback 1 (gratuit, bonne qualité, un peu plus lent)
+                // LocalAI = Fallback 2 (template intelligent, toujours disponible)
+                
                 val useGroq = preferencesManager.useGroqApi.first()
                 
                 val response = if (useGroq) {
-                    // Tenter Groq d'abord avec fallback automatique
-                    try {
-                        // TOUJOURS réinitialiser pour prendre en compte les changements de modèle
-                        initializeGroqEngine()
-                        
-                        val groqResponse = groqAIEngine?.generateResponse(character, updatedChat.messages, username)
-                            ?: throw Exception("Groq API non configurée")
-                        
-                        // Vérifier si erreur de limite Groq
-                        if (groqResponse.contains("rate limit", ignoreCase = true) ||
-                            groqResponse.contains("limite", ignoreCase = true) ||
-                            groqResponse.contains("quota", ignoreCase = true) ||
-                            groqResponse.contains("Erreur", ignoreCase = true)) {
-                            throw Exception("Limite Groq atteinte")
-                        }
-                        
-                        groqResponse
-                    } catch (e: Exception) {
-                        // Basculement vers IA locale
-                        android.util.Log.w("ChatViewModel", "⚠️ Groq indisponible (${e.message}), basculement vers IA locale...")
-                        fallbackToLocalAI(character, updatedChat.messages, username)
-                    }
+                    // STRATÉGIE 1 : Tenter Groq d'abord
+                    android.util.Log.i("ChatViewModel", "🚀 Tentative avec Groq API...")
+                    tryGroqWithFallback(character, updatedChat.messages, username)
                 } else {
-                    // Groq désactivé, utiliser LocalAI
-                    try {
-                        // S'assurer que LocalAI est initialisé
-                        if (localAIEngine == null) {
-                            android.util.Log.i("ChatViewModel", "💡 Initialisation IA locale (Groq désactivé)...")
-                            val nsfwMode = preferencesManager.nsfwMode.first()
-                            localAIEngine = LocalAIEngine(
-                                context = getApplication(),
-                                modelPath = "",
-                                config = InferenceConfig(contextLength = 2048),
-                                nsfwMode = nsfwMode
-                            )
-                        }
-                        
-                        // Générer avec LocalAI
-                        localAIEngine!!.generateResponse(character, updatedChat.messages, username)
-                    } catch (e: Exception) {
-                        android.util.Log.e("ChatViewModel", "❌ Erreur LocalAI (Groq désactivé)", e)
-                        "Erreur de l'IA locale.\n\n💡 Astuce : Téléchargez un modèle local dans Paramètres > Modèle IA pour de meilleures réponses, ou activez Groq API pour des réponses ultra-rapides !"
-                    }
+                    // STRATÉGIE 2 : Groq désactivé, utiliser directement les fallbacks
+                    android.util.Log.i("ChatViewModel", "💡 Groq désactivé, utilisation des IA alternatives...")
+                    tryFallbackEngines(character, updatedChat.messages, username)
                 }
                 
                 // Add AI response
@@ -277,14 +247,105 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     /**
-     * Fallback vers IA locale (llama.cpp ou templates intelligents)
+     * STRATÉGIE 1 : Tenter Groq avec fallback automatique vers HuggingFace puis LocalAI
      */
-    private suspend fun fallbackToLocalAI(character: com.roleplayai.chatbot.data.model.Character, messages: List<Message>, username: String = "Utilisateur"): String {
+    private suspend fun tryGroqWithFallback(
+        character: com.roleplayai.chatbot.data.model.Character,
+        messages: List<Message>,
+        username: String
+    ): String {
+        return try {
+            // ÉTAPE 1 : Tenter Groq
+            android.util.Log.d("ChatViewModel", "1️⃣ Tentative Groq API...")
+            initializeGroqEngine()
+            
+            val groqResponse = groqAIEngine?.generateResponse(character, messages, username)
+                ?: throw Exception("Groq API non configurée")
+            
+            // Vérifier si erreur de limite Groq
+            if (groqResponse.contains("rate limit", ignoreCase = true) ||
+                groqResponse.contains("limite", ignoreCase = true) ||
+                groqResponse.contains("quota", ignoreCase = true) ||
+                groqResponse.startsWith("Erreur", ignoreCase = true)) {
+                throw Exception("Limite Groq atteinte")
+            }
+            
+            android.util.Log.i("ChatViewModel", "✅ Réponse générée avec Groq")
+            groqResponse
+            
+        } catch (e: Exception) {
+            // ÉTAPE 2 : Groq a échoué, tenter HuggingFace
+            android.util.Log.w("ChatViewModel", "⚠️ Groq indisponible (${e.message}), tentative HuggingFace...")
+            
+            try {
+                tryHuggingFace(character, messages, username)
+            } catch (hfError: Exception) {
+                // ÉTAPE 3 : HuggingFace a échoué, utiliser LocalAI
+                android.util.Log.w("ChatViewModel", "⚠️ HuggingFace indisponible (${hfError.message}), utilisation LocalAI...")
+                tryLocalAI(character, messages, username)
+            }
+        }
+    }
+    
+    /**
+     * STRATÉGIE 2 : Utiliser directement les fallbacks (Groq désactivé)
+     */
+    private suspend fun tryFallbackEngines(
+        character: com.roleplayai.chatbot.data.model.Character,
+        messages: List<Message>,
+        username: String
+    ): String {
+        return try {
+            // ÉTAPE 1 : Tenter HuggingFace d'abord
+            android.util.Log.d("ChatViewModel", "1️⃣ Tentative HuggingFace API...")
+            tryHuggingFace(character, messages, username)
+            
+        } catch (e: Exception) {
+            // ÉTAPE 2 : HuggingFace a échoué, utiliser LocalAI
+            android.util.Log.w("ChatViewModel", "⚠️ HuggingFace indisponible (${e.message}), utilisation LocalAI...")
+            tryLocalAI(character, messages, username)
+        }
+    }
+    
+    /**
+     * Tenter de générer avec HuggingFace Inference API (GRATUIT)
+     */
+    private suspend fun tryHuggingFace(
+        character: com.roleplayai.chatbot.data.model.Character,
+        messages: List<Message>,
+        username: String
+    ): String {
+        val nsfwMode = preferencesManager.nsfwMode.first()
+        
+        // Initialiser HuggingFace engine si nécessaire
+        if (huggingFaceEngine == null) {
+            android.util.Log.d("ChatViewModel", "🤗 Initialisation HuggingFace Engine...")
+            huggingFaceEngine = HuggingFaceAIEngine(
+                apiKey = "",  // Pas besoin de clé pour usage gratuit (rate limité)
+                model = "mistralai/Mistral-7B-Instruct-v0.2",  // Excellent modèle gratuit
+                nsfwMode = nsfwMode
+            )
+        }
+        
+        val response = huggingFaceEngine!!.generateResponse(character, messages, username)
+        android.util.Log.i("ChatViewModel", "✅ Réponse générée avec HuggingFace")
+        return response
+    }
+    
+    /**
+     * Tenter de générer avec LocalAI (llama.cpp ou templates intelligents)
+     * NE PEUT JAMAIS ÉCHOUER - dernier fallback absolu
+     */
+    private suspend fun tryLocalAI(
+        character: com.roleplayai.chatbot.data.model.Character,
+        messages: List<Message>,
+        username: String
+    ): String {
         val nsfwMode = preferencesManager.nsfwMode.first()
         
         return try {
             if (localAIEngine == null) {
-                android.util.Log.w("ChatViewModel", "💡 Initialisation IA locale...")
+                android.util.Log.d("ChatViewModel", "🧠 Initialisation LocalAI Engine...")
                 val modelPath = preferencesManager.modelPath.first() ?: ""
                 localAIEngine = LocalAIEngine(
                     context = getApplication(),
@@ -292,21 +353,28 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     config = InferenceConfig(contextLength = 2048),
                     nsfwMode = nsfwMode
                 )
-                localAIEngine!!.loadModel()
+                if (modelPath.isNotEmpty()) {
+                    localAIEngine!!.loadModel()
+                }
             }
             
-            val localResponse = localAIEngine!!.generateResponse(character, messages, username)
-            android.util.Log.i("ChatViewModel", "✅ IA locale activée")
-            localResponse
+            val response = localAIEngine!!.generateResponse(character, messages, username)
+            android.util.Log.i("ChatViewModel", "✅ Réponse générée avec LocalAI (fallback intelligent)")
+            response
             
         } catch (e: Exception) {
-            android.util.Log.e("ChatViewModel", "❌ Erreur IA locale", e)
-            "Erreur de l'IA locale.\n\n💡 Astuce : Téléchargez un modèle local dans Paramètres > Modèle IA pour de meilleures réponses, ou activez Groq API pour des réponses ultra-rapides !"
+            // Fallback absolu de sécurité (ne peut jamais échouer)
+            android.util.Log.e("ChatViewModel", "❌ Erreur LocalAI, utilisation fallback absolu", e)
+            "*sourit* (Hmm...) Désolé(e), j'ai eu un petit problème technique. Peux-tu répéter ?\n\n💡 Astuce : Pour de meilleures réponses, activez Groq API dans les Paramètres !"
         }
     }
     
     override fun onCleared() {
         super.onCleared()
+        // Nettoyer tous les moteurs d'IA
         localAIEngine?.unloadModel()
+        groqAIEngine = null
+        huggingFaceEngine = null
+        android.util.Log.d("ChatViewModel", "🧹 Moteurs d'IA nettoyés")
     }
 }

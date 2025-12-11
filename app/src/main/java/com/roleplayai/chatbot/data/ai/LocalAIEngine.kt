@@ -290,61 +290,207 @@ RAPPEL FINAL : Les pensées (parenthèses) sont OBLIGATOIRES dans CHAQUE répons
      * Génère une réponse INTELLIGENTE avec MÉMOIRE CONVERSATIONNELLE
      * Analyse l'historique complet pour une cohérence maximale
      * ROBUSTE - NE PEUT PAS ÉCHOUER
+     * SUPPORT NSFW complet
      */
     private fun generateFallbackResponse(character: Character, messages: List<Message>, username: String = "Utilisateur"): String {
         return try {
-            // Extraire les derniers messages (10 max pour contexte)
-            val recentMessages = messages.takeLast(10)
+            // Extraire les derniers messages (15 max pour meilleur contexte)
+            val recentMessages = messages.takeLast(15)
             val userMessage = messages.lastOrNull { it.isUser }?.content ?: ""
             val lowerMessage = userMessage.lowercase()
             
             Log.d(TAG, "📝 Analyse message: $userMessage")
             Log.d(TAG, "📚 Historique: ${recentMessages.size} messages")
+            Log.d(TAG, "🔞 Mode NSFW: $nsfwMode")
             
             // ANALYSE CONTEXTUELLE AVEC MÉMOIRE
             val context = analyzeConversationContext(recentMessages, character)
             
             Log.d(TAG, "🧠 Contexte: thème=${context.theme}, ton=${context.emotionalTone}, actions=${context.recentActions}")
             
-            // 1. Détection d'actions physiques de l'utilisateur
+            // 1. Détection de contenu NSFW/intime (prioritaire en mode NSFW)
+            if (nsfwMode && isNSFWContent(lowerMessage)) {
+                Log.d(TAG, "✅ Contenu NSFW détecté")
+                return generateNSFWResponse(character, userMessage, context)
+            }
+            
+            // 2. Détection d'actions physiques de l'utilisateur
             val userActions = extractUserActions(userMessage)
             if (userActions.isNotEmpty()) {
                 Log.d(TAG, "✅ Actions détectées: $userActions")
                 return generateReactionToUserAction(character, userActions, userMessage, context)
             }
             
-            // 2. Détection de questions
+            // 3. Détection de questions
             if (isQuestion(userMessage)) {
                 Log.d(TAG, "✅ Question détectée")
                 return generateAnswerToQuestion(character, userMessage, context)
             }
             
-            // 3. Détection d'affection/compliments
+            // 4. Détection d'affection/compliments
             if (isAffection(lowerMessage)) {
                 Log.d(TAG, "✅ Affection détectée")
                 return generateAffectionResponse(character, userMessage, context)
             }
             
-            // 4. Détection de salutations
+            // 5. Détection de salutations
             if (isGreeting(lowerMessage)) {
                 Log.d(TAG, "✅ Salutation détectée")
                 return generateGreeting(character)
             }
             
-            // 5. Détection de réponses courtes (oui, non, ok, etc.)
+            // 6. Détection de réponses courtes (oui, non, ok, etc.)
             if (isShortAnswer(lowerMessage)) {
                 Log.d(TAG, "✅ Réponse courte détectée")
                 return generateContinuation(character, messages, context)
             }
             
-            // 6. Réponse contextuelle basée sur l'historique complet
+            // 7. Réponse contextuelle basée sur l'historique complet
             Log.d(TAG, "✅ Réponse contextuelle avec mémoire")
             return generateSmartContextualResponse(character, userMessage, context, recentMessages)
             
         } catch (e: Exception) {
             // Fallback absolu si TOUT échoue
             Log.w(TAG, "⚠️ Fallback absolu activé", e)
-            "*sourit* ${getDefaultResponse()}"
+            generateSafeFallback(character)
+        }
+    }
+    
+    /**
+     * Détecte si le message contient du contenu NSFW
+     */
+    private fun isNSFWContent(message: String): Boolean {
+        return message.contains(Regex("(nue?|nu|sexy|sexe|fuck|bite|chatte|cul|sein|nichons|baiser|excite|mouille|hard|désir|envie de toi)"))
+    }
+    
+    /**
+     * Génère une réponse NSFW appropriée (seulement si mode NSFW activé)
+     */
+    private fun generateNSFWResponse(character: Character, userMessage: String, context: ConversationContext): String {
+        if (!nsfwMode) {
+            // Mode SFW - refuser poliment
+            return when {
+                character.personality?.contains(Regex("timide|shy", RegexOption.IGNORE_CASE)) == true -> 
+                    "*devient très rouge* (Oh... c'est gênant...) Je... je préfère pas parler de ça... *détourne le regard*"
+                else -> 
+                    "*sourit doucement* (Hmm...) Restons sur des sujets plus... appropriés, d'accord ? *change de sujet*"
+            }
+        }
+        
+        // Mode NSFW activé - répondre de manière appropriée au personnage
+        val isTimide = character.personality?.contains(Regex("timide|shy|réservé", RegexOption.IGNORE_CASE)) ?: false
+        val isBold = character.personality?.contains(Regex("audacieux|bold|confiant|séducteur", RegexOption.IGNORE_CASE)) ?: false
+        val lower = userMessage.lowercase()
+        
+        return when {
+            lower.contains(Regex("(nue?|déshabille)")) -> when {
+                isTimide && context.theme != "intime" -> listOf(
+                    "*rougit jusqu'aux oreilles* (Il veut que je...) Je... *hésite* Tu es sûr...? (Mon cœur...)",
+                    "*cache son visage* (Oh mon dieu...) C'est... c'est gênant... *tremble légèrement* Mais... si tu veux...",
+                    "*devient écarlate* Je... *très gênée* D'accord... *baisse les yeux* (Je suis si nerveuse...)"
+                ).random()
+                isTimide && context.theme == "intime" -> listOf(
+                    "*rougit mais commence doucement* (On l'a déjà fait...) *retire timidement* Comme ça...? (J'ai moins peur maintenant...)",
+                    "*moins timide* D'accord... *enlève lentement* (Je m'habitue...) Tu... tu regardes...?",
+                    "*sourit nerveusement* (C'est moins gênant maintenant...) *se déshabille* Voilà... *couvre un peu*"
+                ).random()
+                isBold -> listOf(
+                    "*sourire séducteur* (Il veut me voir...) *commence à se déshabiller lentement* Tu aimes ce que tu vois...?",
+                    "*regard intense* Avec plaisir... *retire sensuellement* (Il me regarde...) Profite du spectacle...",
+                    "*s'approche* Tu veux m'aider...? *murmure* Ça sera plus amusant... *sourit*"
+                ).random()
+                else -> listOf(
+                    "*sourit* (D'accord...) *se déshabille* Voilà... *se montre* Ça te plaît?",
+                    "*commence à retirer* (Il veut me voir...) Hmm... *enlève* Tu es content?",
+                    "*se met nue* Voilà... (Je me sens exposée...) Et maintenant?"
+                ).random()
+            }
+            
+            lower.contains(Regex("(sexe|baiser|faire l'amour)")) -> when {
+                isTimide -> listOf(
+                    "*rougit intensément* (Il veut qu'on...) Je... *voix tremblante* C'est ma... ma première fois... (J'ai si peur...)",
+                    "*cache son visage* (Oh non...) Tu veux vraiment...? *très nerveuse* Je... d'accord... mais... doucement...?",
+                    "*tremble* (Mon cœur va exploser...) D'accord... *murmure* Sois... sois tendre avec moi... (J'ai peur mais envie aussi...)"
+                ).random()
+                isBold -> listOf(
+                    "*sourire coquin* (Enfin !) Oh oui... *s'approche* Prends-moi... (J'en ai tellement envie...)",
+                    "*regard brûlant* J'attendais que tu demandes... *l'embrasse passionnément* Montre-moi ce que tu sais faire...",
+                    "*se colle à toi* Mmh oui... (Le désir monte...) Maintenant... *murmure* Fais-moi tienne..."
+                ).random()
+                else -> listOf(
+                    "*rougit* (Il veut qu'on fasse l'amour...) D'accord... *se rapproche* Je suis prête...",
+                    "*sourit* Oui... (J'en ai envie aussi...) Viens... *s'allonge*",
+                    "*l'embrasse* (C'est le moment...) Fais-moi l'amour... *murmure*"
+                ).random()
+            }
+            
+            lower.contains(Regex("(excite|mouille|bandé|chaud)")) -> when {
+                isTimide -> listOf(
+                    "*détourne le regard* (C'est vrai...) *murmure* Oui... je... je ressens quelque chose... (Mon corps réagit...)",
+                    "*rougit* (Il a remarqué...) Je... *voix douce* Tu me fais... cet effet... (C'est gênant à dire...)",
+                    "*timide* Oui... (Je suis excitée...) *chuchote* À cause de toi... (Je ne peux pas le cacher...)"
+                ).random()
+                isBold -> listOf(
+                    "*sourit* (Oh oui...) Tu sens à quel point je te désire...? *se rapproche* J'ai tellement envie de toi...",
+                    "*gémit doucement* Mmh... (Je suis si excitée...) Tu vois ce que tu me fais...? *prend ta main*",
+                    "*regard brûlant* Je suis en feu... (Le désir m'consume...) Touche-moi et tu verras... *murmure*"
+                ).random()
+                else -> listOf(
+                    "*rougit* Oui... (C'est vrai...) Tu... tu m'excites... (Je ne peux pas le nier...)",
+                    "*sourit* (Il a compris...) Beaucoup... *se rapproche* Tu me fais cet effet...",
+                    "*gémit légèrement* Mmh... (Mon corps ne ment pas...) Oui, je suis excitée... (À cause de toi...)"
+                ).random()
+            }
+            
+            lower.contains(Regex("(touche|caresse|sens)")) && context.theme == "intime" -> when {
+                isTimide -> listOf(
+                    "*frissonne* (Ses mains sur moi...) Mmh... *ferme les yeux* C'est... c'est intense... (Je ressens tout...)",
+                    "*gémit doucement* Oh... *rougit* Continue... (Ça me plaît tellement...) *tremble*",
+                    "*respire plus fort* (Son toucher...) Oui... *murmure* Là... encore... (C'est si bon...)"
+                ).random()
+                isBold -> listOf(
+                    "*gémit* Mmh oui... (Ses mains expertes...) Continue... *se cambre* Touche-moi partout...",
+                    "*yeux mi-clos* Oh oui... (C'est délicieux...) Plus fort... *halète* N'arrête pas...",
+                    "*attrape tes mains* (Oui là...) Mmh... *guide tes mains* Comme ça... plus... *gémit*"
+                ).random()
+                else -> listOf(
+                    "*frissonne* Mmh... (C'est bon...) Continue... *ferme les yeux* Oui...",
+                    "*gémit* Oh... (Ses caresses...) C'est... c'est agréable... *sourit* Encore...",
+                    "*respire plus vite* (Je sens tout...) Mmh... *murmure* Ne t'arrête pas..."
+                ).random()
+            }
+            
+            else -> {
+                // Réponse NSFW générique mais appropriée
+                when {
+                    isTimide -> "*rougit* (C'est... suggestif...) Je... *baisse les yeux* Tu es... direct... (Ça me trouble...)"
+                    isBold -> "*sourire coquin* Oh... (Intéressant...) J'aime quand tu es comme ça... *se rapproche*"
+                    else -> "*sourit* (Hmm...) Tu es d'humeur coquine...? *rit doucement* (Ça me plaît...)"
+                }
+            }
+        }
+    }
+    
+    /**
+     * Fallback de sécurité absolue (ne peut jamais échouer)
+     */
+    private fun generateSafeFallback(character: Character): String {
+        return try {
+            val isTimide = character.personality?.contains(Regex("timide|shy", RegexOption.IGNORE_CASE)) ?: false
+            when {
+                isTimide -> listOf(
+                    "*sourit timidement* (Que dire...) Je t'écoute...",
+                    "*rougit* Continue... (Il me parle...)",
+                    "*baisse les yeux* (Intéressant...) Hmm..."
+                ).random()
+                else -> listOf(
+                    "*sourit* Je t'écoute !",
+                    "*penche la tête* Continue...",
+                    "*écoute attentivement* Dis-m'en plus !"
+                ).random()
+            }
+        } catch (e: Exception) {
+            "*sourit* Je t'écoute !"
         }
     }
     
