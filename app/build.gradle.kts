@@ -40,7 +40,8 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("../debug.keystore")
+            // Utiliser la config de debug pour CI/CD (pas de keystore externe)
+            storeFile = file(System.getProperty("user.home") + "/.android/debug.keystore")
             storePassword = "android"
             keyAlias = "androiddebugkey"
             keyPassword = "android"
@@ -54,7 +55,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("release")
+            // Utiliser debug signing pour CI/CD
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     
