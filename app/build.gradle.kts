@@ -38,9 +38,16 @@ android {
     }
 
     signingConfigs {
+        getByName("debug") {
+            // Keystore stable pour permettre les mises à jour
+            storeFile = file("../debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
         create("release") {
-            // Utiliser la config de debug pour CI/CD (pas de keystore externe)
-            storeFile = file(System.getProperty("user.home") + "/.android/debug.keystore")
+            // Même keystore pour release = compatibilité mise à jour
+            storeFile = file("../debug.keystore")
             storePassword = "android"
             keyAlias = "androiddebugkey"
             keyPassword = "android"
@@ -48,14 +55,16 @@ android {
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Utiliser debug signing pour CI/CD
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     
