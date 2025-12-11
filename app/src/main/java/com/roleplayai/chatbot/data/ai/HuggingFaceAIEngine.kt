@@ -33,6 +33,14 @@ class HuggingFaceAIEngine(
         // Modèles Hugging Face gratuits et performants pour roleplay
         val AVAILABLE_MODELS = listOf(
             HFModel(
+                id = "microsoft/Phi-3-mini-4k-instruct",
+                name = "Phi-3 Mini (RAPIDE)",
+                description = "Ultra-rapide, excellent pour roleplay",
+                contextLength = 4096,
+                recommended = true,
+                nsfwCapable = true
+            ),
+            HFModel(
                 id = "mistralai/Mistral-7B-Instruct-v0.2",
                 name = "Mistral 7B Instruct",
                 description = "Excellent pour roleplay, très créatif",
@@ -86,36 +94,54 @@ class HuggingFaceAIEngine(
     
     /**
      * Génère une réponse avec Hugging Face Inference API
+     * Avec système de retry automatique pour plus de fiabilité
      */
     suspend fun generateResponse(
         character: Character,
         messages: List<Message>,
-        username: String = "Utilisateur"
+        username: String = "Utilisateur",
+        maxRetries: Int = 2
     ): String = withContext(Dispatchers.IO) {
-        try {
-            Log.d(TAG, "===== Génération avec Hugging Face API =====")
-            Log.d(TAG, "Modèle: $model, NSFW: $nsfwMode")
-            
-            // Construire le prompt système (identique à Groq pour cohérence)
-            val systemPrompt = buildSystemPrompt(character, username)
-            
-            // Construire le prompt complet
-            val fullPrompt = buildFullPrompt(systemPrompt, character, messages)
-            
-            // Appeler l'API Hugging Face
-            val response = callHuggingFaceApi(fullPrompt)
-            
-            // Nettoyer la réponse
-            val cleaned = cleanResponse(response, character.name)
-            
-            Log.i(TAG, "✅ Réponse reçue de Hugging Face")
-            Log.d(TAG, "Réponse: ${cleaned.take(200)}...")
-            
-            cleaned
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ Erreur lors de l'appel Hugging Face", e)
-            throw Exception("Erreur Hugging Face: ${e.message}")
+        var lastException: Exception? = null
+        
+        // Essayer plusieurs fois avec des modèles alternatifs
+        repeat(maxRetries) { attempt ->
+            try {
+                Log.d(TAG, "===== Génération avec Hugging Face API (tentative ${attempt + 1}/$maxRetries) =====")
+                Log.d(TAG, "Modèle: $model, NSFW: $nsfwMode")
+                
+                // Construire le prompt système (identique à Groq pour cohérence)
+                val systemPrompt = buildSystemPrompt(character, username)
+                
+                // Construire le prompt complet
+                val fullPrompt = buildFullPrompt(systemPrompt, character, messages)
+                
+                // Appeler l'API Hugging Face avec timeout réduit au 2e essai
+                val timeout = if (attempt == 0) 25000 else 15000 // 25s puis 15s
+                val response = callHuggingFaceApi(fullPrompt, timeout)
+                
+                // Nettoyer la réponse
+                val cleaned = cleanResponse(response, character.name)
+                
+                Log.i(TAG, "✅ Réponse reçue de Hugging Face (tentative ${attempt + 1})")
+                Log.d(TAG, "Réponse: ${cleaned.take(200)}...")
+                
+                return@withContext cleaned
+            } catch (e: Exception) {
+                lastException = e
+                Log.w(TAG, "⚠️ Tentative ${attempt + 1}/$maxRetries échouée: ${e.message}")
+                
+                // Si c'est une erreur 503 (modèle en chargement), attendre un peu
+                if (e.message?.contains("503") == true && attempt < maxRetries - 1) {
+                    Log.d(TAG, "⏳ Attente 5 secondes (modèle en chargement)...")
+                    kotlinx.coroutines.delay(5000)
+                }
+            }
         }
+        
+        // Si tous les essais ont échoué
+        Log.e(TAG, "❌ Tous les essais HuggingFace ont échoué")
+        throw Exception("Erreur Hugging Face après $maxRetries tentatives: ${lastException?.message}")
     }
     
     /**
@@ -255,9 +281,9 @@ Sois COURT, NATUREL et IMMERSIF. Maximum 2-3 lignes."""
     }
     
     /**
-     * Appelle l'API Hugging Face
+     * Appelle l'API Hugging Face avec timeout configurable
      */
-    private fun callHuggingFaceApi(prompt: String): String {
+    private fun callHuggingFaceApi(prompt: String, timeoutMs: Int = 25000): String {
         val url = URL("$HF_API_BASE/$model")
         val connection = url.openConnection() as HttpURLConnection
         
@@ -268,14 +294,14 @@ Sois COURT, NATUREL et IMMERSIF. Maximum 2-3 lignes."""
                 connection.setRequestProperty("Authorization", "Bearer $apiKey")
             }
             connection.doOutput = true
-            connection.connectTimeout = 60000  // 60s timeout (modèles peuvent être lents)
-            connection.readTimeout = 60000
+            connection.connectTimeout = timeoutMs
+            connection.readTimeout = timeoutMs
             
-            // Construire le body
+            // Construire le body avec paramètres optimisés
             val requestBody = JSONObject().apply {
                 put("inputs", prompt)
                 put("parameters", JSONObject().apply {
-                    put("max_new_tokens", 400)  // Réponses complètes
+                    put("max_new_tokens", 300)  // Réduit pour vitesse
                     put("temperature", 0.9)  // Créatif comme Groq
                     put("top_p", 0.95)
                     put("top_k", 40)
@@ -285,7 +311,7 @@ Sois COURT, NATUREL et IMMERSIF. Maximum 2-3 lignes."""
                 })
                 put("options", JSONObject().apply {
                     put("use_cache", false)  // Pas de cache pour réponses uniques
-                    put("wait_for_model", true)  // Attendre si modèle se charge
+                    put("wait_for_model", true)  // Attendre si modèle se charge (max 20s)
                 })
             }
             

@@ -309,6 +309,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     
     /**
      * Tenter de générer avec HuggingFace Inference API (GRATUIT)
+     * Essaie d'abord le modèle rapide Phi-3, puis Mistral si échec
      */
     private suspend fun tryHuggingFace(
         character: com.roleplayai.chatbot.data.model.Character,
@@ -317,19 +318,38 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     ): String {
         val nsfwMode = preferencesManager.nsfwMode.first()
         
-        // Initialiser HuggingFace engine si nécessaire
-        if (huggingFaceEngine == null) {
-            android.util.Log.d("ChatViewModel", "🤗 Initialisation HuggingFace Engine...")
-            huggingFaceEngine = HuggingFaceAIEngine(
-                apiKey = "",  // Pas besoin de clé pour usage gratuit (rate limité)
-                model = "mistralai/Mistral-7B-Instruct-v0.2",  // Excellent modèle gratuit
+        // STRATÉGIE 1 : Essayer Phi-3 Mini (plus rapide)
+        try {
+            android.util.Log.d("ChatViewModel", "🤗 Tentative avec Phi-3 Mini (rapide)...")
+            val phiEngine = HuggingFaceAIEngine(
+                apiKey = "",
+                model = "microsoft/Phi-3-mini-4k-instruct",  // Plus rapide
                 nsfwMode = nsfwMode
             )
+            val response = phiEngine.generateResponse(character, messages, username, maxRetries = 1)
+            android.util.Log.i("ChatViewModel", "✅ Réponse générée avec Phi-3 Mini")
+            return response
+        } catch (e: Exception) {
+            android.util.Log.w("ChatViewModel", "⚠️ Phi-3 indisponible, essai Mistral...")
         }
         
-        val response = huggingFaceEngine!!.generateResponse(character, messages, username)
-        android.util.Log.i("ChatViewModel", "✅ Réponse générée avec HuggingFace")
-        return response
+        // STRATÉGIE 2 : Essayer Mistral 7B (plus puissant mais plus lent)
+        try {
+            android.util.Log.d("ChatViewModel", "🤗 Tentative avec Mistral 7B...")
+            if (huggingFaceEngine == null) {
+                huggingFaceEngine = HuggingFaceAIEngine(
+                    apiKey = "",
+                    model = "mistralai/Mistral-7B-Instruct-v0.2",
+                    nsfwMode = nsfwMode
+                )
+            }
+            val response = huggingFaceEngine!!.generateResponse(character, messages, username, maxRetries = 2)
+            android.util.Log.i("ChatViewModel", "✅ Réponse générée avec Mistral 7B")
+            return response
+        } catch (e: Exception) {
+            android.util.Log.e("ChatViewModel", "❌ HuggingFace complètement indisponible")
+            throw e
+        }
     }
     
     /**

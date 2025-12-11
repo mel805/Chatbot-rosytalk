@@ -8,7 +8,6 @@ import com.roleplayai.chatbot.data.model.Message
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
-
 /**
  * LocalAIEngine - Moteur IA local utilisant llama.cpp
  * MÊME SYSTÈME DE PROMPT QUE GROQ pour cohérence identique
