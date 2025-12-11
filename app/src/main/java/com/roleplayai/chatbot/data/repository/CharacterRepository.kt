@@ -197,7 +197,12 @@ class CharacterRepository {
                     getDrawableUri("sasuke_3007"),
                     getDrawableUri("sasuke_3008"),
                     getDrawableUri("sasuke_3009"),
-                    getDrawableUri("sasuke_3010")
+                    getDrawableUri("sasuke_3010"),
+                    getDrawableUri("sasuke_sexy_1"),
+                    getDrawableUri("sasuke_sexy_2"),
+                    getDrawableUri("sasuke_sexy_3"),
+                    getDrawableUri("sasuke_sexy_4"),
+                    getDrawableUri("sasuke_sexy_5")
                 ),
                 // Images NSFW
                 nsfwImageUrl = getDrawableUri("sasuke_3012"),
@@ -210,7 +215,12 @@ class CharacterRepository {
                     getDrawableUri("sasuke_3018"),
                     getDrawableUri("sasuke_3019"),
                     getDrawableUri("sasuke_3020"),
-                    getDrawableUri("sasuke_3021")
+                    getDrawableUri("sasuke_3021"),
+                    getDrawableUri("sasuke_explicit_1"),
+                    getDrawableUri("sasuke_explicit_2"),
+                    getDrawableUri("sasuke_explicit_3"),
+                    getDrawableUri("sasuke_explicit_4"),
+                    getDrawableUri("sasuke_explicit_5")
                 )
             ),
             
@@ -255,7 +265,12 @@ class CharacterRepository {
                     getDrawableUri("naruto_4007"),
                     getDrawableUri("naruto_4008"),
                     getDrawableUri("naruto_4009"),
-                    getDrawableUri("naruto_4010")
+                    getDrawableUri("naruto_4010"),
+                    getDrawableUri("naruto_sexy_1"),
+                    getDrawableUri("naruto_sexy_2"),
+                    getDrawableUri("naruto_sexy_3"),
+                    getDrawableUri("naruto_sexy_4"),
+                    getDrawableUri("naruto_sexy_5")
                 ),
                 // Images NSFW
                 nsfwImageUrl = getDrawableUri("naruto_4012"),
@@ -268,7 +283,12 @@ class CharacterRepository {
                     getDrawableUri("naruto_4018"),
                     getDrawableUri("naruto_4019"),
                     getDrawableUri("naruto_4020"),
-                    getDrawableUri("naruto_4021")
+                    getDrawableUri("naruto_4021"),
+                    getDrawableUri("naruto_explicit_1"),
+                    getDrawableUri("naruto_explicit_2"),
+                    getDrawableUri("naruto_explicit_3"),
+                    getDrawableUri("naruto_explicit_4"),
+                    getDrawableUri("naruto_explicit_5")
                 )
             ),
             
@@ -315,7 +335,12 @@ class CharacterRepository {
                     getDrawableUri("emma_5007"),
                     getDrawableUri("emma_5008"),
                     getDrawableUri("emma_5009"),
-                    getDrawableUri("emma_5010")
+                    getDrawableUri("emma_5010"),
+                    getDrawableUri("emma_sexy_1"),
+                    getDrawableUri("emma_sexy_2"),
+                    getDrawableUri("emma_sexy_3"),
+                    getDrawableUri("emma_sexy_4"),
+                    getDrawableUri("emma_sexy_5")
                 ),
                 // Images NSFW
                 nsfwImageUrl = getDrawableUri("emma_5012"),
@@ -328,7 +353,12 @@ class CharacterRepository {
                     getDrawableUri("emma_5018"),
                     getDrawableUri("emma_5019"),
                     getDrawableUri("emma_5020"),
-                    getDrawableUri("emma_5021")
+                    getDrawableUri("emma_5021"),
+                    getDrawableUri("emma_explicit_1"),
+                    getDrawableUri("emma_explicit_2"),
+                    getDrawableUri("emma_explicit_3"),
+                    getDrawableUri("emma_explicit_4"),
+                    getDrawableUri("emma_explicit_5")
                 )
             ),
             
@@ -373,7 +403,12 @@ class CharacterRepository {
                     getDrawableUri("chloe_6007"),
                     getDrawableUri("chloe_6008"),
                     getDrawableUri("chloe_6009"),
-                    getDrawableUri("chloe_6010")
+                    getDrawableUri("chloe_6010"),
+                    getDrawableUri("chloe_sexy_1"),
+                    getDrawableUri("chloe_sexy_2"),
+                    getDrawableUri("chloe_sexy_3"),
+                    getDrawableUri("chloe_sexy_4"),
+                    getDrawableUri("chloe_sexy_5")
                 ),
                 // Images NSFW
                 nsfwImageUrl = getDrawableUri("chloe_6012"),
@@ -386,7 +421,12 @@ class CharacterRepository {
                     getDrawableUri("chloe_6018"),
                     getDrawableUri("chloe_6019"),
                     getDrawableUri("chloe_6020"),
-                    getDrawableUri("chloe_6021")
+                    getDrawableUri("chloe_6021"),
+                    getDrawableUri("chloe_explicit_1"),
+                    getDrawableUri("chloe_explicit_2"),
+                    getDrawableUri("chloe_explicit_3"),
+                    getDrawableUri("chloe_explicit_4"),
+                    getDrawableUri("chloe_explicit_5")
                 )
             ),
             
@@ -431,7 +471,12 @@ class CharacterRepository {
                     getDrawableUri("lea_7007"),
                     getDrawableUri("lea_7008"),
                     getDrawableUri("lea_7009"),
-                    getDrawableUri("lea_7010")
+                    getDrawableUri("lea_7010"),
+                    getDrawableUri("lea_sexy_1"),
+                    getDrawableUri("lea_sexy_2"),
+                    getDrawableUri("lea_sexy_3"),
+                    getDrawableUri("lea_sexy_4"),
+                    getDrawableUri("lea_sexy_5")
                 ),
                 // Images NSFW
                 nsfwImageUrl = getDrawableUri("lea_7012"),
@@ -444,7 +489,12 @@ class CharacterRepository {
                     getDrawableUri("lea_7018"),
                     getDrawableUri("lea_7019"),
                     getDrawableUri("lea_7020"),
-                    getDrawableUri("lea_7021")
+                    getDrawableUri("lea_7021"),
+                    getDrawableUri("lea_explicit_1"),
+                    getDrawableUri("lea_explicit_2"),
+                    getDrawableUri("lea_explicit_3"),
+                    getDrawableUri("lea_explicit_4"),
+                    getDrawableUri("lea_explicit_5")
                 )
             ),
             
@@ -491,7 +541,12 @@ class CharacterRepository {
                     getDrawableUri("mira_8007"),
                     getDrawableUri("mira_8008"),
                     getDrawableUri("mira_8009"),
-                    getDrawableUri("mira_8010")
+                    getDrawableUri("mira_8010"),
+                    getDrawableUri("mira_sexy_1"),
+                    getDrawableUri("mira_sexy_2"),
+                    getDrawableUri("mira_sexy_3"),
+                    getDrawableUri("mira_sexy_4"),
+                    getDrawableUri("mira_sexy_5")
                 ),
                 // Images NSFW
                 nsfwImageUrl = getDrawableUri("mira_8012"),
@@ -504,7 +559,12 @@ class CharacterRepository {
                     getDrawableUri("mira_8018"),
                     getDrawableUri("mira_8019"),
                     getDrawableUri("mira_8020"),
-                    getDrawableUri("mira_8021")
+                    getDrawableUri("mira_8021"),
+                    getDrawableUri("mira_explicit_1"),
+                    getDrawableUri("mira_explicit_2"),
+                    getDrawableUri("mira_explicit_3"),
+                    getDrawableUri("mira_explicit_4"),
+                    getDrawableUri("mira_explicit_5")
                 )
             ),
             
@@ -551,7 +611,12 @@ class CharacterRepository {
                     getDrawableUri("lucas_9007"),
                     getDrawableUri("lucas_9008"),
                     getDrawableUri("lucas_9009"),
-                    getDrawableUri("lucas_9010")
+                    getDrawableUri("lucas_9010"),
+                    getDrawableUri("lucas_sexy_1"),
+                    getDrawableUri("lucas_sexy_2"),
+                    getDrawableUri("lucas_sexy_3"),
+                    getDrawableUri("lucas_sexy_4"),
+                    getDrawableUri("lucas_sexy_5")
                 ),
                 nsfwImageUrl = getDrawableUri("lucas_9012"),
                 nsfwAdditionalImages = listOf(
@@ -563,7 +628,12 @@ class CharacterRepository {
                     getDrawableUri("lucas_9018"),
                     getDrawableUri("lucas_9019"),
                     getDrawableUri("lucas_9020"),
-                    getDrawableUri("lucas_9021")
+                    getDrawableUri("lucas_9021"),
+                    getDrawableUri("lucas_explicit_1"),
+                    getDrawableUri("lucas_explicit_2"),
+                    getDrawableUri("lucas_explicit_3"),
+                    getDrawableUri("lucas_explicit_4"),
+                    getDrawableUri("lucas_explicit_5")
                 )
             ),
             
@@ -608,7 +678,12 @@ class CharacterRepository {
                     getDrawableUri("thomas_10007"),
                     getDrawableUri("thomas_10008"),
                     getDrawableUri("thomas_10009"),
-                    getDrawableUri("thomas_10010")
+                    getDrawableUri("thomas_10010"),
+                    getDrawableUri("thomas_sexy_1"),
+                    getDrawableUri("thomas_sexy_2"),
+                    getDrawableUri("thomas_sexy_3"),
+                    getDrawableUri("thomas_sexy_4"),
+                    getDrawableUri("thomas_sexy_5")
                 ),
                 nsfwImageUrl = getDrawableUri("thomas_10012"),
                 nsfwAdditionalImages = listOf(
@@ -620,7 +695,12 @@ class CharacterRepository {
                     getDrawableUri("thomas_10018"),
                     getDrawableUri("thomas_10019"),
                     getDrawableUri("thomas_10020"),
-                    getDrawableUri("thomas_10021")
+                    getDrawableUri("thomas_10021"),
+                    getDrawableUri("thomas_explicit_1"),
+                    getDrawableUri("thomas_explicit_2"),
+                    getDrawableUri("thomas_explicit_3"),
+                    getDrawableUri("thomas_explicit_4"),
+                    getDrawableUri("thomas_explicit_5")
                 )
             ),
             
@@ -665,7 +745,12 @@ class CharacterRepository {
                     getDrawableUri("alexandre_11007"),
                     getDrawableUri("alexandre_11008"),
                     getDrawableUri("alexandre_11009"),
-                    getDrawableUri("alexandre_11010")
+                    getDrawableUri("alexandre_11010"),
+                    getDrawableUri("alexandre_sexy_1"),
+                    getDrawableUri("alexandre_sexy_2"),
+                    getDrawableUri("alexandre_sexy_3"),
+                    getDrawableUri("alexandre_sexy_4"),
+                    getDrawableUri("alexandre_sexy_5")
                 ),
                 nsfwImageUrl = getDrawableUri("alexandre_11012"),
                 nsfwAdditionalImages = listOf(
@@ -677,7 +762,12 @@ class CharacterRepository {
                     getDrawableUri("alexandre_11018"),
                     getDrawableUri("alexandre_11019"),
                     getDrawableUri("alexandre_11020"),
-                    getDrawableUri("alexandre_11021")
+                    getDrawableUri("alexandre_11021"),
+                    getDrawableUri("alexandre_explicit_1"),
+                    getDrawableUri("alexandre_explicit_2"),
+                    getDrawableUri("alexandre_explicit_3"),
+                    getDrawableUri("alexandre_explicit_4"),
+                    getDrawableUri("alexandre_explicit_5")
                 )
             )
         )
