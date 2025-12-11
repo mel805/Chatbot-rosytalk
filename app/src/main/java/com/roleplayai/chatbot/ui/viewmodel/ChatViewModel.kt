@@ -286,68 +286,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         return trySmartLocalAI(character, messages, username, userGender)
     }
     
-    /**
-     * Tenter de générer avec Together AI (API GRATUITE rapide)
-     */
-    private suspend fun tryTogetherAI(
-        character: com.roleplayai.chatbot.data.model.Character,
-        messages: List<Message>,
-        username: String,
-        userGender: String,
-        memoryContext: String
-    ): String {
-        val nsfwMode = preferencesManager.nsfwMode.first()
-        
-        if (togetherAIEngine == null) {
-            android.util.Log.d("ChatViewModel", "🤝 Initialisation Together AI Engine...")
-            togetherAIEngine = TogetherAIEngine(
-                apiKey = "",  // Gratuit sans clé
-                model = "mistralai/Mistral-7B-Instruct-v0.2",
-                nsfwMode = nsfwMode
-            )
-        }
-        
-        val response = togetherAIEngine!!.generateResponse(character, messages, username, userGender, memoryContext, maxRetries = 2)
-        android.util.Log.i("ChatViewModel", "✅ Réponse générée avec Together AI")
-        return response
-    }
-    
-    /**
-     * Utilise SmartLocalAI (IA locale avec mémoire - NE PEUT JAMAIS ÉCHOUER)
-     */
-    private suspend fun trySmartLocalAI(
-        character: com.roleplayai.chatbot.data.model.Character,
-        messages: List<Message>,
-        username: String,
-        userGender: String
-    ): String {
-        val nsfwMode = preferencesManager.nsfwMode.first()
-        
-        try {
-            android.util.Log.d("ChatViewModel", "🧠 Génération avec SmartLocalAI...")
-            
-            // Obtenir ou créer SmartLocalAI pour ce personnage
-            val smartAI = smartLocalAIs.getOrPut(character.id) {
-                SmartLocalAI(
-                    context = getApplication(),
-                    character = character,
-                    characterId = character.id,
-                    nsfwMode = nsfwMode
-                )
-            }
-            
-            // Extraire le dernier message utilisateur
-            val userMessage = messages.lastOrNull { it.isUser }?.content ?: ""
-            val response = smartAI.generateResponse(userMessage, messages, username)
-            android.util.Log.i("ChatViewModel", "✅ Réponse SmartLocalAI (avec mémoire)")
-            return response
-            
-        } catch (e: Exception) {
-            android.util.Log.e("ChatViewModel", "❌ Erreur SmartLocalAI", e)
-            // Fallback absolu
-            return "*sourit* Désolé(e), j'ai eu un petit bug. Tu peux répéter ?"
-        }
-    }
     
     /**
      * Tenter de générer avec LocalAI (llama.cpp ou templates intelligents)
