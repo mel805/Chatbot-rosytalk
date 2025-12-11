@@ -262,45 +262,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     
-    /**
-     * STRATÉGIE 2 : Utiliser directement les fallbacks (Groq désactivé)
-     * CASCADE : Together AI → SmartLocalAI (toujours disponible)
-     */
-    private suspend fun tryFallbackEngines(
-        character: com.roleplayai.chatbot.data.model.Character,
-        messages: List<Message>,
-        username: String,
-        userGender: String,
-        memoryContext: String
-    ): String {
-        // ÉTAPE 1 : Tenter Together AI (API gratuite rapide)
-        try {
-            android.util.Log.d("ChatViewModel", "1️⃣ Tentative Together AI...")
-            return tryTogetherAI(character, messages, username, userGender, memoryContext)
-        } catch (e: Exception) {
-            android.util.Log.w("ChatViewModel", "⚠️ Together AI indisponible (${e.message})")
-        }
-        
-        // ÉTAPE 2 : SmartLocalAI (ne peut jamais échouer)
-        android.util.Log.d("ChatViewModel", "2️⃣ Utilisation SmartLocalAI...")
-        return trySmartLocalAI(character, messages, username, userGender)
-    }
-    
-    
-    /**
-     * Tenter de générer avec LocalAI (llama.cpp ou templates intelligents)
-     * NE PEUT JAMAIS ÉCHOUER - dernier fallback absolu
-     */
-    private suspend fun tryLocalAI(
-        character: com.roleplayai.chatbot.data.model.Character,
-        messages: List<Message>,
-        username: String
-    ): String {
-        val nsfwMode = preferencesManager.nsfwMode.first()
-        
-        // Cette fonction a été supprimée - utilisation uniquement d'APIs externes
-        throw Exception("LocalAI supprimé - utilisez Groq, Together AI ou HuggingFace")
-    }
     
     override fun onCleared() {
         super.onCleared()
