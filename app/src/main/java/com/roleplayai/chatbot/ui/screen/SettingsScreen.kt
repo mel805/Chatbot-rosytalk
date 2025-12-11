@@ -1161,6 +1161,7 @@ fun SettingsScreen(
     
     // Dialog de sélection du modèle llama.cpp
     if (showLlamaCppModelSelection) {
+        val context = androidx.compose.ui.platform.LocalContext.current
         val modelsDir = File(context.getExternalFilesDir(null), "models")
         val availableModels = remember {
             if (modelsDir.exists()) {

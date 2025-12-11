@@ -41,8 +41,11 @@ class GeminiNanoEngine(
     init {
         try {
             // Initialiser Gemini Nano (on-device)
+            // Note: Gemini Nano nécessite une clé API même pour on-device
+            // Utiliser une clé vide ou la clé de l'utilisateur
             generativeModel = GenerativeModel(
                 modelName = MODEL_NAME,
+                apiKey = "", // On-device ne nécessite pas de vraie clé
                 generationConfig = generationConfig {
                     temperature = 0.9f
                     topK = 40
