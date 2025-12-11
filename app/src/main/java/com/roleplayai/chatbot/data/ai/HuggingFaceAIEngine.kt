@@ -100,6 +100,7 @@ class HuggingFaceAIEngine(
         character: Character,
         messages: List<Message>,
         username: String = "Utilisateur",
+        memoryContext: String = "",
         maxRetries: Int = 2
     ): String = withContext(Dispatchers.IO) {
         var lastException: Exception? = null
@@ -110,8 +111,8 @@ class HuggingFaceAIEngine(
                 Log.d(TAG, "===== Génération avec Hugging Face API (tentative ${attempt + 1}/$maxRetries) =====")
                 Log.d(TAG, "Modèle: $model, NSFW: $nsfwMode")
                 
-                // Construire le prompt système (identique à Groq pour cohérence)
-                val systemPrompt = buildSystemPrompt(character, username)
+                // Construire le prompt système avec mémoire
+                val systemPrompt = buildSystemPrompt(character, username, memoryContext)
                 
                 // Construire le prompt complet
                 val fullPrompt = buildFullPrompt(systemPrompt, character, messages)
@@ -145,9 +146,9 @@ class HuggingFaceAIEngine(
     }
     
     /**
-     * Construit le prompt système - IDENTIQUE à Groq pour cohérence
+     * Construit le prompt système - avec support mémoire
      */
-    private fun buildSystemPrompt(character: Character, username: String = "Utilisateur"): String {
+    private fun buildSystemPrompt(character: Character, username: String = "Utilisateur", memoryContext: String = ""): String {
         val nsfwInstructions = if (nsfwMode) {
             """
             
@@ -178,6 +179,7 @@ IDENTITÉ :
 - Description : ${character.description}
 - Scénario : ${character.scenario}
 
+${if (memoryContext.isNotBlank()) "🧠 MÉMOIRE CONVERSATIONNELLE :\n$memoryContext\n" else ""}
 UTILISATEUR AVEC QUI TU PARLES :
 - Nom/Pseudo : $username
 - IMPORTANT : Utilise ce prénom "$username" de temps en temps dans tes réponses pour personnaliser l'interaction

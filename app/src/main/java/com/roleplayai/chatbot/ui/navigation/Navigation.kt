@@ -200,23 +200,8 @@ fun AppNavigation(
         composable(Screen.Chat.route) { backStackEntry ->
             val characterId = backStackEntry.arguments?.getString("characterId") ?: return@composable
             
-            // Initialiser le moteur local avec le modèle téléchargé
-            LaunchedEffect(Unit) {
-                val modelPath = modelViewModel.getModelPath()
-                if (modelPath != null) {
-                    // Modèle trouvé, l'initialiser
-                    chatViewModel.initializeLocalAI(modelPath)
-                } else {
-                    // Pas de modèle, essayer de charger le modèle sélectionné
-                    val selectedModel = modelViewModel.selectedModel.value
-                    if (selectedModel != null) {
-                        val path = modelViewModel.modelDownloader.getModelPath(selectedModel)
-                        if (path != null) {
-                            chatViewModel.initializeLocalAI(path)
-                        }
-                    }
-                }
-            }
+            // Initialisation LocalAI supprimée - utilisation uniquement d'APIs externes
+            // Pour améliorer les réponses, activez Groq, Together AI ou HuggingFace dans les paramètres
             
             ChatScreen(
                 viewModel = chatViewModel,

@@ -73,6 +73,7 @@ class TogetherAIEngine(
         character: Character,
         messages: List<Message>,
         username: String = "Utilisateur",
+        memoryContext: String = "",
         maxRetries: Int = 2
     ): String = withContext(Dispatchers.IO) {
         var lastException: Exception? = null

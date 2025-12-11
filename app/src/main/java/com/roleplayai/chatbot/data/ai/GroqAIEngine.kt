@@ -133,7 +133,8 @@ class GroqAIEngine(
     suspend fun generateResponse(
         character: Character,
         messages: List<Message>,
-        username: String = "Utilisateur"
+        username: String = "Utilisateur",
+        memoryContext: String = ""
     ): String = withContext(Dispatchers.IO) {
         if (apiKey.isBlank()) {
             Log.e(TAG, "Clé API Groq manquante")
@@ -145,7 +146,7 @@ class GroqAIEngine(
             Log.d(TAG, "Modèle: $model, NSFW: $nsfwMode")
             
             // Construire le prompt système
-            val systemPrompt = buildSystemPrompt(character, username)
+            val systemPrompt = buildSystemPrompt(character, username, memoryContext)
             
             // Construire les messages pour l'API
             val apiMessages = buildApiMessages(systemPrompt, character, messages)
@@ -164,9 +165,9 @@ class GroqAIEngine(
     }
     
     /**
-     * Construit le prompt système
+     * Construit le prompt système (avec support mémoire)
      */
-    private fun buildSystemPrompt(character: Character, username: String = "Utilisateur"): String {
+    private fun buildSystemPrompt(character: Character, username: String = "Utilisateur", memoryContext: String = ""): String {
         val nsfwInstructions = if (nsfwMode) {
             """
             
@@ -202,6 +203,7 @@ UTILISATEUR AVEC QUI TU PARLES :
 - Exemple : "Hey $username !", "Tu vas bien $username ?", "$username... *rougit*"
 - Ne l'utilise PAS à chaque message, mais de façon naturelle et organique
 
+${if (memoryContext.isNotBlank()) "🧠 MÉMOIRE CONVERSATIONNELLE :\n$memoryContext\n" else ""}
 RÈGLES ABSOLUES POUR UNE IMMERSION MAXIMALE :
 1. TU ES ${character.name.uppercase()} - Parle TOUJOURS en tant que ${character.name}
 2. L'utilisateur est une AUTRE personne qui te parle
