@@ -134,6 +134,7 @@ class GroqAIEngine(
         character: Character,
         messages: List<Message>,
         username: String = "Utilisateur",
+        userGender: String = "neutre",
         memoryContext: String = ""
     ): String = withContext(Dispatchers.IO) {
         if (apiKey.isBlank()) {
@@ -145,8 +146,8 @@ class GroqAIEngine(
             Log.d(TAG, "===== Génération avec Groq API =====")
             Log.d(TAG, "Modèle: $model, NSFW: $nsfwMode")
             
-            // Construire le prompt système
-            val systemPrompt = buildSystemPrompt(character, username, memoryContext)
+            // Construire le prompt système avec infos utilisateur
+            val systemPrompt = buildSystemPrompt(character, username, userGender, memoryContext)
             
             // Construire les messages pour l'API
             val apiMessages = buildApiMessages(systemPrompt, character, messages)
@@ -165,9 +166,9 @@ class GroqAIEngine(
     }
     
     /**
-     * Construit le prompt système (avec support mémoire)
+     * Construit le prompt système (avec support mémoire et infos utilisateur)
      */
-    private fun buildSystemPrompt(character: Character, username: String = "Utilisateur", memoryContext: String = ""): String {
+    private fun buildSystemPrompt(character: Character, username: String = "Utilisateur", userGender: String = "neutre", memoryContext: String = ""): String {
         val nsfwInstructions = if (nsfwMode) {
             """
             
@@ -280,6 +281,8 @@ ANTI-RÉPÉTITION STRICTE :
 - Si tu utilises une phrase, tu ne peux PLUS JAMAIS la réutiliser
 - Varie TOUT : verbes, adjectifs, structures de phrases
 $nsfwInstructions
+
+UTILISATEUR : $username (sexe : $userGender)
 
 PERSONNALITÉ À RESPECTER : ${character.personality}
 

@@ -9,15 +9,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.roleplayai.chatbot.ui.screen.CharacterListScreen
-import com.roleplayai.chatbot.ui.screen.CharacterProfileScreen
-import com.roleplayai.chatbot.ui.screen.ChatScreen
-import com.roleplayai.chatbot.ui.screen.LoginScreen
-import com.roleplayai.chatbot.ui.screen.MainScreen
-import com.roleplayai.chatbot.ui.screen.ModelSelectionScreen
-import com.roleplayai.chatbot.ui.screen.ProfileScreen
-import com.roleplayai.chatbot.ui.screen.SettingsScreen
-import com.roleplayai.chatbot.ui.screen.SplashScreen
+import com.roleplayai.chatbot.ui.screen.*
 import com.roleplayai.chatbot.ui.viewmodel.AuthViewModel
 import com.roleplayai.chatbot.ui.viewmodel.CharacterViewModel
 import com.roleplayai.chatbot.ui.viewmodel.ChatViewModel
@@ -94,13 +86,14 @@ fun AppNavigation(
         }
         
         composable(Screen.Login.route) {
-            LoginScreen(
-                onLoginSuccess = {
-                    // Après connexion, naviguer vers sélection de modèle ou liste
+            AuthScreen(
+                onAuthSuccess = {
+                    // Après connexion/inscription, naviguer vers sélection de modèle
                     navController.navigate(Screen.ModelSelection.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
-                }
+                },
+                viewModel = authViewModel
             )
         }
         
@@ -192,8 +185,15 @@ fun AppNavigation(
         }
         
         composable(Screen.Profile.route) {
-            ProfileScreen(
-                onBack = { navController.popBackStack() }
+            UserProfileScreen(
+                viewModel = authViewModel,
+                onBack = { navController.popBackStack() },
+                onLogout = {
+                    authViewModel.logout()
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
             )
         }
         

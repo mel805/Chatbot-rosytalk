@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.roleplayai.chatbot.data.preferences.PreferencesManager
 import com.roleplayai.chatbot.data.manager.SharedGroqKeysManager
+import com.roleplayai.chatbot.data.auth.AuthManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -15,6 +16,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     
     private val preferencesManager = PreferencesManager(application)
     private val sharedKeysManager = SharedGroqKeysManager(application)
+    private val authManager = AuthManager.getInstance(application)
     
     val groqApiKey = preferencesManager.groqApiKey
         .stateIn(viewModelScope, SharingStarted.Eagerly, "")
@@ -64,7 +66,22 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     
     fun setNsfwMode(enabled: Boolean) {
         viewModelScope.launch {
+            val user = authManager.getCurrentUser()
+            
+            if (enabled && user != null && !user.isAdult()) {
+                // Bloquer l'activation pour les mineurs
+                _statusMessage.value = "⚠️ Mode NSFW réservé aux 18+ ans"
+                android.util.Log.w("SettingsVM", "⚠️ Tentative d'activation NSFW refusée: utilisateur mineur (${user.age} ans)")
+                return@launch
+            }
+            
             preferencesManager.setNsfwMode(enabled)
+            
+            if (enabled) {
+                _statusMessage.value = "🔞 Mode NSFW activé"
+            } else {
+                _statusMessage.value = "Mode NSFW désactivé"
+            }
         }
     }
     

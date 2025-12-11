@@ -126,7 +126,7 @@ fun SettingsScreen(
                                 )
                                 currentUser?.let { user ->
                                     Text(
-                                        text = if (user.username.isNotEmpty()) user.username else user.displayName,
+                                        text = user.pseudo,
                                         style = MaterialTheme.typography.bodyMedium
                                     )
                                     Text(
@@ -139,9 +139,7 @@ fun SettingsScreen(
                             
                             Button(
                                 onClick = {
-                                    scope.launch {
-                                        authViewModel.signOut()
-                                    }
+                                    authViewModel.logout()
                                 },
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.error

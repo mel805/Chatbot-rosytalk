@@ -1,4 +1,7 @@
 package com.roleplayai.chatbot.data.auth
 
-// Fichier conservé pour compatibilité mais non utilisé
-// Utiliser LocalAuthManager à la place
+// Utiliser AuthManagerSimple au lieu de cette version avec Room
+typealias AuthManager = AuthManagerSimple
+
+// AuthManager est maintenant un alias vers AuthManagerSimple
+// (évite la complexité de Room/kapt)

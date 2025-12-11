@@ -73,6 +73,7 @@ class TogetherAIEngine(
         character: Character,
         messages: List<Message>,
         username: String = "Utilisateur",
+        userGender: String = "neutre",
         memoryContext: String = "",
         maxRetries: Int = 2
     ): String = withContext(Dispatchers.IO) {
@@ -83,8 +84,8 @@ class TogetherAIEngine(
                 Log.d(TAG, "===== Génération avec Together AI (tentative ${attempt + 1}/$maxRetries) =====")
                 Log.d(TAG, "Modèle: $model, NSFW: $nsfwMode")
                 
-                // Construire les messages avec mémoire
-                val chatMessages = buildChatMessages(character, messages, username, memoryContext)
+                // Construire les messages avec mémoire et infos utilisateur
+                val chatMessages = buildChatMessages(character, messages, username, userGender, memoryContext)
                 
                 // Appeler l'API
                 val timeout = if (attempt == 0) 20000 else 12000  // 20s puis 12s
@@ -112,9 +113,9 @@ class TogetherAIEngine(
     }
     
     /**
-     * Construit le système prompt avec mémoire
+     * Construit le système prompt avec mémoire et infos utilisateur
      */
-    private fun buildSystemPrompt(character: Character, username: String, memoryContext: String = ""): String {
+    private fun buildSystemPrompt(character: Character, username: String, userGender: String, memoryContext: String = ""): String {
         val nsfwInstructions = if (nsfwMode) {
             """
             
@@ -136,6 +137,8 @@ class TogetherAIEngine(
 **PERSONNALITÉ** : ${character.personality ?: "Personnage unique"}
 
 **DESCRIPTION** : ${character.description ?: ""}
+
+**UTILISATEUR** : $username (sexe : $userGender)
 
 ${if (memoryContext.isNotBlank()) "🧠 **MÉMOIRE CONVERSATIONNELLE** :\n$memoryContext\n" else ""}
 **RÈGLES ABSOLUES** :
@@ -159,20 +162,21 @@ Incarne ${character.name} avec authenticité et cohérence."""
     }
     
     /**
-     * Construit les messages au format Together AI avec mémoire
+     * Construit les messages au format Together AI avec mémoire et infos utilisateur
      */
     private fun buildChatMessages(
         character: Character,
         messages: List<Message>,
         username: String,
+        userGender: String,
         memoryContext: String = ""
     ): JSONArray {
         val chatMessages = JSONArray()
         
-        // Message système avec mémoire
+        // Message système avec mémoire et infos utilisateur
         chatMessages.put(JSONObject().apply {
             put("role", "system")
-            put("content", buildSystemPrompt(character, username, memoryContext))
+            put("content", buildSystemPrompt(character, username, userGender, memoryContext))
         })
         
         // Historique de conversation (20 derniers messages pour plus de contexte)
