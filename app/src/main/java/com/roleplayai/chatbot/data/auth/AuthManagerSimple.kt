@@ -9,6 +9,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.security.MessageDigest
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 /**
  * Gestionnaire d'authentification simple avec SharedPreferences
@@ -34,6 +38,8 @@ class AuthManagerSimple private constructor(private val context: Context) {
     
     private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private val json = Json { ignoreUnknownKeys = true }
+    private val firebaseSync = FirebaseUserSync(context)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     
     // État de l'utilisateur actuel
     private val _currentUser = MutableStateFlow<User?>(null)
@@ -43,12 +49,44 @@ class AuthManagerSimple private constructor(private val context: Context) {
     val isLoggedIn = _isLoggedIn.asStateFlow()
     
     init {
+        // Migration automatique : mettre douvdouv21@gmail.com en admin si existe
+        migrateAdminAccount()
+        
         // Restaurer la session
         val email = prefs.getString(KEY_CURRENT_EMAIL, null)
         if (email != null) {
             val users = getAllUsers()
             _currentUser.value = users.find { it.email == email }
             _isLoggedIn.value = _currentUser.value != null
+        }
+    }
+    
+    /**
+     * Migration : Met douvdouv21@gmail.com en admin s'il existe
+     */
+    private fun migrateAdminAccount() {
+        try {
+            val users = getAllUsers().toMutableList()
+            val adminUser = users.find { it.email == User.ADMIN_EMAIL }
+            
+            if (adminUser != null && !adminUser.isAdmin) {
+                Log.i(TAG, "🔄 Migration : Promotion de ${adminUser.email} en admin")
+                val updated = adminUser.copy(isAdmin = true)
+                users.removeAll { it.email == User.ADMIN_EMAIL }
+                users.add(updated)
+                
+                val json = json.encodeToString(users)
+                prefs.edit().putString(KEY_USERS, json).apply()
+                
+                // Si c'est l'utilisateur actuel, mettre à jour
+                if (_currentUser.value?.email == User.ADMIN_EMAIL) {
+                    _currentUser.value = updated
+                }
+                
+                Log.i(TAG, "✅ ${adminUser.email} est maintenant admin")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Erreur migration admin", e)
         }
     }
     
@@ -121,8 +159,13 @@ class AuthManagerSimple private constructor(private val context: Context) {
                 Log.i(TAG, "👑 Création compte ADMIN: $email")
             }
             
-            // Sauvegarder
+            // Sauvegarder localement
             saveUser(user)
+            
+            // Synchroniser vers Firebase
+            scope.launch {
+                firebaseSync.syncUserToFirebase(user)
+            }
             
             // Connexion automatique
             _currentUser.value = user
@@ -214,6 +257,7 @@ class AuthManagerSimple private constructor(private val context: Context) {
     
     /**
      * Obtient tous les utilisateurs (ADMIN UNIQUEMENT)
+     * Inclut les utilisateurs de Firebase (tous les appareils)
      */
     suspend fun getAllUsersForAdmin(): List<User> {
         val current = _currentUser.value
@@ -221,7 +265,21 @@ class AuthManagerSimple private constructor(private val context: Context) {
             Log.w(TAG, "⚠️ Accès refusé: non-admin")
             return emptyList()
         }
-        return getAllUsers()
+        
+        // Récupérer les users Firebase (tous les appareils)
+        val firebaseUsers = firebaseSync.getAllUsersFromFirebase()
+        
+        // Récupérer les users locaux
+        val localUsers = getAllUsers()
+        
+        // Fusionner (Firebase prioritaire)
+        val allEmails = (firebaseUsers.map { it.email } + localUsers.map { it.email }).toSet()
+        val mergedUsers = allEmails.mapNotNull { email ->
+            firebaseUsers.find { it.email == email } ?: localUsers.find { it.email == email }
+        }
+        
+        Log.i(TAG, "✅ Total: ${mergedUsers.size} users (${firebaseUsers.size} Firebase + ${localUsers.size} local)")
+        return mergedUsers.sortedByDescending { it.createdAt }
     }
     
     /**
@@ -250,6 +308,18 @@ class AuthManagerSimple private constructor(private val context: Context) {
             )
             
             saveUser(updated)
+            
+            // Synchroniser vers Firebase
+            scope.launch {
+                firebaseSync.updateUserInFirebase(
+                    targetEmail,
+                    mapOf(
+                        "isNsfwEnabled" to updated.isNsfwEnabled,
+                        "isAdmin" to updated.isAdmin
+                    )
+                )
+            }
+            
             Log.i(TAG, "✅ Utilisateur ${targetUser.pseudo} mis à jour par admin")
             true
         } catch (e: Exception) {
