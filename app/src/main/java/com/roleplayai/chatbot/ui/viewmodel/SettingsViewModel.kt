@@ -68,11 +68,19 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             val user = authManager.getCurrentUser()
             
-            if (enabled && user != null && !user.isAdult()) {
-                // Bloquer l'activation pour les mineurs
-                _statusMessage.value = "⚠️ Mode NSFW réservé aux 18+ ans"
-                android.util.Log.w("SettingsVM", "⚠️ Tentative d'activation NSFW refusée: utilisateur mineur (${user.age} ans)")
-                return@launch
+            if (enabled && user != null) {
+                // Vérifier si l'utilisateur peut activer le NSFW
+                if (user.nsfwBlocked) {
+                    // Bloqué par l'admin
+                    _statusMessage.value = "🚫 Mode NSFW bloqué par l'administrateur"
+                    android.util.Log.w("SettingsVM", "⚠️ Tentative d'activation NSFW refusée: bloqué par admin")
+                    return@launch
+                } else if (!user.isAdult()) {
+                    // Mineur
+                    _statusMessage.value = "⚠️ Mode NSFW réservé aux 18+ ans"
+                    android.util.Log.w("SettingsVM", "⚠️ Tentative d'activation NSFW refusée: utilisateur mineur (${user.age} ans)")
+                    return@launch
+                }
             }
             
             preferencesManager.setNsfwMode(enabled)

@@ -205,14 +205,24 @@ fun SettingsScreen(
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                if (nsfwMode) "Activé - Contenu adulte autorisé" else "Désactivé - Contenu approprié uniquement",
+                                when {
+                                    currentUser?.nsfwBlocked == true -> "🚫 Bloqué par l'administrateur"
+                                    currentUser?.isAdult() == false -> "⚠️ Réservé aux 18+ ans"
+                                    nsfwMode -> "Activé - Contenu adulte autorisé"
+                                    else -> "Désactivé - Contenu approprié uniquement"
+                                },
                                 style = MaterialTheme.typography.bodySmall,
-                                color = if (nsfwMode) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                                color = when {
+                                    currentUser?.nsfwBlocked == true -> MaterialTheme.colorScheme.error
+                                    nsfwMode -> MaterialTheme.colorScheme.error
+                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                }
                             )
                         }
                         Switch(
                             checked = nsfwMode,
                             onCheckedChange = { scope.launch { settingsViewModel.setNsfwMode(it) } },
+                            enabled = currentUser?.canEnableNsfw() == true,
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = MaterialTheme.colorScheme.error,
                                 checkedTrackColor = MaterialTheme.colorScheme.errorContainer

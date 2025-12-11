@@ -148,10 +148,26 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 
                 // Obtenir le pseudo et le sexe de l'utilisateur
                 val currentUser = authManager.getCurrentUser()
-                val username = currentUser?.pseudo ?: "Utilisateur"
+                
+                // Logs détaillés pour debug
+                if (currentUser == null) {
+                    android.util.Log.w("ChatViewModel", "⚠️ ATTENTION: currentUser est NULL - utilisateur non connecté ?")
+                } else {
+                    android.util.Log.d("ChatViewModel", "✅ Utilisateur connecté: ${currentUser.email}")
+                    android.util.Log.d("ChatViewModel", "✅ Pseudo: '${currentUser.pseudo}'")
+                    if (currentUser.pseudo.isBlank()) {
+                        android.util.Log.e("ChatViewModel", "❌ ERREUR: Le pseudo est VIDE pour ${currentUser.email}")
+                    }
+                }
+                
+                val username = currentUser?.pseudo?.takeIf { it.isNotBlank() } ?: "Utilisateur"
                 val userGender = currentUser?.getGenderForPrompt() ?: "neutre"
                 
-                android.util.Log.d("ChatViewModel", "👤 Utilisateur: $username ($userGender)")
+                android.util.Log.d("ChatViewModel", "👤 Utilisateur final pour IA: '$username' ($userGender)")
+                
+                // Avertissement si on utilise le fallback
+                if (username == "Utilisateur") {
+                    android.util.Log.w("ChatViewModel", "⚠️ Utilisation du nom par défaut 'Utilisateur' - le pseudo n'a pas pu être récupéré")
                 
                 // CASCADE SIMPLIFIÉE : Groq (multi-clés) → Together AI → SmartLocalAI
                 // Groq = Principal (rotation automatique de clés)

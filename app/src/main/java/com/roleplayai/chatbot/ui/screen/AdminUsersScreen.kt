@@ -156,10 +156,11 @@ fun AdminUsersScreen(
                 selectedUser = null
                 adminViewModel.clearMessages()
             },
-            onSave = { nsfwEnabled, isAdmin ->
+            onSave = { nsfwEnabled, nsfwBlocked, isAdmin ->
                 adminViewModel.updateUser(
                     selectedUser!!.email,
                     nsfwEnabled,
+                    nsfwBlocked,
                     isAdmin
                 )
                 showEditDialog = false
@@ -244,10 +245,16 @@ private fun UserCard(
                         else -> "Autre"
                     }
                 )
-                if (user.isNsfwEnabled) {
+                if (user.nsfwBlocked) {
+                    InfoChip(
+                        icon = Icons.Default.Block,
+                        label = "NSFW Bloqué",
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                } else if (user.isNsfwEnabled) {
                     InfoChip(
                         icon = Icons.Default.Warning,
-                        label = "NSFW",
+                        label = "NSFW Activé",
                         containerColor = MaterialTheme.colorScheme.errorContainer
                     )
                 }
@@ -301,9 +308,10 @@ private fun InfoChip(
 private fun EditUserDialog(
     user: User,
     onDismiss: () -> Unit,
-    onSave: (nsfwEnabled: Boolean, isAdmin: Boolean) -> Unit
+    onSave: (nsfwEnabled: Boolean, nsfwBlocked: Boolean, isAdmin: Boolean) -> Unit
 ) {
     var nsfwEnabled by remember { mutableStateOf(user.isNsfwEnabled) }
+    var nsfwBlocked by remember { mutableStateOf(user.nsfwBlocked) }
     var isAdmin by remember { mutableStateOf(user.isAdmin) }
     
     AlertDialog(
@@ -322,27 +330,85 @@ private fun EditUserDialog(
                 
                 Divider()
                 
-                // NSFW
+                // NSFW - État actuel
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("🔞 Mode NSFW", fontWeight = FontWeight.Bold)
+                        Text("🔞 Mode NSFW - État actuel", fontWeight = FontWeight.Bold)
+                        Text(
+                            text = if (nsfwBlocked) {
+                                "🚫 BLOQUÉ par l'admin"
+                            } else if (nsfwEnabled) {
+                                "✅ Activé par l'utilisateur"
+                            } else {
+                                "❌ Désactivé"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = when {
+                                nsfwBlocked -> MaterialTheme.colorScheme.error
+                                nsfwEnabled -> MaterialTheme.colorScheme.primary
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        )
                         if (!user.isAdult()) {
                             Text(
-                                text = "⚠️ Mineur (${user.age} ans)",
+                                text = "⚠️ Mineur (${user.age} ans) - Ne peut pas activer",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.error
                             )
                         }
                     }
+                }
+                
+                Divider()
+                
+                // NSFW - Bloquer l'accès
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("🚫 BLOQUER le mode NSFW", fontWeight = FontWeight.Bold)
+                        Text(
+                            text = "Interdire complètement l'utilisation du mode NSFW",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     Switch(
-                        checked = nsfwEnabled,
-                        onCheckedChange = { nsfwEnabled = it },
-                        enabled = user.isAdult()
+                        checked = nsfwBlocked,
+                        onCheckedChange = { 
+                            nsfwBlocked = it
+                            // Si on bloque, on désactive automatiquement
+                            if (it) nsfwEnabled = false
+                        }
                     )
+                }
+                
+                // NSFW - Activer/Désactiver (seulement si non bloqué)
+                if (!nsfwBlocked) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("✅ Activer le mode NSFW", fontWeight = FontWeight.Bold)
+                            Text(
+                                text = "Permet à l'utilisateur d'accéder au contenu NSFW",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        Switch(
+                            checked = nsfwEnabled,
+                            onCheckedChange = { nsfwEnabled = it },
+                            enabled = user.isAdult()
+                        )
+                    }
                 }
                 
                 // Admin
@@ -367,7 +433,7 @@ private fun EditUserDialog(
         },
         confirmButton = {
             Button(
-                onClick = { onSave(nsfwEnabled, isAdmin) }
+                onClick = { onSave(nsfwEnabled, nsfwBlocked, isAdmin) }
             ) {
                 Text("Enregistrer")
             }

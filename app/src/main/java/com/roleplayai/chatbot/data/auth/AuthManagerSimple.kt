@@ -52,6 +52,9 @@ class AuthManagerSimple private constructor(private val context: Context) {
         // Migration automatique : mettre douvdouv21@gmail.com en admin si existe
         migrateAdminAccount()
         
+        // Migration : ajouter nsfwBlocked = false aux utilisateurs existants
+        migrateNsfwBlockedField()
+        
         // Restaurer la session
         val email = prefs.getString(KEY_CURRENT_EMAIL, null)
         if (email != null) {
@@ -87,6 +90,32 @@ class AuthManagerSimple private constructor(private val context: Context) {
             }
         } catch (e: Exception) {
             Log.e(TAG, "❌ Erreur migration admin", e)
+        }
+    }
+    
+    /**
+     * Migration : Ajoute le champ nsfwBlocked aux utilisateurs existants
+     * Note : Le champ a déjà une valeur par défaut dans le modèle User,
+     * donc cette migration n'est nécessaire que pour forcer une resérialisation
+     */
+    private fun migrateNsfwBlockedField() {
+        try {
+            val users = getAllUsers()
+            if (users.isEmpty()) return
+            
+            // Resérialiser tous les utilisateurs pour s'assurer que nsfwBlocked existe
+            val migratedUsers = users.map { user ->
+                // Le copy() utilisera automatiquement la valeur par défaut si le champ n'existe pas
+                user.copy()
+            }
+            
+            // Sauvegarder
+            val json = json.encodeToString(migratedUsers)
+            prefs.edit().putString(KEY_USERS, json).apply()
+            
+            Log.i(TAG, "✅ Migration nsfwBlocked terminée pour ${users.size} utilisateur(s)")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Erreur migration nsfwBlocked", e)
         }
     }
     
@@ -152,7 +181,8 @@ class AuthManagerSimple private constructor(private val context: Context) {
                 age = age,
                 gender = gender,
                 isNsfwEnabled = false,
-                isAdmin = isAdmin
+                isAdmin = isAdmin,
+                nsfwBlocked = false
             )
             
             if (isAdmin) {
@@ -233,12 +263,19 @@ class AuthManagerSimple private constructor(private val context: Context) {
         return try {
             val current = _currentUser.value ?: return false
             
+            // Vérifier si l'utilisateur peut activer le NSFW (majeur ET non bloqué)
+            val canActivateNsfw = current.canEnableNsfw()
+            
             val updated = current.copy(
                 pseudo = pseudo ?: current.pseudo,
                 age = age ?: current.age,
                 gender = gender ?: current.gender,
-                isNsfwEnabled = if (isNsfwEnabled != null && current.isAdult()) {
+                isNsfwEnabled = if (isNsfwEnabled != null && canActivateNsfw) {
                     isNsfwEnabled
+                } else if (isNsfwEnabled == true && !canActivateNsfw) {
+                    // Si l'utilisateur tente d'activer mais ne peut pas, garder désactivé
+                    Log.w(TAG, "⚠️ Tentative d'activation NSFW refusée (bloqué ou mineur)")
+                    false
                 } else {
                     current.isNsfwEnabled
                 }
@@ -285,7 +322,12 @@ class AuthManagerSimple private constructor(private val context: Context) {
     /**
      * Met à jour un utilisateur (ADMIN UNIQUEMENT)
      */
-    suspend fun updateUserAsAdmin(targetEmail: String, isNsfwEnabled: Boolean? = null, isAdmin: Boolean? = null): Boolean {
+    suspend fun updateUserAsAdmin(
+        targetEmail: String, 
+        isNsfwEnabled: Boolean? = null, 
+        nsfwBlocked: Boolean? = null,
+        isAdmin: Boolean? = null
+    ): Boolean {
         return try {
             val current = _currentUser.value
             if (current?.isAdmin != true) {
@@ -304,10 +346,16 @@ class AuthManagerSimple private constructor(private val context: Context) {
             
             val updated = targetUser.copy(
                 isNsfwEnabled = isNsfwEnabled ?: targetUser.isNsfwEnabled,
+                nsfwBlocked = nsfwBlocked ?: targetUser.nsfwBlocked,
                 isAdmin = isAdmin ?: targetUser.isAdmin
             )
             
             saveUser(updated)
+            
+            // Si c'est l'utilisateur actuel, mettre à jour la session
+            if (targetEmail == current.email) {
+                _currentUser.value = updated
+            }
             
             // Synchroniser vers Firebase
             scope.launch {
@@ -315,12 +363,13 @@ class AuthManagerSimple private constructor(private val context: Context) {
                     targetEmail,
                     mapOf(
                         "isNsfwEnabled" to updated.isNsfwEnabled,
+                        "nsfwBlocked" to updated.nsfwBlocked,
                         "isAdmin" to updated.isAdmin
                     )
                 )
             }
             
-            Log.i(TAG, "✅ Utilisateur ${targetUser.pseudo} mis à jour par admin")
+            Log.i(TAG, "✅ Utilisateur ${targetUser.pseudo} mis à jour par admin (NSFW bloqué: ${updated.nsfwBlocked})")
             true
         } catch (e: Exception) {
             Log.e(TAG, "❌ Erreur màj utilisateur", e)

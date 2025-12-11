@@ -14,7 +14,8 @@ data class User(
     val gender: String,  // "male", "female", "other"
     val createdAt: Long = System.currentTimeMillis(),
     val isNsfwEnabled: Boolean = false,
-    val isAdmin: Boolean = false  // Seul douvdouv21@gmail.com est admin
+    val isAdmin: Boolean = false,  // Seul douvdouv21@gmail.com est admin
+    val nsfwBlocked: Boolean = false  // Si true, l'admin a bloqué le mode NSFW pour cet utilisateur
 ) {
     companion object {
         const val ADMIN_EMAIL = "douvdouv21@gmail.com"
@@ -25,9 +26,9 @@ data class User(
     fun isAdult(): Boolean = age >= 18
     
     /**
-     * Peut activer le mode NSFW (seulement si majeur)
+     * Peut activer le mode NSFW (seulement si majeur ET non bloqué par admin)
      */
-    fun canEnableNsfw(): Boolean = isAdult()
+    fun canEnableNsfw(): Boolean = isAdult() && !nsfwBlocked
     
     /**
      * Retourne le genre formaté pour les prompts

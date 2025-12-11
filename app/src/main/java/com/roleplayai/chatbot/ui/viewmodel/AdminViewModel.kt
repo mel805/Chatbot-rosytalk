@@ -59,6 +59,7 @@ class AdminViewModel(application: Application) : AndroidViewModel(application) {
     fun updateUser(
         targetEmail: String,
         isNsfwEnabled: Boolean,
+        nsfwBlocked: Boolean,
         isAdmin: Boolean
     ) {
         viewModelScope.launch {
@@ -70,6 +71,7 @@ class AdminViewModel(application: Application) : AndroidViewModel(application) {
                 val success = authManager.updateUserAsAdmin(
                     targetEmail = targetEmail,
                     isNsfwEnabled = isNsfwEnabled,
+                    nsfwBlocked = nsfwBlocked,
                     isAdmin = isAdmin
                 )
                 
