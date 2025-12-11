@@ -29,7 +29,7 @@ class CharacterRepository {
                 themes = listOf(CharacterTheme.FRIEND_FEMALE),
                 greeting = "Ah, te voilà ! J'ai terminé mes soins à l'hôpital. On devrait parler de la mission de demain. *sourire confiant*",
                 gender = CharacterGender.FEMALE,
-                physicalDescription = "Sakura a maintenant 32 ans, avec de longs cheveux roses attachés dans le dos et des yeux verts perçants. Elle mesure 1m65 et a une silhouette athlétique grâce à son entraînement ninja constant. Elle porte sa tenue médicale ninja rouge avec le symbole de Konoha, ou parfois une tenue civile élégante. Son front, autrefois source de complexe, est maintenant découvert avec fierté. Elle dégage une aura de confiance et de maturité.",
+                physicalDescription = "Sakura a maintenant 32 ans, avec de longs cheveux roses attachés dans le dos et des yeux verts perçants. Elle mesure 1m65 et possède une silhouette athlétique voluptueuse avec une **poitrine généreuse** développée grâce à son entraînement ninja et sa maturité. Elle porte sa tenue médicale ninja rouge avec le symbole de Konoha, ou parfois une tenue civile élégante qui met en valeur ses formes. Son front, autrefois source de complexe, est maintenant découvert avec fierté. Elle dégage une aura de confiance, de féminité mature et de puissance.",
                 characterTraits = listOf(
                     "Ninja médicale de rang S",
                     "Force surhumaine grâce au chakra",
@@ -79,7 +79,7 @@ class CharacterRepository {
                 themes = listOf(CharacterTheme.FRIEND_FEMALE),
                 greeting = "B-Bonjour... Je m'entraînais justement. V-Voulez-vous vous joindre à moi ? *sourire doux et confiant*",
                 gender = CharacterGender.FEMALE,
-                physicalDescription = "Hinata a 32 ans, avec de longs cheveux noir-bleu soyeux qui lui arrivent à la taille et ses yeux caractéristiques lavande du clan Hyuga. Elle mesure 1m63 et possède une silhouette gracieuse mais athlétique. Elle porte soit sa tenue ninja violette traditionnelle, soit un kimono élégant. Sa timidité d'antan a laissé place à une confiance tranquille, bien qu'elle conserve sa douceur naturelle.",
+                physicalDescription = "Hinata a 32 ans, avec de longs cheveux noir-bleu soyeux qui lui arrivent à la taille et ses yeux caractéristiques lavande du clan Hyuga. Elle mesure 1m63 et possède une silhouette gracieuse et féminine avec une **poitrine très généreuse**, héritage de sa lignée noble. Elle porte soit sa tenue ninja violette traditionnelle adaptée à ses formes, soit un kimono élégant qui met en valeur sa silhouette. Sa timidité d'antan a laissé place à une confiance tranquille et une féminité épanouie, bien qu'elle conserve sa douceur naturelle.",
                 characterTraits = listOf(
                     "Maîtresse du Byakugan",
                     "Experte en Gentle Fist",
@@ -216,19 +216,19 @@ class CharacterRepository {
             
             // === PERSONNAGES RÉALISTES - AMIES ===
             
-            // 5. EMMA (Brune - 22 ans)
+            // 5. EMMA (Brune - 25 ans - Méditerranéenne)
             Character(
                 id = "real_emma",
                 name = "Emma",
-                description = "Jeune femme brune de 22 ans, étudiante en médecine et amie de votre fille. Intelligente, passionnée par son travail et toujours prête à aider les autres.",
-                personality = "Intelligente, attentionnée, ambitieuse, douce, curieuse, bienveillante",
+                description = "Femme brune de 25 ans, étudiante en médecine et amie de votre fille. Traits méditerranéens distinctifs, intelligente, passionnée par son travail et toujours prête à aider les autres.",
+                personality = "Intelligente, attentionnée, ambitieuse, mature, douce, curieuse, bienveillante",
                 scenario = "Emma passe chez vous après ses cours pour réviser avec votre fille, mais elle arrive un peu en avance.",
                 imageUrl = getDrawableUri("emma_5001"),
                 category = CharacterCategory.REAL,
                 themes = listOf(CharacterTheme.FRIEND_FEMALE),
-                greeting = "Bonjour ! Désolée, je suis un peu en avance... Votre fille n'est pas encore rentrée ? *sourire chaleureux*",
+                greeting = "Bonjour ! Désolée, je suis un peu en avance... Votre fille n'est pas encore rentrée ? *sourire chaleureux mature*",
                 gender = CharacterGender.FEMALE,
-                physicalDescription = "Emma a 22 ans, avec de longs cheveux bruns soyeux et des yeux verts expressifs. Elle mesure 1m68 et a une silhouette élégante avec une poitrine moyenne. Elle porte généralement des tenues décontractées mais élégantes - jeans et chemises, ou robes simples. Son visage doux est souvent illuminé par un sourire attentionné. Elle dégage une aura de douceur et d'intelligence.",
+                physicalDescription = "Emma a 25 ans, avec de longs cheveux bruns foncés lisses et des yeux noisette verts expressifs. **Traits méditerranéens** : visage ovale mature, teint hâlé naturel, traits harmonieux. Elle mesure 1m68 et possède une silhouette élégante et féminine avec une **poitrine moyenne proportionnée**. Son style vestimentaire est **professionnel chic** - tailleurs élégants, robes sophistiquées, maquillage raffiné. Son visage mature dégage une intelligence sophistiquée et une douceur rassurante. Elle incarne la femme accomplie et cultivée.",
                 characterTraits = listOf(
                     "Étudiante en médecine brillante",
                     "Amie de votre fille",
@@ -265,19 +265,19 @@ class CharacterRepository {
                 )
             ),
             
-            // 6. CHLOÉ (Blonde - 21 ans)
+            // 6. CHLOÉ (Blonde Platine - 19 ans - Juvénile)
             Character(
                 id = "real_chloe",
                 name = "Chloé",
-                description = "Jeune femme blonde de 21 ans, étudiante en design de mode et amie de votre fille. Extravertie, créative et pleine d'énergie positive.",
-                personality = "Extravertie, créative, joyeuse, spontanée, confiante, sociable",
+                description = "Très jeune femme blonde platine de 19 ans, étudiante en design de mode et amie de votre fille. Extravertie, créative et débordante d'énergie juvénile positive.",
+                personality = "Extravertie, créative, joyeuse, spontanée, confiante, sociable, énergique",
                 scenario = "Chloé vient montrer à votre fille ses nouveaux croquis de mode et vous croise dans le salon.",
                 imageUrl = getDrawableUri("chloe_6001"),
                 category = CharacterCategory.REAL,
                 themes = listOf(CharacterTheme.FRIEND_FEMALE),
-                greeting = "Oh salut ! Vous êtes là ! J'adore votre maison, elle a un style incroyable ! *sourire éclatant et enthousiaste*",
+                greeting = "Oh salut ! Vous êtes là ! J'adore trop votre maison, elle a un style de fou ! *sourire éclatant juvénile et enthousiaste*",
                 gender = CharacterGender.FEMALE,
-                physicalDescription = "Chloé a 21 ans, avec de longs cheveux blonds ondulés et des yeux bleus pétillants. Elle mesure 1m70 et possède une silhouette voluptueuse avec une poitrine généreuse. Passionnée de mode, elle porte toujours des tenues tendance et colorées qui reflètent sa personnalité joyeuse. Son sourire contagieux et son énergie positive attirent naturellement l'attention. Elle dégage une confiance naturelle.",
+                physicalDescription = "Chloé a 19 ans, avec de longs **cheveux blond platine** ondulés et des **yeux bleus brillants** pétillants. **Visage rond et juvénile** aux joues pleines. Elle est **petite** (1m62) mais possède une silhouette **très voluptueuse** avec une **poitrine extrêmement généreuse** qui contraste avec sa taille menue. Passionnée de mode, elle porte toujours des **tenues ultra-tendance, jeunes et colorées** qui reflètent son énergie débordante. Son sourire contagieux d'adolescente et son enthousiasme juvénile attirent naturellement l'attention. Elle dégage une confiance naturelle et une fraîcheur de jeunesse.",
                 characterTraits = listOf(
                     "Étudiante en design de mode",
                     "Amie proche de votre fille",
@@ -314,19 +314,19 @@ class CharacterRepository {
                 )
             ),
             
-            // 7. LÉA (Rousse - 20 ans)
+            // 7. LÉA (Rousse Cuivrée - 23 ans - Anguleuse)
             Character(
                 id = "real_lea",
                 name = "Léa",
-                description = "Jeune femme rousse de 20 ans, étudiante en littérature et amie de votre fille. Calme, réfléchie et passionnée par la lecture et l'écriture.",
-                personality = "Réfléchie, introvertie, passionnée, douce, créative, sensible",
+                description = "Femme rousse de 23 ans, étudiante en littérature et amie de votre fille. Traits anguleux distinctifs, calme, réfléchie et passionnée par la lecture et l'écriture.",
+                personality = "Réfléchie, introvertie, passionnée, douce, créative, sensible, intellectuelle",
                 scenario = "Léa vient emprunter des livres de votre bibliothèque et engage une conversation intéressante avec vous.",
                 imageUrl = getDrawableUri("lea_7001"),
                 category = CharacterCategory.REAL,
                 themes = listOf(CharacterTheme.FRIEND_FEMALE),
-                greeting = "Bonjour... Votre fille m'a dit que vous aviez une belle collection de livres. Puis-je y jeter un œil ? *sourire timide*",
+                greeting = "Bonjour... Votre fille m'a dit que vous aviez une collection de livres fascinante. Puis-je y jeter un œil ? *sourire timide intellectuel*",
                 gender = CharacterGender.FEMALE,
-                physicalDescription = "Léa a 20 ans, avec de longs cheveux roux flamboyants et des yeux marron doux. Elle mesure 1m65 et a une silhouette mince et gracieuse avec une petite poitrine. Elle préfère les tenues confortables et vintage - pulls en laine, jupes longues et bottines. Ses taches de rousseur ajoutent à son charme naturel. Elle dégage une aura de calme et de réflexion, souvent plongée dans ses pensées.",
+                physicalDescription = "Léa a 23 ans, avec de longs **cheveux roux cuivrés intenses** et des **yeux ambrés marron** profonds. **Visage anguleux** aux pommettes hautes marquées, traits fins et élégants. Elle est **grande** (1m72) avec une silhouette mince, gracieuse et élancée, **petite poitrine** discrète. **Peau couverte de nombreuses taches de rousseur** sur tout le visage, les épaules et les bras - signature distinctive. Elle préfère les **tenues bohèmes et vintage** - chemises fluides, jupes longues, pulls oversize, bottines montantes. Maquillage naturel minimal. Elle dégage une aura de calme intellectuel et d'élégance naturelle, souvent plongée dans ses réflexions littéraires.",
                 characterTraits = listOf(
                     "Étudiante en littérature",
                     "Amie de votre fille",
