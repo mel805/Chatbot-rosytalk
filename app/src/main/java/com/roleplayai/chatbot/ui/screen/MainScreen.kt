@@ -26,7 +26,8 @@ fun MainScreen(
     onCharacterClick: (String) -> Unit,
     onCharacterProfileClick: (String) -> Unit,
     onChatClick: (String) -> Unit,
-    onNavigateToProfile: () -> Unit
+    onNavigateToProfile: () -> Unit,
+    onLogout: () -> Unit = {}
 ) {
     val modelViewModel: ModelViewModel = viewModel()
     var selectedTab by remember { mutableStateOf(NavigationItem.Explorer.route) }
@@ -80,7 +81,8 @@ fun MainScreen(
             NavigationItem.Settings.route -> {
                 SettingsScreen(
                     viewModel = modelViewModel,
-                    onNavigateToProfile = onNavigateToProfile
+                    onNavigateToProfile = onNavigateToProfile,
+                    onLogout = onLogout
                 )
             }
         }

@@ -129,6 +129,12 @@ fun AppNavigation(
                 },
                 onNavigateToProfile = {
                     navController.navigate(Screen.Profile.route)
+                },
+                onLogout = {
+                    // Déconnexion : retour à l'écran de connexion
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
                 }
             )
         }

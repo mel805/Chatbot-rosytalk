@@ -31,7 +31,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun SettingsScreen(
     viewModel: ModelViewModel,
-    onNavigateToProfile: () -> Unit = {}
+    onNavigateToProfile: () -> Unit = {},
+    onLogout: () -> Unit = {}
 ) {
     val settingsViewModel: SettingsViewModel = viewModel()
     val authViewModel: AuthViewModel = viewModel()
@@ -140,6 +141,7 @@ fun SettingsScreen(
                             Button(
                                 onClick = {
                                     authViewModel.logout()
+                                    onLogout() // Naviguer vers la page de connexion
                                 },
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.error
