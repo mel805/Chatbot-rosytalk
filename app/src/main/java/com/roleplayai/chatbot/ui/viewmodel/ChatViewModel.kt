@@ -181,6 +181,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 val enableFallbacks = preferencesManager.enableAIFallbacks.first()
                 val groqApiKey = groqKeyManager.getCurrentKey()
                 val groqModelId = preferencesManager.groqModelId.first()
+                val openRouterApiKey = preferencesManager.openRouterApiKey.first()
+                val openRouterModelId = preferencesManager.openRouterModelId.first()
                 val nsfwMode = preferencesManager.nsfwMode.first()
                 val llamaCppModelPath = preferencesManager.llamaCppModelPath.first()
                 
@@ -202,6 +204,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     nsfwMode = nsfwMode,
                     groqApiKey = groqApiKey,
                     groqModelId = groqModelId,
+                    openRouterApiKey = openRouterApiKey,
+                    openRouterModelId = openRouterModelId,
                     llamaCppModelPath = llamaCppModelPath
                 )
                 

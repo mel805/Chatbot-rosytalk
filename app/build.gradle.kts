@@ -21,21 +21,20 @@ android {
             useSupportLibrary = true
         }
         
-        // NDK désactivé temporairement
-        // ndk {
-        //     // Compiler seulement pour ARM 64-bit (téléphones modernes)
-        //     abiFilters += listOf("arm64-v8a")
-        // }
-        //
-        // externalNativeBuild {
-        //     cmake {
-        //         arguments += listOf(
-        //             "-DANDROID_STL=c++_shared",
-        //             "-DANDROID_PLATFORM=android-24"
-        //         )
-        //         cppFlags += listOf("-std=c++17", "-frtti", "-fexceptions")
-        //     }
-        // }
+        ndk {
+            // Compiler seulement pour ARM 64-bit (téléphones modernes)
+            abiFilters += listOf("arm64-v8a")
+        }
+        
+        externalNativeBuild {
+            cmake {
+                arguments += listOf(
+                    "-DANDROID_STL=c++_shared",
+                    "-DANDROID_PLATFORM=android-24"
+                )
+                cppFlags += listOf("-std=c++17", "-frtti", "-fexceptions")
+            }
+        }
     }
 
     signingConfigs {
@@ -86,16 +85,15 @@ android {
         }
     }
     
-    // NDK configuration for llama.cpp (désactivé temporairement - wrapper JNI prêt)
-    // TODO: Activer après intégration complète de llama.cpp
-    // ndkVersion = "26.1.10909125"
-    //
-    // externalNativeBuild {
-    //     cmake {
-    //         path = file("../CMakeLists.txt")
-    //         version = "3.22.1"
-    //     }
-    // }
+    // NDK configuration for llama.cpp
+    ndkVersion = "26.1.10909125"
+    
+    externalNativeBuild {
+        cmake {
+            path = file("../CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
 }
 
 dependencies {

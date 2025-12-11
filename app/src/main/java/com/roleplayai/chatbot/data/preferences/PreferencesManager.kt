@@ -27,6 +27,10 @@ class PreferencesManager(private val context: Context) {
         private val NSFW_MODE_ENABLED = booleanPreferencesKey("nsfw_mode_enabled")
         private val USE_GROQ_API = booleanPreferencesKey("use_groq_api")
         
+        // OpenRouter API settings (NSFW)
+        private val OPENROUTER_API_KEY = stringPreferencesKey("openrouter_api_key")
+        private val OPENROUTER_MODEL_ID = stringPreferencesKey("openrouter_model_id")
+        
         // AI Engine selection
         private val SELECTED_AI_ENGINE = stringPreferencesKey("selected_ai_engine")
         private val ENABLE_AI_FALLBACKS = booleanPreferencesKey("enable_ai_fallbacks")
@@ -157,5 +161,26 @@ class PreferencesManager(private val context: Context) {
     
     val llamaCppModelPath: Flow<String> = context.dataStore.data.map { preferences ->
         preferences[LLAMA_CPP_MODEL_PATH] ?: ""
+    }
+    
+    // OpenRouter API settings
+    suspend fun setOpenRouterApiKey(apiKey: String) {
+        context.dataStore.edit { preferences ->
+            preferences[OPENROUTER_API_KEY] = apiKey
+        }
+    }
+    
+    val openRouterApiKey: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[OPENROUTER_API_KEY] ?: ""
+    }
+    
+    suspend fun setOpenRouterModelId(modelId: String) {
+        context.dataStore.edit { preferences ->
+            preferences[OPENROUTER_MODEL_ID] = modelId
+        }
+    }
+    
+    val openRouterModelId: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[OPENROUTER_MODEL_ID] ?: "nousresearch/nous-hermes-2-mixtral-8x7b-dpo"
     }
 }

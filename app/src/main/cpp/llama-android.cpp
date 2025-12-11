@@ -1,298 +1,252 @@
 #include <jni.h>
 #include <string>
-#include <vector>
-#include <memory>
 #include <android/log.h>
+#include <vector>
+
+#ifdef LLAMA_CPP_AVAILABLE
+#include "llama.h"
+#endif
 
 #define LOG_TAG "llama-android"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
-// Note: Cette implémentation est un wrapper simplifié
-// Pour l'implémentation complète de llama.cpp, vous devrez:
-// 1. Cloner https://github.com/ggerganov/llama.cpp
-// 2. Ajouter les fichiers source dans le projet
-// 3. Implémenter les fonctions ci-dessous avec l'API llama.cpp
-
 // Structure pour stocker le contexte du modèle
 struct ModelContext {
+#ifdef LLAMA_CPP_AVAILABLE
+    llama_model* model;
+    llama_context* ctx;
+#else
+    void* dummy;  // Pour éviter une structure vide
+#endif
     std::string model_path;
-    int n_ctx;
-    int n_threads;
-    bool is_loaded;
+    bool loaded;
     
-    // Pointeurs vers les structures llama.cpp
-    // void* llama_model;
-    // void* llama_context;
-    
-    ModelContext() : n_ctx(2048), n_threads(4), is_loaded(false) {}
+    ModelContext() : loaded(false) {
+#ifdef LLAMA_CPP_AVAILABLE
+        model = nullptr;
+        ctx = nullptr;
+#else
+        dummy = nullptr;
+#endif
+    }
 };
 
 extern "C" {
 
 /**
- * Charge un modèle GGUF depuis le chemin spécifié
- * 
- * @param modelPath Chemin vers le fichier .gguf
- * @param nThreads Nombre de threads CPU
- * @param nCtx Taille du contexte (tokens)
- * @return Pointeur vers le contexte du modèle (0 si échec)
+ * Charge un modèle GGUF
  */
 JNIEXPORT jlong JNICALL
 Java_com_roleplayai_chatbot_data_ai_LlamaCppEngine_loadModel(
-        JNIEnv* env,
-        jclass clazz,
-        jstring modelPath,
-        jint nThreads,
-        jint nCtx) {
+    JNIEnv* env, jclass clazz,
+    jstring modelPath, jint nThreads, jint nCtx
+) {
+    const char* path_cstr = env->GetStringUTFChars(modelPath, nullptr);
+    std::string path(path_cstr);
+    env->ReleaseStringUTFChars(modelPath, path_cstr);
     
-    const char* path = env->GetStringUTFChars(modelPath, nullptr);
-    LOGI("Loading model from: %s", path);
-    LOGI("Threads: %d, Context: %d", nThreads, nCtx);
+    LOGI("🚀 Chargement modèle: %s", path.c_str());
     
-    try {
-        // Créer le contexte
-        auto* context = new ModelContext();
-        context->model_path = std::string(path);
-        context->n_threads = nThreads;
-        context->n_ctx = nCtx;
-        
-        // TODO: Implémenter le chargement avec llama.cpp
-        // Exemple d'implémentation (nécessite llama.cpp):
-        /*
-        llama_backend_init(false);
-        
-        llama_model_params model_params = llama_model_default_params();
-        context->llama_model = llama_load_model_from_file(path, model_params);
-        
-        if (!context->llama_model) {
-            LOGE("Failed to load model");
-            env->ReleaseStringUTFChars(modelPath, path);
-            delete context;
-            return 0;
-        }
-        
-        llama_context_params ctx_params = llama_context_default_params();
-        ctx_params.n_ctx = nCtx;
-        ctx_params.n_threads = nThreads;
-        ctx_params.n_threads_batch = nThreads;
-        
-        context->llama_context = llama_new_context_with_model(context->llama_model, ctx_params);
-        
-        if (!context->llama_context) {
-            LOGE("Failed to create context");
-            llama_free_model(context->llama_model);
-            env->ReleaseStringUTFChars(modelPath, path);
-            delete context;
-            return 0;
-        }
-        */
-        
-        context->is_loaded = true;
-        LOGI("Model loaded successfully");
-        
-        env->ReleaseStringUTFChars(modelPath, path);
-        return reinterpret_cast<jlong>(context);
-        
-    } catch (const std::exception& e) {
-        LOGE("Exception loading model: %s", e.what());
-        env->ReleaseStringUTFChars(modelPath, path);
+    ModelContext* context = new ModelContext();
+    context->model_path = path;
+    
+#ifdef LLAMA_CPP_AVAILABLE
+    // Initialiser llama.cpp
+    llama_backend_init(false);
+    
+    // Paramètres du modèle
+    llama_model_params model_params = llama_model_default_params();
+    
+    // Charger le modèle
+    context->model = llama_load_model_from_file(path.c_str(), model_params);
+    if (!context->model) {
+        LOGE("❌ Échec chargement modèle: %s", path.c_str());
+        delete context;
         return 0;
     }
+    
+    // Paramètres du contexte
+    llama_context_params ctx_params = llama_context_default_params();
+    ctx_params.n_ctx = nCtx;
+    ctx_params.n_threads = nThreads;
+    ctx_params.n_threads_batch = nThreads;
+    
+    // Créer le contexte
+    context->ctx = llama_new_context_with_model(context->model, ctx_params);
+    if (!context->ctx) {
+        LOGE("❌ Échec création contexte");
+        llama_free_model(context->model);
+        delete context;
+        return 0;
+    }
+    
+    context->loaded = true;
+    LOGI("✅ Modèle chargé avec succès");
+    
+#else
+    LOGI("⚠️ llama.cpp non compilé - mode fallback");
+    context->loaded = false;
+#endif
+    
+    return reinterpret_cast<jlong>(context);
 }
 
 /**
- * Génère du texte avec le modèle
- * 
- * @param contextPtr Pointeur vers le contexte du modèle
- * @param prompt Texte d'entrée
- * @param maxTokens Nombre maximum de tokens à générer
- * @param temperature Température (0.0-2.0)
- * @param topP Nucleus sampling
- * @param topK Top-K sampling
- * @param repeatPenalty Pénalité de répétition
- * @return Texte généré
+ * Génère du texte
  */
 JNIEXPORT jstring JNICALL
 Java_com_roleplayai_chatbot_data_ai_LlamaCppEngine_generate(
-        JNIEnv* env,
-        jclass clazz,
-        jlong contextPtr,
-        jstring prompt,
-        jint maxTokens,
-        jfloat temperature,
-        jfloat topP,
-        jint topK,
-        jfloat repeatPenalty) {
+    JNIEnv* env, jclass clazz,
+    jlong contextPtr, jstring prompt,
+    jint maxTokens, jfloat temperature, jfloat topP, jint topK, jfloat repeatPenalty
+) {
+    ModelContext* context = reinterpret_cast<ModelContext*>(contextPtr);
     
-    if (contextPtr == 0) {
-        LOGE("Invalid context pointer");
-        return env->NewStringUTF("");
+    if (!context || !context->loaded) {
+        LOGE("❌ Contexte invalide ou modèle non chargé");
+        return env->NewStringUTF("*sourit* Le moteur llama.cpp n'est pas encore configuré. Utilisez un autre moteur IA.");
     }
     
-    auto* context = reinterpret_cast<ModelContext*>(contextPtr);
+    const char* prompt_cstr = env->GetStringUTFChars(prompt, nullptr);
+    std::string prompt_str(prompt_cstr);
+    env->ReleaseStringUTFChars(prompt, prompt_cstr);
     
-    if (!context->is_loaded) {
-        LOGE("Model not loaded");
-        return env->NewStringUTF("");
+    LOGI("📝 Génération avec prompt: %s...", prompt_str.substr(0, 50).c_str());
+    
+#ifdef LLAMA_CPP_AVAILABLE
+    // Tokenize le prompt
+    std::vector<llama_token> tokens_list;
+    tokens_list.resize(prompt_str.size() + 1);
+    int n_tokens = llama_tokenize(
+        context->model,
+        prompt_str.c_str(),
+        prompt_str.size(),
+        tokens_list.data(),
+        tokens_list.size(),
+        true,  // add_bos
+        false  // special
+    );
+    tokens_list.resize(n_tokens);
+    
+    LOGI("🔢 Tokens: %d", n_tokens);
+    
+    // Évaluer le prompt
+    llama_batch batch = llama_batch_init(tokens_list.size(), 0, 1);
+    for (size_t i = 0; i < tokens_list.size(); i++) {
+        llama_batch_add(batch, tokens_list[i], i, {0}, false);
     }
+    batch.logits[batch.n_tokens - 1] = true;  // Calculer logits pour le dernier token
     
-    const char* prompt_str = env->GetStringUTFChars(prompt, nullptr);
-    LOGI("Generating response for prompt (length: %zu)", strlen(prompt_str));
-    LOGI("Params: maxTokens=%d, temp=%.2f, topP=%.2f, topK=%d, repeat=%.2f",
-         maxTokens, temperature, topP, topK, repeatPenalty);
-    
-    std::string generated_text;
-    
-    try {
-        // TODO: Implémenter la génération avec llama.cpp
-        // Exemple d'implémentation (nécessite llama.cpp):
-        /*
-        std::vector<llama_token> tokens_list;
-        
-        // Tokenize le prompt
-        tokens_list = llama_tokenize(context->llama_context, prompt_str, true);
-        
-        const int n_ctx = llama_n_ctx(context->llama_context);
-        const int n_kv_req = tokens_list.size() + maxTokens;
-        
-        if (n_kv_req > n_ctx) {
-            LOGE("Context too small: %d vs %d", n_ctx, n_kv_req);
-            env->ReleaseStringUTFChars(prompt, prompt_str);
-            return env->NewStringUTF("Erreur: prompt trop long");
-        }
-        
-        // Évaluer le prompt
-        llama_batch batch = llama_batch_init(tokens_list.size(), 0, 1);
-        for (size_t i = 0; i < tokens_list.size(); i++) {
-            llama_batch_add(batch, tokens_list[i], i, {0}, false);
-        }
-        batch.logits[batch.n_tokens - 1] = true;
-        
-        if (llama_decode(context->llama_context, batch) != 0) {
-            LOGE("Failed to decode prompt");
-            llama_batch_free(batch);
-            env->ReleaseStringUTFChars(prompt, prompt_str);
-            return env->NewStringUTF("");
-        }
-        
-        // Générer tokens
-        int n_cur = batch.n_tokens;
-        int n_decode = 0;
-        
-        llama_sampler* sampler = llama_sampler_chain_init(llama_sampler_chain_default_params());
-        llama_sampler_chain_add(sampler, llama_sampler_init_top_k(topK));
-        llama_sampler_chain_add(sampler, llama_sampler_init_top_p(topP, 1));
-        llama_sampler_chain_add(sampler, llama_sampler_init_temp(temperature));
-        llama_sampler_chain_add(sampler, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
-        
-        while (n_decode < maxTokens) {
-            // Sample next token
-            const llama_token new_token_id = llama_sampler_sample(sampler, context->llama_context, -1);
-            
-            // Check for EOS
-            if (llama_token_is_eog(context->llama_model, new_token_id)) {
-                break;
-            }
-            
-            // Ajouter à la sortie
-            char buf[256];
-            int n = llama_token_to_piece(context->llama_model, new_token_id, buf, sizeof(buf), 0, false);
-            if (n < 0) {
-                LOGE("Failed to convert token to piece");
-                break;
-            }
-            generated_text.append(buf, n);
-            
-            // Préparer le prochain batch
-            llama_batch_clear(batch);
-            llama_batch_add(batch, new_token_id, n_cur, {0}, true);
-            n_cur++;
-            n_decode++;
-            
-            // Décoder
-            if (llama_decode(context->llama_context, batch) != 0) {
-                LOGE("Failed to decode");
-                break;
-            }
-        }
-        
-        llama_sampler_free(sampler);
+    if (llama_decode(context->ctx, batch) != 0) {
+        LOGE("❌ Échec decode");
         llama_batch_free(batch);
-        */
-        
-        // Fallback pour développement (sans llama.cpp compilé)
-        LOGI("⚠️ FALLBACK MODE: llama.cpp pas encore compilé");
-        generated_text = "*sourit* Bonjour ! Le moteur llama.cpp sera disponible après compilation du NDK.";
-        
-        LOGI("Generated text: %s", generated_text.c_str());
-        
-    } catch (const std::exception& e) {
-        LOGE("Exception during generation: %s", e.what());
-        generated_text = "Erreur de génération";
+        return env->NewStringUTF("Erreur de génération");
     }
     
-    env->ReleaseStringUTFChars(prompt, prompt_str);
+    // Générer la réponse token par token
+    std::string generated_text;
+    int n_cur = batch.n_tokens;
+    int n_gen = 0;
+    
+    while (n_gen < maxTokens) {
+        // Obtenir les logits
+        float* logits = llama_get_logits_ith(context->ctx, batch.n_tokens - 1);
+        
+        // Sample le prochain token (sampling simple pour commencer)
+        int n_vocab = llama_n_vocab(context->model);
+        std::vector<llama_token_data> candidates;
+        candidates.reserve(n_vocab);
+        
+        for (llama_token token_id = 0; token_id < n_vocab; token_id++) {
+            candidates.push_back({token_id, logits[token_id], 0.0f});
+        }
+        
+        llama_token_data_array candidates_p = {
+            candidates.data(),
+            candidates.size(),
+            false
+        };
+        
+        // Sample avec temperature
+        llama_sample_top_k(context->ctx, &candidates_p, topK, 1);
+        llama_sample_top_p(context->ctx, &candidates_p, topP, 1);
+        llama_sample_temp(context->ctx, &candidates_p, temperature);
+        llama_token new_token_id = llama_sample_token(context->ctx, &candidates_p);
+        
+        // Vérifier fin de génération
+        if (new_token_id == llama_token_eos(context->model)) {
+            LOGI("✅ Fin de génération (EOS)");
+            break;
+        }
+        
+        // Convertir en texte
+        char buf[256];
+        int n = llama_token_to_piece(context->model, new_token_id, buf, sizeof(buf));
+        if (n > 0) {
+            generated_text.append(buf, n);
+        }
+        
+        // Préparer le prochain batch
+        llama_batch_clear(batch);
+        llama_batch_add(batch, new_token_id, n_cur, {0}, true);
+        n_cur++;
+        n_gen++;
+        
+        // Évaluer le nouveau token
+        if (llama_decode(context->ctx, batch) != 0) {
+            LOGE("❌ Échec decode token %d", n_gen);
+            break;
+        }
+    }
+    
+    llama_batch_free(batch);
+    
+    LOGI("✅ Génération terminée: %d tokens", n_gen);
     return env->NewStringUTF(generated_text.c_str());
+    
+#else
+    LOGI("⚠️ FALLBACK MODE: llama.cpp pas encore compilé");
+    std::string generated_text = "*sourit* Bonjour ! Le moteur llama.cpp sera disponible après compilation du NDK avec le modèle GGUF.";
+    return env->NewStringUTF(generated_text.c_str());
+#endif
 }
 
 /**
- * Libère le modèle de la mémoire
- * 
- * @param contextPtr Pointeur vers le contexte du modèle
+ * Libère le modèle
  */
 JNIEXPORT void JNICALL
 Java_com_roleplayai_chatbot_data_ai_LlamaCppEngine_freeModel(
-        JNIEnv* env,
-        jclass clazz,
-        jlong contextPtr) {
+    JNIEnv* env, jclass clazz, jlong contextPtr
+) {
+    ModelContext* context = reinterpret_cast<ModelContext*>(contextPtr);
+    if (!context) return;
     
-    if (contextPtr == 0) {
-        return;
+#ifdef LLAMA_CPP_AVAILABLE
+    if (context->ctx) {
+        llama_free(context->ctx);
+        context->ctx = nullptr;
     }
-    
-    auto* context = reinterpret_cast<ModelContext*>(contextPtr);
-    
-    LOGI("Freeing model");
-    
-    try {
-        // TODO: Libérer les ressources llama.cpp
-        /*
-        if (context->llama_context) {
-            llama_free(context->llama_context);
-        }
-        if (context->llama_model) {
-            llama_free_model(context->llama_model);
-        }
-        llama_backend_free();
-        */
-        
-        delete context;
-        LOGI("Model freed successfully");
-        
-    } catch (const std::exception& e) {
-        LOGE("Exception freeing model: %s", e.what());
+    if (context->model) {
+        llama_free_model(context->model);
+        context->model = nullptr;
     }
+    llama_backend_free();
+#endif
+    
+    delete context;
+    LOGI("✅ Modèle libéré");
 }
 
 /**
  * Vérifie si le modèle est chargé
- * 
- * @param contextPtr Pointeur vers le contexte du modèle
- * @return true si chargé, false sinon
  */
 JNIEXPORT jboolean JNICALL
 Java_com_roleplayai_chatbot_data_ai_LlamaCppEngine_isModelLoaded(
-        JNIEnv* env,
-        jclass clazz,
-        jlong contextPtr) {
-    
-    if (contextPtr == 0) {
-        return JNI_FALSE;
-    }
-    
-    auto* context = reinterpret_cast<ModelContext*>(contextPtr);
-    return context->is_loaded ? JNI_TRUE : JNI_FALSE;
+    JNIEnv* env, jclass clazz, jlong contextPtr
+) {
+    ModelContext* context = reinterpret_cast<ModelContext*>(contextPtr);
+    return (context && context->loaded) ? JNI_TRUE : JNI_FALSE;
 }
 
 } // extern "C"

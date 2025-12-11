@@ -34,6 +34,7 @@ class AIOrchestrator(
      */
     enum class AIEngine {
         GROQ,           // API Groq (ultra-rapide, cloud)
+        OPENROUTER,     // OpenRouter (modèles NSFW non censurés, cloud)
         GEMINI_NANO,    // Gemini Nano (on-device, Android 14+)
         LLAMA_CPP,      // llama.cpp (modèles GGUF locaux)
         TOGETHER_AI,    // Together AI (API gratuite)
@@ -41,6 +42,7 @@ class AIOrchestrator(
         
         fun getDisplayName(): String = when(this) {
             GROQ -> "Groq API (Cloud)"
+            OPENROUTER -> "OpenRouter NSFW (Cloud)"
             GEMINI_NANO -> "Gemini Nano (Local)"
             LLAMA_CPP -> "llama.cpp (Local)"
             TOGETHER_AI -> "Together AI (Cloud)"
@@ -49,6 +51,7 @@ class AIOrchestrator(
         
         fun getDescription(): String = when(this) {
             GROQ -> "Réponses ultra-rapides (1-2s), qualité maximale. Nécessite Internet."
+            OPENROUTER -> "Modèles non censurés pour NSFW. Idéal pour contenu adulte."
             GEMINI_NANO -> "IA Google locale. Android 14+ uniquement. Excellente qualité."
             LLAMA_CPP -> "Modèles locaux GGUF. Phi-3, Gemma, TinyLlama, etc."
             TOGETHER_AI -> "API gratuite de secours. Qualité correcte."
@@ -56,7 +59,7 @@ class AIOrchestrator(
         }
         
         fun isLocal(): Boolean = when(this) {
-            GROQ, TOGETHER_AI -> false
+            GROQ, OPENROUTER, TOGETHER_AI -> false
             GEMINI_NANO, LLAMA_CPP, SMART_LOCAL -> true
         }
         
@@ -72,6 +75,8 @@ class AIOrchestrator(
         val nsfwMode: Boolean = false,
         val groqApiKey: String? = null,
         val groqModelId: String? = null,
+        val openRouterApiKey: String? = null,
+        val openRouterModelId: String? = null,
         val llamaCppModelPath: String? = null
     )
     
@@ -205,6 +210,14 @@ class AIOrchestrator(
                 groqEngine.generateResponse(character, messages, username, userGender, memoryContext)
             }
             
+            AIEngine.OPENROUTER -> {
+                val apiKey = config.openRouterApiKey ?: throw Exception("Clé API OpenRouter manquante")
+                val modelId = config.openRouterModelId ?: "nousresearch/nous-hermes-2-mixtral-8x7b-dpo"
+                
+                val openRouterEngine = OpenRouterEngine(apiKey, modelId, config.nsfwMode)
+                openRouterEngine.generateResponse(character, messages, username, userGender, memoryContext)
+            }
+            
             AIEngine.GEMINI_NANO -> {
                 val geminiEngine = GeminiNanoEngine(context, config.nsfwMode)
                 if (!geminiEngine.isAvailable()) {
@@ -257,19 +270,29 @@ class AIOrchestrator(
     private fun getFallbackCascade(primaryEngine: AIEngine): List<AIEngine> {
         return when (primaryEngine) {
             AIEngine.GROQ -> listOf(
+                AIEngine.OPENROUTER,
+                AIEngine.TOGETHER_AI,
+                AIEngine.GEMINI_NANO,
+                AIEngine.LLAMA_CPP
+            )
+            AIEngine.OPENROUTER -> listOf(
+                AIEngine.GROQ,
                 AIEngine.TOGETHER_AI,
                 AIEngine.GEMINI_NANO,
                 AIEngine.LLAMA_CPP
             )
             AIEngine.GEMINI_NANO -> listOf(
                 AIEngine.LLAMA_CPP,
-                AIEngine.TOGETHER_AI
+                AIEngine.TOGETHER_AI,
+                AIEngine.OPENROUTER
             )
             AIEngine.LLAMA_CPP -> listOf(
                 AIEngine.GEMINI_NANO,
-                AIEngine.TOGETHER_AI
+                AIEngine.TOGETHER_AI,
+                AIEngine.OPENROUTER
             )
             AIEngine.TOGETHER_AI -> listOf(
+                AIEngine.OPENROUTER,
                 AIEngine.GEMINI_NANO,
                 AIEngine.LLAMA_CPP
             )
@@ -284,6 +307,8 @@ class AIOrchestrator(
         return try {
             when (engine) {
                 AIEngine.GROQ -> config.groqApiKey?.isNotBlank() == true
+                
+                AIEngine.OPENROUTER -> config.openRouterApiKey?.isNotBlank() == true
                 
                 AIEngine.GEMINI_NANO -> {
                     val geminiEngine = GeminiNanoEngine(context, false)
