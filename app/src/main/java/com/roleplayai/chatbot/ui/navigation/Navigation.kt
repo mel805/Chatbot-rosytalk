@@ -25,6 +25,7 @@ sealed class Screen(val route: String) {
     object CharacterList : Screen("character_list")
     object Settings : Screen("settings")
     object Profile : Screen("user_profile")
+    object AdminUsers : Screen("admin_users")
     object Chat : Screen("chat/{characterId}") {
         fun createRoute(characterId: String) = "chat/$characterId"
     }
@@ -130,6 +131,9 @@ fun AppNavigation(
                 onNavigateToProfile = {
                     navController.navigate(Screen.Profile.route)
                 },
+                onNavigateToAdminUsers = {
+                    navController.navigate(Screen.AdminUsers.route)
+                },
                 onLogout = {
                     // Déconnexion : retour à l'écran de connexion
                     navController.navigate(Screen.Login.route) {
@@ -200,6 +204,12 @@ fun AppNavigation(
                         popUpTo(0) { inclusive = true }
                     }
                 }
+            )
+        }
+        
+        composable(Screen.AdminUsers.route) {
+            AdminUsersScreen(
+                onBack = { navController.popBackStack() }
             )
         }
         

@@ -105,15 +105,21 @@ class AuthManagerSimple private constructor(private val context: Context) {
                 return AuthResult.Error("Cet email est déjà utilisé")
             }
             
-            // Créer l'utilisateur
+            // Créer l'utilisateur (vérifier si admin)
+            val isAdmin = email.lowercase().trim() == User.ADMIN_EMAIL
             val user = User(
                 email = email.lowercase().trim(),
                 passwordHash = hashPassword(password),
                 pseudo = pseudo.trim(),
                 age = age,
                 gender = gender,
-                isNsfwEnabled = false
+                isNsfwEnabled = false,
+                isAdmin = isAdmin
             )
+            
+            if (isAdmin) {
+                Log.i(TAG, "👑 Création compte ADMIN: $email")
+            }
             
             // Sauvegarder
             saveUser(user)
@@ -202,6 +208,52 @@ class AuthManagerSimple private constructor(private val context: Context) {
             true
         } catch (e: Exception) {
             Log.e(TAG, "❌ Erreur màj profil", e)
+            false
+        }
+    }
+    
+    /**
+     * Obtient tous les utilisateurs (ADMIN UNIQUEMENT)
+     */
+    suspend fun getAllUsersForAdmin(): List<User> {
+        val current = _currentUser.value
+        if (current?.isAdmin != true) {
+            Log.w(TAG, "⚠️ Accès refusé: non-admin")
+            return emptyList()
+        }
+        return getAllUsers()
+    }
+    
+    /**
+     * Met à jour un utilisateur (ADMIN UNIQUEMENT)
+     */
+    suspend fun updateUserAsAdmin(targetEmail: String, isNsfwEnabled: Boolean? = null, isAdmin: Boolean? = null): Boolean {
+        return try {
+            val current = _currentUser.value
+            if (current?.isAdmin != true) {
+                Log.w(TAG, "⚠️ Modification refusée: non-admin")
+                return false
+            }
+            
+            val users = getAllUsers()
+            val targetUser = users.find { it.email == targetEmail } ?: return false
+            
+            // Ne peut pas se retirer l'admin soi-même
+            if (targetEmail == current.email && isAdmin == false) {
+                Log.w(TAG, "⚠️ Impossible de se retirer l'admin")
+                return false
+            }
+            
+            val updated = targetUser.copy(
+                isNsfwEnabled = isNsfwEnabled ?: targetUser.isNsfwEnabled,
+                isAdmin = isAdmin ?: targetUser.isAdmin
+            )
+            
+            saveUser(updated)
+            Log.i(TAG, "✅ Utilisateur ${targetUser.pseudo} mis à jour par admin")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Erreur màj utilisateur", e)
             false
         }
     }

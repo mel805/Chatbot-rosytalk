@@ -13,8 +13,12 @@ data class User(
     val age: Int,
     val gender: String,  // "male", "female", "other"
     val createdAt: Long = System.currentTimeMillis(),
-    val isNsfwEnabled: Boolean = false
+    val isNsfwEnabled: Boolean = false,
+    val isAdmin: Boolean = false  // Seul douvdouv21@gmail.com est admin
 ) {
+    companion object {
+        const val ADMIN_EMAIL = "douvdouv21@gmail.com"
+    }
     /**
      * Vérifie si l'utilisateur est majeur
      */

@@ -32,6 +32,7 @@ import kotlinx.coroutines.launch
 fun SettingsScreen(
     viewModel: ModelViewModel,
     onNavigateToProfile: () -> Unit = {},
+    onNavigateToAdminUsers: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
     val settingsViewModel: SettingsViewModel = viewModel()
@@ -231,6 +232,28 @@ fun SettingsScreen(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
+                }
+                
+                // Bouton Gestion des Utilisateurs
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                        )
+                    ) {
+                        ListItem(
+                            headlineContent = { Text("👥 Gestion des Utilisateurs") },
+                            supportingContent = { Text("Voir et gérer tous les comptes") },
+                            leadingContent = {
+                                Icon(Icons.Default.People, null)
+                            },
+                            trailingContent = {
+                                Icon(Icons.Default.ChevronRight, null)
+                            },
+                            modifier = Modifier.clickable { onNavigateToAdminUsers() }
+                        )
+                    }
                 }
                 
                 // Modèle IA Local (admin)

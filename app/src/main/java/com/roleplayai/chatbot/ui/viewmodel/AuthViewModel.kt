@@ -8,6 +8,9 @@ import com.roleplayai.chatbot.data.auth.AuthResult
 import com.roleplayai.chatbot.data.model.User
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 
 /**
  * ViewModel pour gérer l'authentification
@@ -20,8 +23,9 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     val currentUser: StateFlow<User?> = authManager.currentUser
     val isLoggedIn: StateFlow<Boolean> = authManager.isLoggedIn
     
-    // Tous les utilisateurs sont "admin" (peuvent gérer les clés Groq)
-    val isAdmin: StateFlow<Boolean> = isLoggedIn
+    // État admin (seul douvdouv21@gmail.com)
+    val isAdmin: StateFlow<Boolean> = currentUser.map { it?.isAdmin == true }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
     
     // États UI
     private val _isLoading = MutableStateFlow(false)

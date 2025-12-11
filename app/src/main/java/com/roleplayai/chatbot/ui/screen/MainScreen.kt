@@ -27,6 +27,7 @@ fun MainScreen(
     onCharacterProfileClick: (String) -> Unit,
     onChatClick: (String) -> Unit,
     onNavigateToProfile: () -> Unit,
+    onNavigateToAdminUsers: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
     val modelViewModel: ModelViewModel = viewModel()
@@ -82,6 +83,7 @@ fun MainScreen(
                 SettingsScreen(
                     viewModel = modelViewModel,
                     onNavigateToProfile = onNavigateToProfile,
+                    onNavigateToAdminUsers = onNavigateToAdminUsers,
                     onLogout = onLogout
                 )
             }
