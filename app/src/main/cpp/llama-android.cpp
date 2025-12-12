@@ -3,6 +3,7 @@
 #include <android/log.h>
 #include <vector>
 #include <cstring>
+#include <atomic>
 
 #ifdef LLAMA_CPP_AVAILABLE
 #include "llama.h"
@@ -24,8 +25,9 @@ struct ModelContext {
     bool loaded;
     int n_threads;
     int n_ctx;
+    std::atomic<bool> cancel_requested;
     
-    ModelContext() : loaded(false), n_threads(0), n_ctx(0) {
+    ModelContext() : loaded(false), n_threads(0), n_ctx(0), cancel_requested(false) {
 #ifdef LLAMA_CPP_AVAILABLE
         model = nullptr;
         ctx = nullptr;
@@ -121,6 +123,7 @@ Java_com_roleplayai_chatbot_data_ai_LlamaCppEngine_generate(
     
 #ifdef LLAMA_CPP_AVAILABLE
     const llama_vocab* vocab = llama_model_get_vocab(context->model);
+    context->cancel_requested.store(false);
     
     // IMPORTANT: le commit de llama.cpp embarqué ici ne publie pas d'API KV cache
     // dans llama.h. Pour éviter l'accumulation d'état entre générations, on recrée
@@ -197,6 +200,10 @@ Java_com_roleplayai_chatbot_data_ai_LlamaCppEngine_generate(
     int n_gen = 0;
 
     while (n_gen < maxTokens) {
+        if (context->cancel_requested.load()) {
+            LOGI("🛑 Annulation demandée (cancel_generation)");
+            break;
+        }
         llama_token new_token = llama_sampler_sample(sampler, context->ctx, -1);
 
         if (llama_vocab_is_eog(vocab, new_token)) {
@@ -227,6 +234,20 @@ Java_com_roleplayai_chatbot_data_ai_LlamaCppEngine_generate(
     LOGI("⚠️ FALLBACK MODE: llama.cpp pas encore compilé");
     std::string generated_text = "*sourit* Bonjour ! Le moteur llama.cpp sera disponible après compilation du NDK avec le modèle GGUF.";
     return env->NewStringUTF(generated_text.c_str());
+#endif
+}
+
+/**
+ * Demande l'annulation d'une génération en cours.
+ */
+JNIEXPORT void JNICALL
+Java_com_roleplayai_chatbot_data_ai_LlamaCppEngine_cancelGeneration(
+    JNIEnv* env, jclass clazz, jlong contextPtr
+) {
+#ifdef LLAMA_CPP_AVAILABLE
+    ModelContext* context = reinterpret_cast<ModelContext*>(contextPtr);
+    if (!context) return;
+    context->cancel_requested.store(true);
 #endif
 }
 

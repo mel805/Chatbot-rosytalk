@@ -50,6 +50,7 @@ fun ChatScreen(
 ) {
     val chat by viewModel.currentChat.collectAsState()
     val isGenerating by viewModel.isGenerating.collectAsState()
+    val generatingChatId by viewModel.generatingChatId.collectAsState()
     val error by viewModel.error.collectAsState()
     
     val characterViewModel: CharacterViewModel = viewModel()
@@ -252,7 +253,7 @@ fun ChatScreen(
                         MessageBubble(message = message, chatName = chat!!.characterName)
                     }
                     
-                    if (isGenerating) {
+                    if (isGenerating && generatingChatId != null && generatingChatId == chat!!.id) {
                         item {
                             TypingIndicator(chatName = chat!!.characterName)
                         }

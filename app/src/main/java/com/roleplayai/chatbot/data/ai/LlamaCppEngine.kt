@@ -5,9 +5,10 @@ import android.util.Log
 import com.roleplayai.chatbot.data.model.Character
 import com.roleplayai.chatbot.data.model.Message
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.math.max
 
 /**
@@ -24,6 +25,9 @@ class LlamaCppEngine(private val context: Context) {
         private const val TAG = "LlamaCppEngine"
 
         @Volatile private var nativeLibLoaded: Boolean = false
+        private val executor = Executors.newSingleThreadExecutor { r ->
+            Thread(r, "llama-cpp-infer").apply { isDaemon = true }
+        }
 
         init {
             try {
@@ -50,6 +54,7 @@ class LlamaCppEngine(private val context: Context) {
             topK: Int,
             repeatPenalty: Float
         ): String
+        @JvmStatic private external fun cancelGeneration(contextPtr: Long)
         @JvmStatic private external fun freeModel(contextPtr: Long)
         @JvmStatic private external fun isModelLoaded(contextPtr: Long): Boolean
     }
@@ -126,16 +131,31 @@ class LlamaCppEngine(private val context: Context) {
         )
 
         try {
-            // Limites strictes pour éviter les "réflexions infinies" sur appareils lents
-            val raw = withTimeout(45_000) {
+            // IMPORTANT: l'appel natif est bloquant et peu interruptible.
+            // On exécute la génération sur un thread dédié avec timeout + annulation best-effort.
+            val future = executor.submit<String> {
                 generate(
                     contextPtr = contextPtr,
                     prompt = prompt,
-                    maxTokens = 160,
+                    maxTokens = 96,
                     temperature = 0.85f,
                     topP = 0.92f,
                     topK = 40,
                     repeatPenalty = 1.15f
+                )
+            }
+
+            val raw = try {
+                future.get(45, TimeUnit.SECONDS)
+            } catch (e: java.util.concurrent.TimeoutException) {
+                try {
+                    cancelGeneration(contextPtr)
+                } catch (_: Throwable) {
+                    // ignore
+                }
+                future.cancel(true)
+                throw IllegalStateException(
+                    "Le modèle local met trop de temps à répondre. Essaie un GGUF plus léger (TinyLlama/Phi-2)."
                 )
             }
 
@@ -144,11 +164,6 @@ class LlamaCppEngine(private val context: Context) {
                 throw IllegalStateException("Réponse vide du modèle local")
             }
             return@withContext cleaned
-        } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
-            // Note: l'appel natif ne peut pas être interrompu proprement, on limite donc maxTokens
-            // et on remonte un message clair.
-            Log.e(TAG, "⏱️ Timeout génération llama.cpp", e)
-            throw IllegalStateException("Le modèle local met trop de temps à répondre. Essaie un modèle GGUF plus léger (TinyLlama/Phi-2) ou baisse la charge.")
         } catch (e: Exception) {
             Log.e(TAG, "❌ Erreur génération llama.cpp", e)
             throw e
