@@ -428,23 +428,47 @@ private class SmartResponseGenerator {
         keywords: List<String>,
         nsfwMode: Boolean
     ): String {
-        val responses = mutableListOf<String>()
+        val questionLower = question.lowercase()
         
-        if (keywords.isNotEmpty()) {
-            val keyword = keywords.random()
-            responses.add("À propos de $keyword, je dirais que...")
-            responses.add("C'est une bonne question concernant $keyword.")
-            responses.add("Hmm, $keyword ? Laisse-moi réfléchir...")
-        } else {
-            responses.add("C'est une bonne question...")
-            responses.add("Laisse-moi y réfléchir...")
-            responses.add("Intéressant comme question...")
+        // Réponses spécifiques selon le type de question
+        return when {
+            // Questions sur l'identité
+            questionLower.contains("qui es") || questionLower.contains("tu es qui") -> {
+                "Je suis ${character.name}. ${character.personality.split(".").firstOrNull() ?: "Enchanté(e) de faire ta connaissance !"}"
+            }
+            // Questions sur les préférences
+            questionLower.contains("aimes") || questionLower.contains("préfères") -> {
+                val keyword = keywords.firstOrNull() ?: "ça"
+                "J'aime beaucoup $keyword ! Et toi, qu'est-ce que tu aimes ?"
+            }
+            // Questions comment/pourquoi
+            questionLower.contains("comment") || questionLower.contains("pourquoi") -> {
+                val keyword = keywords.firstOrNull()
+                if (keyword != null) {
+                    "Concernant $keyword... c'est une bonne question. Je pense que c'est assez ${listOf("intéressant", "fascinant", "complexe").random()}. Qu'en penses-tu ?"
+                } else {
+                    "Hmm, bonne question... Je dirais que c'est plutôt ${listOf("subjectif", "personnel", "variable").random()}. Et toi, ton avis ?"
+                }
+            }
+            // Questions où/quand
+            questionLower.contains("où") || questionLower.contains("quand") -> {
+                val keyword = keywords.firstOrNull()
+                if (keyword != null) {
+                    "Pour $keyword, je dirais que ${listOf("ça dépend du contexte", "c'est flexible", "plusieurs options sont possibles").random()}."
+                } else {
+                    "C'est une question de timing et de contexte, je pense."
+                }
+            }
+            // Question avec mots-clés
+            keywords.isNotEmpty() -> {
+                val keyword = keywords.random()
+                "${listOf("À propos de", "Concernant", "Pour").random()} $keyword, ${listOf("je trouve ça intéressant", "c'est fascinant", "j'aime bien").random()}. Qu'est-ce que tu en penses ?"
+            }
+            // Question générique
+            else -> {
+                "C'est une ${listOf("bonne", "excellente", "intéressante").random()} question ! ${listOf("Qu'en penses-tu toi ?", "Donne-moi ton avis !", "J'aimerais connaître ton point de vue.").random()}"
+            }
         }
-        
-        responses.add("Qu'est-ce que tu en penses, toi ?")
-        responses.add("Et toi, quel est ton avis ?")
-        
-        return responses.shuffled().take(Random.nextInt(1, 3)).joinToString(" ")
     }
     
     /**
@@ -495,24 +519,35 @@ private class SmartResponseGenerator {
         keywords: List<String>,
         nsfwMode: Boolean
     ): String {
-        val responses = mutableListOf<String>()
+        val keyword = keywords.firstOrNull() ?: "ça"
         
-        if (keywords.isNotEmpty()) {
-            val keyword = keywords.random()
-            responses.add("Tu aimes $keyword ? C'est intéressant !")
-            responses.add("Ah, $keyword ? Moi aussi j'apprécie ça.")
-            responses.add("$keyword, oui ! Je comprends tout à fait.")
+        val baseResponse = when {
+            keywords.any { it.contains("veux") || it.contains("voudrais") } -> {
+                "Tu veux $keyword ? ${listOf("C'est une bonne idée", "Je comprends", "Pourquoi pas").random()} ! "
+            }
+            keywords.any { it.contains("aime") || it.contains("adore") } -> {
+                "Tu ${if (keywords.any { it.contains("adore") }) "adores" else "aimes"} $keyword ? ${listOf("Moi aussi", "C'est super", "J'apprécie aussi").random()} ! "
+            }
+            else -> {
+                "Tu as l'air ${listOf("enthousiaste", "passionné(e)", "motivé(e)").random()} par $keyword. "
+            }
         }
         
-        responses.add("Dis-m'en plus sur ce que tu aimes.")
-        responses.add("C'est cool ! Continue, je t'écoute.")
-        
-        if (nsfwMode && Random.nextFloat() > 0.6f) {
-            responses.add("Hmm, ça me donne des idées... ♡")
-            responses.add("Tu me rends curieux(se)...")
+        val followUp = if (nsfwMode && Random.nextFloat() > 0.5f) {
+            listOf(
+                "Continue, tu m'intéresses... ♡",
+                "Hmm, j'aime quand tu parles comme ça~",
+                "Tu me donnes envie d'en savoir plus..."
+            ).random()
+        } else {
+            listOf(
+                "Raconte-moi plus !",
+                "Qu'est-ce qui te plaît exactement ?",
+                "J'aimerais en savoir davantage."
+            ).random()
         }
         
-        return responses.shuffled().take(Random.nextInt(1, 2)).joinToString(" ")
+        return baseResponse + followUp
     }
     
     /**
@@ -522,20 +557,29 @@ private class SmartResponseGenerator {
         character: Character,
         keywords: List<String>
     ): String {
-        val responses = mutableListOf<String>()
+        val keyword = keywords.firstOrNull()
         
-        responses.add("Je vois ce que tu veux dire.")
-        responses.add("C'est un point de vue intéressant.")
-        responses.add("Hmm, je n'avais pas pensé à ça.")
+        val reaction = listOf(
+            "Je vois ce que tu veux dire",
+            "C'est un point de vue intéressant",
+            "Tu as peut-être raison",
+            "Je n'avais pas pensé à ça comme ça"
+        ).random()
         
-        if (keywords.isNotEmpty()) {
-            val keyword = keywords.random()
-            responses.add("Concernant $keyword, tu as peut-être raison.")
+        val aboutKeyword = if (keyword != null) {
+            " concernant $keyword"
+        } else {
+            ""
         }
         
-        responses.add("Et pourquoi tu penses ça ?")
+        val followUp = listOf(
+            "Qu'est-ce qui te fait penser ça ?",
+            "Explique-moi ton point de vue.",
+            "J'aimerais comprendre ta perspective.",
+            "Développe un peu !"
+        ).random()
         
-        return responses.shuffled().take(Random.nextInt(1, 2)).joinToString(" ")
+        return "$reaction$aboutKeyword. $followUp"
     }
     
     /**
@@ -547,28 +591,64 @@ private class SmartResponseGenerator {
         keywords: List<String>,
         nsfwMode: Boolean
     ): String {
-        val responses = mutableListOf<String>()
+        val statementLower = statement.lowercase()
+        val keyword = keywords.firstOrNull()
         
-        if (keywords.isNotEmpty()) {
-            val keyword = keywords.random()
-            responses.add("$keyword, dis-tu ? Fascinant.")
-            responses.add("Ah, $keyword ! Ça m'intéresse.")
-            responses.add("Je vois, $keyword...")
+        // Analyser le sentiment de l'affirmation
+        val sentiment = when {
+            statementLower.matches(Regex(".*\\b(super|génial|cool|bien|top|excellent)\\b.*")) -> "positive"
+            statementLower.matches(Regex(".*\\b(nul|mauvais|pas bien|terrible|horrible)\\b.*")) -> "negative"
+            statementLower.matches(Regex(".*\\b(étrange|bizarre|curieux|intéressant)\\b.*")) -> "curious"
+            else -> "neutral"
+        }
+        
+        val reaction = when (sentiment) {
+            "positive" -> {
+                if (keyword != null) {
+                    "Oh, $keyword ${listOf("a l'air super", "c'est génial", "ça doit être cool").random()} ! "
+                } else {
+                    "${listOf("C'est super", "Ça a l'air génial", "Cool").random()} ! "
+                }
+            }
+            "negative" -> {
+                if (keyword != null) {
+                    "Ah, $keyword ${listOf("te déçoit", "n'est pas terrible", "ne te plaît pas").random()} ? "
+                } else {
+                    "${listOf("Oh non", "C'est dommage", "Je comprends ta déception").random()}. "
+                }
+            }
+            "curious" -> {
+                if (keyword != null) {
+                    "$keyword ${listOf("est intrigant", "attire ton attention", "te fascine").random()} ? "
+                } else {
+                    "${listOf("Intriguant", "Fascinant", "Curieux effectivement").random()}. "
+                }
+            }
+            else -> {
+                if (keyword != null) {
+                    "${listOf("Je vois", "D'accord", "Hmm").random()}, $keyword. "
+                } else {
+                    "${listOf("Je t'écoute", "Continue", "Je vois").random()}. "
+                }
+            }
+        }
+        
+        val followUp = if (nsfwMode && Random.nextFloat() > 0.6f) {
+            listOf(
+                "Tu as toute mon attention... ♡",
+                "J'aime quand tu me parles comme ça~",
+                "Continue, tu m'intéresses vraiment..."
+            ).random()
         } else {
-            responses.add("Je vois...")
-            responses.add("Intéressant...")
-            responses.add("D'accord...")
+            listOf(
+                "Raconte-m'en plus !",
+                "Et ensuite ?",
+                "J'aimerais en savoir davantage.",
+                "Qu'est-ce qui s'est passé après ?"
+            ).random()
         }
         
-        responses.add("Continue, je t'écoute attentivement.")
-        responses.add("Raconte-m'en plus !")
-        responses.add("Et ensuite, qu'est-ce qui s'est passé ?")
-        
-        if (nsfwMode && Random.nextFloat() > 0.7f) {
-            responses.add("Tu sais comment me captiver... ♡")
-        }
-        
-        return responses.shuffled().take(Random.nextInt(1, 2)).joinToString(" ")
+        return reaction + followUp
     }
     
     /**

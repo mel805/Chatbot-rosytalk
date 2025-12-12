@@ -28,7 +28,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         .stateIn(viewModelScope, SharingStarted.Eagerly, "")
     
     val geminiModelId = preferencesManager.geminiModelId
-        .stateIn(viewModelScope, SharingStarted.Eagerly, "gemini-pro")
+        .stateIn(viewModelScope, SharingStarted.Eagerly, "gemini-1.5-flash")
     
     val nsfwMode = preferencesManager.nsfwMode
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
