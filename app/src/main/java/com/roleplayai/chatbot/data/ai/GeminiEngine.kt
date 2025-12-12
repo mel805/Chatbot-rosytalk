@@ -16,7 +16,7 @@ import java.net.URL
  */
 class GeminiEngine(
     private val apiKey: String,
-    private val model: String = "gemini-pro",
+    private val model: String = "gemini-1.5-flash",
     private val nsfwMode: Boolean = false
 ) {
     
@@ -26,11 +26,18 @@ class GeminiEngine(
         
         val AVAILABLE_MODELS = listOf(
             GeminiModel(
-                id = "gemini-pro",
-                name = "Gemini Pro",
-                description = "Modèle principal, 32k tokens",
-                contextLength = 32768,
+                id = "gemini-1.5-flash",
+                name = "Gemini 1.5 Flash",
+                description = "Rapide et efficace, 1M tokens",
+                contextLength = 1000000,
                 recommended = true
+            ),
+            GeminiModel(
+                id = "gemini-1.5-pro",
+                name = "Gemini 1.5 Pro",
+                description = "Plus puissant, 2M tokens",
+                contextLength = 2000000,
+                recommended = false
             )
         )
     }
@@ -85,8 +92,8 @@ ${character.name}:"""
      * Appelle l'API REST Gemini directement
      */
     private fun callGeminiAPI(prompt: String): String {
-        // Utiliser l'endpoint correct pour v1beta
-        val url = URL("$API_URL/gemini-pro:generateContent?key=$apiKey")
+        // Utiliser le modèle configuré (gemini-1.5-flash par défaut pour v1beta)
+        val url = URL("$API_URL/$model:generateContent?key=$apiKey")
         val connection = url.openConnection() as HttpURLConnection
         
         try {

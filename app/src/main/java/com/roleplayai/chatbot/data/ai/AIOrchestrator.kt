@@ -2,6 +2,7 @@ package com.roleplayai.chatbot.data.ai
 
 import android.content.Context
 import android.util.Log
+import com.roleplayai.chatbot.data.manager.GroqKeyManager
 import com.roleplayai.chatbot.data.model.Character
 import com.roleplayai.chatbot.data.model.Message
 import kotlinx.coroutines.Dispatchers
@@ -11,19 +12,22 @@ import kotlinx.coroutines.withContext
  * AI Orchestrator - Routeur intelligent des moteurs d'IA
  * 
  * Gère automatiquement la cascade des moteurs d'IA :
- * 1. Moteur principal (Groq / Gemini Nano / llama.cpp selon config)
+ * 1. Moteur principal (Groq / Gemini / llama.cpp selon config)
  * 2. Fallbacks automatiques si échec
- * 3. SmartLocalAI en dernier recours (ne peut jamais échouer)
+ * 3. llama.cpp en dernier recours (ne peut jamais échouer)
  * 
  * Architecture :
  * - AIEngine : Enum des moteurs disponibles
  * - Cascade intelligente avec fallbacks
  * - Logs détaillés pour debug
  * - Support NSFW sur tous les moteurs
+ * - Rotation automatique des clés Groq
  */
 class AIOrchestrator(
     private val context: Context
 ) {
+    
+    private val groqKeyManager = GroqKeyManager(context)
     
     companion object {
         private const val TAG = "AIOrchestrator"
@@ -192,11 +196,51 @@ class AIOrchestrator(
     ): String {
         return when (engine) {
             AIEngine.GROQ -> {
-                val apiKey = config.groqApiKey ?: throw Exception("Clé API Groq manquante")
+                // Obtenir la clé courante du key manager (rotation automatique)
+                val apiKey = try {
+                    groqKeyManager.getCurrentKey()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Erreur obtention clé Groq: ${e.message}")
+                    config.groqApiKey ?: throw Exception("Clé API Groq manquante")
+                }
+                
                 val modelId = config.groqModelId ?: "llama-3.1-8b-instant"
                 
-                val groqEngine = GroqAIEngine(apiKey, modelId, config.nsfwMode)
-                groqEngine.generateResponse(character, messages, username, userGender, memoryContext)
+                try {
+                    val groqEngine = GroqAIEngine(apiKey, modelId, config.nsfwMode)
+                    val response = groqEngine.generateResponse(character, messages, username, userGender, memoryContext)
+                    
+                    // Vérifier si la réponse contient une erreur de rate limit
+                    if (response.contains("rate limit", ignoreCase = true) || 
+                        response.contains("429", ignoreCase = true) ||
+                        response.contains("Request too large", ignoreCase = true)) {
+                        
+                        Log.w(TAG, "⚠️ Rate limit détecté, rotation de clé...")
+                        groqKeyManager.reportRateLimit()
+                        
+                        // Réessayer avec la nouvelle clé
+                        val newApiKey = groqKeyManager.getCurrentKey()
+                        val newGroqEngine = GroqAIEngine(newApiKey, modelId, config.nsfwMode)
+                        return newGroqEngine.generateResponse(character, messages, username, userGender, memoryContext)
+                    }
+                    
+                    response
+                } catch (e: Exception) {
+                    // Si erreur contient rate limit, signaler et réessayer
+                    if (e.message?.contains("429") == true || 
+                        e.message?.contains("rate limit", ignoreCase = true) == true) {
+                        
+                        Log.w(TAG, "⚠️ Erreur rate limit, rotation de clé...")
+                        groqKeyManager.reportRateLimit()
+                        
+                        // Réessayer avec la nouvelle clé
+                        val newApiKey = groqKeyManager.getCurrentKey()
+                        val newGroqEngine = GroqAIEngine(newApiKey, modelId, config.nsfwMode)
+                        return newGroqEngine.generateResponse(character, messages, username, userGender, memoryContext)
+                    }
+                    
+                    throw e
+                }
             }
             
             AIEngine.GEMINI -> {

@@ -13,8 +13,8 @@ android {
         applicationId = "com.roleplayai.chatbot"
         minSdk = 24
         targetSdk = 34
-        versionCode = 67
-        versionName = "5.2.0"
+        versionCode = 68
+        versionName = "5.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

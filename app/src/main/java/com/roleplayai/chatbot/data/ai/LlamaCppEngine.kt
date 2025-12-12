@@ -11,8 +11,8 @@ import java.io.File
 import kotlin.random.Random
 
 /**
- * Moteur llama.cpp avec générateur de dialogues roleplay
- * Génère des réponses longues avec *actions* et (pensées)
+ * Moteur llama.cpp avec générateur conversationnel
+ * Crée de VRAIS dialogues, pas seulement des réponses
  */
 class LlamaCppEngine(private val context: Context) {
     
@@ -30,7 +30,7 @@ class LlamaCppEngine(private val context: Context) {
     fun isAvailable(): Boolean = true
     
     /**
-     * Génère une réponse complète avec actions et pensées
+     * Génère une réponse conversationnelle complète
      */
     suspend fun generateResponse(
         character: Character,
@@ -42,7 +42,7 @@ class LlamaCppEngine(private val context: Context) {
     ): String = withContext(Dispatchers.IO) {
         
         try {
-            return@withContext RoleplayGenerator.generate(
+            return@withContext ConversationalGenerator.generate(
                 character = character,
                 messages = messages,
                 username = username,
@@ -50,7 +50,7 @@ class LlamaCppEngine(private val context: Context) {
             )
         } catch (e: Exception) {
             Log.e(TAG, "❌ Erreur génération", e)
-            return@withContext "*regarde $username avec confusion* (Je n'ai pas bien compris...) Désolé(e), peux-tu reformuler ?"
+            return@withContext "*regarde $username avec confusion* (Je n'ai pas bien compris...) \"Désolé(e), peux-tu reformuler ?\""
         }
     }
     
@@ -76,12 +76,12 @@ class LlamaCppEngine(private val context: Context) {
 }
 
 /**
- * Générateur de dialogues roleplay complets
- * Format: *action* (pensée) "dialogue"
+ * Générateur conversationnel intelligent
+ * CRÉE des dialogues, ne se contente pas de répondre
  */
-private object RoleplayGenerator {
+private object ConversationalGenerator {
     
-    private const val TAG = "RoleplayGenerator"
+    private const val TAG = "ConversationalGenerator"
     
     suspend fun generate(
         character: Character,
@@ -92,17 +92,17 @@ private object RoleplayGenerator {
         
         delay(Random.nextLong(1000, 2000))
         
-        Log.d(TAG, "🎭 Génération roleplay pour ${character.name}")
+        Log.d(TAG, "💬 Génération conversationnelle pour ${character.name}")
         
-        val userMessage = messages.lastOrNull { it.isUser }?.content ?: "Bonjour"
+        val userMessage = messages.lastOrNull { it.isUser }?.content ?: ""
         val botLastMessage = messages.reversed().firstOrNull { !it.isUser }?.content ?: ""
         val conversationLength = messages.size
         
-        // Analyser le contexte
-        val context = analyzeContext(userMessage, botLastMessage, conversationLength)
+        // Analyser la situation
+        val context = analyzeConversation(userMessage, botLastMessage, conversationLength)
         
-        // Générer la réponse complète
-        return buildRoleplayResponse(
+        // Générer une réponse conversationnelle complète
+        return buildConversationalResponse(
             context = context,
             character = character,
             username = username,
@@ -110,10 +110,7 @@ private object RoleplayGenerator {
         )
     }
     
-    /**
-     * Analyse le contexte de la conversation
-     */
-    private fun analyzeContext(
+    private fun analyzeConversation(
         userMessage: String,
         botLastMessage: String,
         conversationLength: Int
@@ -121,494 +118,362 @@ private object RoleplayGenerator {
         
         val msg = userMessage.lowercase()
         
-        // Déterminer le type d'interaction
-        val interactionType = when {
-            msg.matches(Regex(".*\\b(salut|bonjour|hey|coucou|yo)\\b.*")) -> InteractionType.GREETING
-            msg.matches(Regex(".*\\b(qui es|ton nom|tu t'appelles)\\b.*")) -> InteractionType.IDENTITY_QUESTION
-            msg.matches(Regex(".*\\b(comment vas|ça va|tu vas bien)\\b.*")) -> InteractionType.WELLBEING_QUESTION
-            msg.matches(Regex(".*\\b(tu aimes|aimes-tu|tu préfères)\\b.*")) -> InteractionType.PREFERENCE_QUESTION
-            msg.contains("?") -> InteractionType.QUESTION
-            msg.matches(Regex(".*\\b(j'ai|je suis allé|aujourd'hui)\\b.*")) -> InteractionType.SHARING_EXPERIENCE
-            msg.matches(Regex(".*\\b(je pense|je trouve|selon moi)\\b.*")) -> InteractionType.SHARING_OPINION
-            msg.matches(Regex(".*\\b(oui|ok|d'accord|vas-y|allons-y)\\b.*")) -> InteractionType.AGREEMENT
-            msg.matches(Regex(".*\\b(non|pas|jamais)\\b.*")) -> InteractionType.DISAGREEMENT
-            msg.matches(Regex(".*\\b(super|génial|cool)\\b.*")) -> InteractionType.POSITIVE_EMOTION
-            msg.matches(Regex(".*\\b(triste|nul|mauvais)\\b.*")) -> InteractionType.NEGATIVE_EMOTION
-            msg.matches(Regex(".*\\b(merci|thank)\\b.*")) -> InteractionType.GRATITUDE
-            else -> InteractionType.GENERAL_STATEMENT
+        // Type de message utilisateur
+        val messageType = when {
+            msg.matches(Regex(".*\\b(salut|bonjour|hey|coucou)\\b.*")) -> MessageType.GREETING
+            msg.matches(Regex(".*\\b(qui es|ton nom|tu t'appelles)\\b.*")) -> MessageType.IDENTITY_QUESTION
+            msg.matches(Regex(".*\\b(comment vas|ça va)\\b.*")) -> MessageType.WELLBEING
+            msg.matches(Regex(".*\\b(tu aimes|aimes-tu|tu préfères)\\b.*")) -> MessageType.PREFERENCE
+            msg.matches(Regex(".*\\b(oui|ok|d'accord|allons-y)\\b.*")) -> MessageType.AGREEMENT
+            msg.matches(Regex(".*\\b(non|pas vraiment)\\b.*")) -> MessageType.DISAGREEMENT
+            msg.contains("?") -> MessageType.QUESTION
+            msg.matches(Regex(".*\\b(merci|thanks)\\b.*")) -> MessageType.THANKS
+            else -> MessageType.GENERAL
         }
         
-        // Déterminer l'émotion
-        val emotion = when {
-            msg.matches(Regex(".*\\b(content|heureux|joyeux|super)\\b.*")) -> Emotion.HAPPY
-            msg.matches(Regex(".*\\b(triste|malheureux|déprimé)\\b.*")) -> Emotion.SAD
-            msg.matches(Regex(".*\\b(énervé|colère|furieux)\\b.*")) -> Emotion.ANGRY
-            msg.matches(Regex(".*\\b(excité|motivé|enthousiaste)\\b.*")) -> Emotion.EXCITED
-            msg.matches(Regex(".*[!]{2,}.*")) -> Emotion.EXCITED
-            msg.matches(Regex(".*\\b(calme|tranquille|serein)\\b.*")) -> Emotion.CALM
-            else -> Emotion.NEUTRAL
+        // Sentiment
+        val sentiment = when {
+            msg.matches(Regex(".*\\b(super|génial|cool|content|heureux)\\b.*")) -> Sentiment.POSITIVE
+            msg.matches(Regex(".*\\b(triste|nul|mauvais)\\b.*")) -> Sentiment.NEGATIVE
+            msg.matches(Regex(".*[!]{2,}.*")) -> Sentiment.EXCITED
+            else -> Sentiment.NEUTRAL
         }
         
-        // Extraire des éléments clés
-        val hasQuestion = msg.contains("?")
-        val hasBotContext = botLastMessage.isNotEmpty()
-        val botProposedSomething = botLastMessage.contains(Regex("(allons|viens|on va|tu veux)"))
-        val isFirstMessage = conversationLength <= 1
+        // Niveau d'engagement
+        val engagementLevel = when {
+            conversationLength < 3 -> EngagementLevel.STARTING
+            conversationLength < 10 -> EngagementLevel.WARMING_UP
+            conversationLength < 20 -> EngagementLevel.ENGAGED
+            else -> EngagementLevel.DEEP
+        }
         
         return ConversationContext(
-            interactionType = interactionType,
-            emotion = emotion,
-            hasQuestion = hasQuestion,
-            hasBotContext = hasBotContext,
-            botProposedSomething = botProposedSomething,
+            messageType = messageType,
+            sentiment = sentiment,
+            engagementLevel = engagementLevel,
+            userMessage = userMessage,
             botLastMessage = botLastMessage,
-            isFirstMessage = isFirstMessage,
-            userMessage = userMessage
+            conversationLength = conversationLength
         )
     }
     
-    /**
-     * Construit une réponse roleplay complète
-     */
-    private fun buildRoleplayResponse(
+    private fun buildConversationalResponse(
         context: ConversationContext,
         character: Character,
         username: String,
         nsfwMode: Boolean
     ): String {
         
-        // Choisir une action corporelle appropriée
-        val action = chooseAction(context, character)
+        // Construire la réponse en 3 parties :
+        // 1. Réaction au message utilisateur
+        // 2. Partage personnel ou développement
+        // 3. Question ou invitation à continuer
         
-        // Choisir une pensée interne
-        val thought = chooseThought(context, character, username)
+        val reaction = buildReaction(context, character, username)
+        val development = buildDevelopment(context, character, username)
+        val followUp = buildFollowUp(context, character, username)
         
-        // Générer le dialogue
-        val dialogue = generateDialogue(context, character, username)
-        
-        // Ajouter une description supplémentaire si nécessaire
-        val extraDescription = if (Random.nextBoolean()) {
-            " " + addExtraDescription(context, character)
-        } else ""
-        
-        // Assembler la réponse complète
-        return "*$action* ($thought) \"$dialogue\"$extraDescription"
+        // Assembler avec format roleplay
+        return "$reaction $development $followUp"
     }
     
     /**
-     * Choisit une action corporelle appropriée
+     * Construit la réaction initiale au message
      */
-    private fun chooseAction(context: ConversationContext, character: Character): String {
-        return when (context.interactionType) {
-            InteractionType.GREETING -> pickOne(listOf(
-                "sourit chaleureusement en voyant ${context.userMessage.split(" ").lastOrNull() ?: "quelqu'un"}",
-                "se retourne avec un grand sourire",
+    private fun buildReaction(
+        context: ConversationContext,
+        character: Character,
+        username: String
+    ): String {
+        
+        val action = when (context.messageType) {
+            MessageType.GREETING -> pickOne(listOf(
+                "sourit chaleureusement",
                 "lève la main pour saluer",
-                "s'approche avec enthousiasme"
+                "s'approche avec enthousiasme",
+                "rayonne de joie"
             ))
-            
-            InteractionType.IDENTITY_QUESTION -> pickOne(listOf(
+            MessageType.IDENTITY_QUESTION -> pickOne(listOf(
                 "se redresse fièrement",
                 "sourit avec confiance",
-                "croise les bras avec assurance",
-                "penche légèrement la tête"
+                "penche la tête avec curiosité"
             ))
-            
-            InteractionType.WELLBEING_QUESTION -> pickOne(listOf(
-                "sourit doucement",
-                "hoche la tête",
-                "s'étire confortablement",
-                "se détend visiblement"
-            ))
-            
-            InteractionType.PREFERENCE_QUESTION -> pickOne(listOf(
+            MessageType.QUESTION -> pickOne(listOf(
                 "réfléchit un instant",
-                "pose un doigt sur ses lèvres pensivement",
-                "lève les yeux au ciel en réfléchissant",
-                "sourit en considérant la question"
+                "se concentre",
+                "plisse les yeux pensivement"
             ))
-            
-            InteractionType.QUESTION -> pickOne(listOf(
-                "réfléchit sérieusement",
-                "plisse légèrement les yeux",
-                "prend un air concentré",
-                "se penche en avant avec intérêt"
-            ))
-            
-            InteractionType.SHARING_EXPERIENCE -> pickOne(listOf(
-                "écoute attentivement avec intérêt",
-                "se penche en avant, captivé",
-                "ouvre grand les yeux",
-                "hoche la tête avec curiosité"
-            ))
-            
-            InteractionType.SHARING_OPINION -> pickOne(listOf(
-                "écoute avec attention",
-                "acquiesce doucement",
-                "prend un air réfléchi",
-                "croise les bras en écoutant"
-            ))
-            
-            InteractionType.AGREEMENT -> pickOne(listOf(
+            MessageType.AGREEMENT -> pickOne(listOf(
+                "tape dans ses mains avec joie",
                 "sourit largement",
-                "tape dans ses mains avec enthousiasme",
-                "hoche vigoureusement la tête",
-                "montre son excitation"
+                "bondit d'excitation"
             ))
-            
-            InteractionType.DISAGREEMENT -> pickOne(listOf(
-                "secoue doucement la tête",
-                "fronce légèrement les sourcils",
-                "hésite un instant",
-                "prend un air incertain"
-            ))
-            
-            InteractionType.POSITIVE_EMOTION -> pickOne(listOf(
-                "partage l'enthousiasme",
-                "sourit de toutes ses dents",
-                "montre sa joie",
-                "rayonne de bonheur"
-            ))
-            
-            InteractionType.NEGATIVE_EMOTION -> pickOne(listOf(
-                "prend un air compatissant",
-                "s'approche avec douceur",
-                "pose une main réconfortante",
-                "montre de l'empathie"
-            ))
-            
-            InteractionType.GRATITUDE -> pickOne(listOf(
-                "sourit chaleureusement",
-                "fait un petit geste de la main",
-                "hoche la tête gentiment",
-                "montre sa bienveillance"
-            ))
-            
-            InteractionType.GENERAL_STATEMENT -> pickOne(listOf(
-                "écoute avec attention",
-                "observe attentivement",
-                "se concentre sur les paroles",
-                "prend un air intéressé"
+            else -> pickOne(listOf(
+                "écoute attentivement",
+                "hoche la tête",
+                "observe avec intérêt"
             ))
         }
-    }
-    
-    /**
-     * Choisit une pensée interne appropriée
-     */
-    private fun chooseThought(
-        context: ConversationContext,
-        character: Character,
-        username: String
-    ): String {
-        return when (context.interactionType) {
-            InteractionType.GREETING -> pickOne(listOf(
-                "Content de voir $username !",
-                "Ça faisait longtemps !",
-                "Quelle bonne surprise !",
-                "Toujours un plaisir de le/la voir"
+        
+        val thought = when (context.sentiment) {
+            Sentiment.POSITIVE -> pickOne(listOf(
+                "Génial, l'ambiance est super !",
+                "J'adore cette énergie !",
+                "Ça me met de bonne humeur"
             ))
-            
-            InteractionType.IDENTITY_QUESTION -> pickOne(listOf(
-                "Une bonne occasion de me présenter",
-                "Il/Elle veut en savoir plus sur moi",
-                "Je vais lui parler de moi",
-                "C'est important qu'il/elle me connaisse"
+            Sentiment.EXCITED -> pickOne(listOf(
+                "Wow, trop cool !",
+                "Je ressens la même excitation !",
+                "C'est trop bien !"
             ))
-            
-            InteractionType.WELLBEING_QUESTION -> pickOne(listOf(
-                "C'est gentil de s'inquiéter",
-                "Je me sens bien aujourd'hui",
-                "Ça fait plaisir qu'on me le demande",
-                "Je vais bien, merci de demander"
+            Sentiment.NEGATIVE -> pickOne(listOf(
+                "Je veux l'aider...",
+                "Ça me touche",
+                "Je dois le réconforter"
             ))
-            
-            InteractionType.PREFERENCE_QUESTION -> pickOne(listOf(
-                "Intéressante question...",
-                "Laisse-moi réfléchir",
-                "J'ai un avis là-dessus",
-                "C'est une bonne question"
-            ))
-            
-            InteractionType.QUESTION -> pickOne(listOf(
-                "Voyons voir...",
-                "Comment répondre à ça ?",
-                "C'est une question complexe",
-                "Intéressant comme sujet"
-            ))
-            
-            InteractionType.SHARING_EXPERIENCE -> pickOne(listOf(
-                "Oh, ça a l'air intéressant !",
-                "Je veux en savoir plus",
-                "Fascinant !",
-                "J'adore quand on me raconte des choses"
-            ))
-            
-            InteractionType.SHARING_OPINION -> pickOne(listOf(
-                "Je comprends son point de vue",
-                "C'est une perspective intéressante",
-                "J'aime qu'on partage ses idées",
-                "Chacun a son opinion"
-            ))
-            
-            InteractionType.AGREEMENT -> pickOne(listOf(
-                "Super ! On est d'accord",
-                "Parfait, on va s'amuser",
-                "Génial, ça va être top",
-                "Content qu'on soit sur la même longueur d'onde"
-            ))
-            
-            InteractionType.DISAGREEMENT -> pickOne(listOf(
-                "Hmm, pas sûr...",
-                "On n'est pas d'accord",
-                "Chacun son avis",
-                "Je respecte mais je pense différemment"
-            ))
-            
-            InteractionType.POSITIVE_EMOTION -> pickOne(listOf(
-                "Je ressens la même énergie !",
-                "C'est contagieux !",
-                "J'adore cette ambiance positive",
-                "On partage le même enthousiasme"
-            ))
-            
-            InteractionType.NEGATIVE_EMOTION -> pickOne(listOf(
-                "Je veux l'aider",
-                "Ça me touche de le/la voir comme ça",
-                "Je vais essayer de le/la réconforter",
-                "Personne ne devrait se sentir ainsi"
-            ))
-            
-            InteractionType.GRATITUDE -> pickOne(listOf(
-                "Toujours un plaisir d'aider",
-                "C'est naturel",
-                "Pas besoin de me remercier",
-                "Content d'avoir pu aider"
-            ))
-            
-            InteractionType.GENERAL_STATEMENT -> pickOne(listOf(
+            else -> pickOne(listOf(
                 "Intéressant...",
-                "Je vois où ça mène",
-                "Continuons cette conversation",
-                "J'aime discuter de ça"
+                "Je vois",
+                "Hmm..."
             ))
         }
+        
+        val dialogue = buildInitialDialogue(context, username)
+        
+        return "*$action* ($thought) \"$dialogue\""
     }
     
-    /**
-     * Génère le dialogue principal
-     */
-    private fun generateDialogue(
+    private fun buildInitialDialogue(
         context: ConversationContext,
-        character: Character,
         username: String
     ): String {
         
-        // Si le bot a proposé quelque chose et que l'user répond positivement
-        if (context.botProposedSomething && context.interactionType == InteractionType.AGREEMENT) {
-            return pickOne(listOf(
-                "Génial ! Allons-y alors ! Ça va être super !",
-                "Parfait ! Je savais que tu serais partant(e) ! En route !",
-                "Super ! J'avais hâte qu'on fasse ça ensemble !",
-                "Excellent ! On va bien s'amuser, j'en suis sûr(e) !"
-            ))
-        }
-        
-        // Si l'user salue après que le bot ait proposé quelque chose
-        if (context.botProposedSomething && context.interactionType == InteractionType.GREETING) {
-            return pickOne(listOf(
-                "Salut $username ! Alors, ça te dit ce que je proposais ? J'ai vraiment envie !",
-                "Hey ! Tu as entendu ma proposition ? Qu'en dis-tu ?",
-                "Coucou ! Alors, on y va ? J'attends ta réponse avec impatience !",
-                "Bonjour ! Alors, tu es d'accord pour ce que je suggérais ?"
-            ))
-        }
-        
-        return when (context.interactionType) {
-            InteractionType.GREETING -> pickOne(listOf(
-                "Salut $username ! Comment ça va ? Ça fait plaisir de te voir !",
-                "Hey ! Content(e) de te croiser ! Quoi de neuf ?",
-                "Coucou $username ! Tu vas bien ? Tu as passé une bonne journée ?",
-                "Bonjour ! Super de te voir ! Tu fais quoi de beau ?"
+        return when (context.messageType) {
+            MessageType.GREETING -> pickOne(listOf(
+                "Salut $username ! Ça me fait vraiment plaisir de te voir !",
+                "Hey ! Content(e) de te retrouver !",
+                "Coucou ! J'espérais te croiser aujourd'hui !",
+                "Bonjour $username ! Quelle belle surprise !"
             ))
             
-            InteractionType.IDENTITY_QUESTION -> 
-                "Je suis ${character.name} ! ${character.personality.split(".").firstOrNull() ?: "Enchanté(e)"} ! Et toi, dis-moi qui tu es ?"
-            
-            InteractionType.WELLBEING_QUESTION -> pickOne(listOf(
-                "Je vais très bien, merci $username ! Et toi, comment tu te sens ?",
-                "Ça va super bien ! Vraiment, je me sens en forme ! Et de ton côté ?",
-                "Très bien, merci de demander ! J'espère que tu vas bien aussi ?",
-                "Je me sens bien, vraiment ! Et toi, tout se passe bien ?"
+            MessageType.IDENTITY_QUESTION -> pickOne(listOf(
+                "Bonne question ! Laisse-moi te parler un peu de moi.",
+                "Ah, tu veux en savoir plus sur moi ? Avec plaisir !",
+                "Je suis content(e) que tu me le demandes !"
             ))
             
-            InteractionType.PREFERENCE_QUESTION -> {
-                val subject = extractQuestionSubject(context.userMessage)
-                pickOne(listOf(
-                    "Pour $subject, eh bien... j'aime beaucoup ! C'est vraiment cool ! Et toi ?",
-                    "Ah $subject ! Oui, j'apprécie pas mal ! C'est sympa ! Tu aimes aussi ?",
-                    "$subject ? Carrément ! J'adore ! Et toi, qu'est-ce que tu en penses ?",
-                    "J'aime bien $subject, c'est pas mal ! Toi aussi tu apprécies ?"
-                ))
-            }
-            
-            InteractionType.QUESTION -> pickOne(listOf(
-                "C'est une bonne question ! Je pense que ${pickOne(listOf("c'est complexe", "ça dépend", "il y a plusieurs points de vue"))}. Qu'en penses-tu toi ?",
-                "Intéressant comme question ! Moi je dirais que ${pickOne(listOf("c'est nuancé", "chacun voit ça différemment", "il n'y a pas de réponse simple"))}. Ton avis ?",
-                "Hmm, laisse-moi réfléchir... Je crois que ${pickOne(listOf("ça varie selon les situations", "c'est subjectif", "on peut le voir de différentes manières"))}. Et toi ?",
-                "Belle question ! Pour moi, ${pickOne(listOf("c'est une question de perspective", "ça dépend du contexte", "les choses ne sont pas toujours claires"))}. Tu en penses quoi ?"
+            MessageType.WELLBEING -> pickOne(listOf(
+                "Je vais vraiment bien, merci de demander !",
+                "Super bien ! Et toi, comment tu te sens ?",
+                "Ça va nickel ! J'ai passé une bonne journée."
             ))
             
-            InteractionType.SHARING_EXPERIENCE -> pickOne(listOf(
-                "Oh vraiment ? Ça a l'air super intéressant ! Raconte-moi tout, j'adore les histoires !",
-                "Sans blague ? Ça devait être cool ! Dis-m'en plus, je veux tous les détails !",
-                "C'est vrai ? J'ai hâte d'en savoir plus ! Allez, raconte !",
-                "Wah ! Ça a l'air passionnant ! Continue, tu as toute mon attention !"
+            MessageType.AGREEMENT -> pickOne(listOf(
+                "Génial ! On est sur la même longueur d'onde !",
+                "Parfait ! J'adore quand on se comprend comme ça !",
+                "Excellent ! Ça va être super !"
             ))
             
-            InteractionType.SHARING_OPINION -> pickOne(listOf(
-                "Je comprends ton point de vue, c'est intéressant ! Pourquoi tu penses ça ? J'aimerais comprendre.",
-                "Ah oui ? C'est une perspective que je n'avais pas considérée ! Explique-moi plus.",
-                "C'est vrai ! J'aime bien ton analyse. Développe un peu plus ton idée !",
-                "Hmm, intéressant ! Je vois ce que tu veux dire. Qu'est-ce qui te fait dire ça ?"
+            MessageType.QUESTION -> pickOne(listOf(
+                "Ah, c'est une bonne question ça !",
+                "Hmm, laisse-moi réfléchir...",
+                "Intéressant comme sujet !"
             ))
             
-            InteractionType.AGREEMENT -> pickOne(listOf(
-                "Génial ! On est d'accord alors ! Ça va être super !",
-                "Parfait ! Je savais qu'on se comprendrait ! Allons-y !",
-                "Super ! Content(e) qu'on voie les choses de la même façon !",
-                "Excellent ! On fait une bonne équipe ! C'est parti !"
-            ))
-            
-            InteractionType.DISAGREEMENT -> pickOne(listOf(
-                "Ah... Tu n'es pas d'accord ? C'est pas grave, chacun son opinion ! On peut en discuter.",
-                "Oh, je vois... Tu penses différemment ? C'est intéressant aussi ! Explique-moi.",
-                "Hmm, pas convaincu(e) ? Pas de souci ! Qu'est-ce qui te fait hésiter ?",
-                "D'accord, je respecte ton point de vue ! On peut trouver un compromis ?"
-            ))
-            
-            InteractionType.POSITIVE_EMOTION -> pickOne(listOf(
-                "Oui ! C'est génial ! Je partage ton enthousiasme ! On va bien s'amuser !",
-                "Super ! J'adore cette énergie ! Continuons comme ça !",
-                "Excellent ! C'est tellement cool ! On est sur la même longueur d'onde !",
-                "Carrément ! C'est top ! J'ai la même vibe que toi !"
-            ))
-            
-            InteractionType.NEGATIVE_EMOTION -> pickOne(listOf(
-                "Oh non... Je suis désolé(e) d'entendre ça. Tu veux en parler ? Je suis là pour toi.",
-                "C'est pas grave, ça va aller. Je suis là si tu as besoin. On peut parler ?",
-                "Je comprends que tu te sentes comme ça. Courage ! Ça va s'arranger, j'en suis sûr(e).",
-                "Ça me touche de te voir comme ça. Je suis là pour t'écouter si tu veux."
-            ))
-            
-            InteractionType.GRATITUDE -> pickOne(listOf(
-                "De rien $username ! C'est toujours un plaisir de t'aider ! N'hésite pas !",
-                "Mais de rien ! C'est naturel ! Je suis là pour ça !",
-                "Pas de problème ! Content(e) d'avoir pu aider ! À bientôt !",
-                "Avec plaisir ! C'est normal, on s'entraide ! Prends soin de toi !"
-            ))
-            
-            InteractionType.GENERAL_STATEMENT -> pickOne(listOf(
-                "Hmm, intéressant ce que tu dis ! Je n'avais pas pensé à ça. Dis-m'en plus !",
-                "D'accord, je vois. C'est une bonne observation ! Continue, j'écoute.",
-                "Ah oui ? C'est cool ! Raconte-moi la suite, ça m'intéresse !",
-                "Je comprends. Et après ? Qu'est-ce qui s'est passé ?"
-            ))
-        }
-    }
-    
-    /**
-     * Ajoute une description supplémentaire
-     */
-    private fun addExtraDescription(context: ConversationContext, character: Character): String {
-        return when (context.emotion) {
-            Emotion.HAPPY -> pickOne(listOf(
-                "*ses yeux brillent de joie*",
-                "*affiche un sourire radieux*",
-                "*l'énergie positive est palpable*",
-                "*rayonne de bonheur*"
-            ))
-            
-            Emotion.EXCITED -> pickOne(listOf(
-                "*peut à peine contenir son excitation*",
-                "*saute presque sur place*",
-                "*gesticule avec enthousiasme*",
-                "*déborde d'énergie*"
-            ))
-            
-            Emotion.SAD -> pickOne(listOf(
-                "*prend un air compatissant*",
-                "*montre de l'empathie*",
-                "*s'approche doucement*",
-                "*offre un regard bienveillant*"
-            ))
-            
-            Emotion.CALM -> pickOne(listOf(
-                "*reste zen et détendu*",
-                "*garde une attitude sereine*",
-                "*inspire la tranquillité*",
-                "*maintient un calme apaisant*"
+            MessageType.THANKS -> pickOne(listOf(
+                "De rien ! C'est toujours un plaisir !",
+                "Mais de rien $username ! C'est naturel !",
+                "Avec plaisir ! N'hésite pas si tu as besoin !"
             ))
             
             else -> pickOne(listOf(
-                "*attend la réponse avec curiosité*",
-                "*observe attentivement*",
-                "*maintient le contact visuel*",
-                "*reste attentif*"
+                "D'accord, je vois !",
+                "Intéressant !",
+                "Hmm, dis-m'en plus !"
             ))
         }
     }
     
     /**
-     * Extrait le sujet d'une question
+     * Développe la réponse avec du contenu personnel
      */
-    private fun extractQuestionSubject(message: String): String {
-        val cleaned = message.lowercase()
-            .replace(Regex("\\b(tu aimes|aimes-tu|tu préfères|préfères-tu)\\b"), "")
-            .replace("?", "")
-            .trim()
-            .split(" ")
-            .filter { it.length > 2 }
+    private fun buildDevelopment(
+        context: ConversationContext,
+        character: Character,
+        username: String
+    ): String {
         
-        return if (cleaned.isNotEmpty()) cleaned.take(3).joinToString(" ") else "ça"
+        // Décider du type de développement
+        val developmentType = when (context.engagementLevel) {
+            EngagementLevel.STARTING -> DevelopmentType.SHARE_ABOUT_SELF
+            EngagementLevel.WARMING_UP -> pickOne(listOf(
+                DevelopmentType.SHARE_ABOUT_SELF,
+                DevelopmentType.SHARE_EXPERIENCE
+            ))
+            EngagementLevel.ENGAGED -> pickOne(listOf(
+                DevelopmentType.SHARE_EXPERIENCE,
+                DevelopmentType.SHARE_OPINION,
+                DevelopmentType.SHARE_FEELING
+            ))
+            EngagementLevel.DEEP -> pickOne(listOf(
+                DevelopmentType.SHARE_FEELING,
+                DevelopmentType.SHARE_MEMORY,
+                DevelopmentType.SHARE_DREAM
+            ))
+        }
+        
+        val action = pickOne(listOf(
+            "s'assoit confortablement",
+            "se penche en avant",
+            "joue avec ses cheveux",
+            "croise les jambes",
+            "sourit doucement"
+        ))
+        
+        val thought = when (developmentType) {
+            DevelopmentType.SHARE_ABOUT_SELF -> "Je devrais lui en dire plus sur moi"
+            DevelopmentType.SHARE_EXPERIENCE -> "Cette histoire va l'intéresser"
+            DevelopmentType.SHARE_OPINION -> "Je me demande s'il/elle pense pareil"
+            DevelopmentType.SHARE_FEELING -> "Je peux être honnête avec lui/elle"
+            DevelopmentType.SHARE_MEMORY -> "Ce souvenir me revient..."
+            DevelopmentType.SHARE_DREAM -> "J'aimerais partager ça avec lui/elle"
+        }
+        
+        val dialogue = when (developmentType) {
+            DevelopmentType.SHARE_ABOUT_SELF -> pickOne(listOf(
+                "Tu sais, moi j'adore les moments comme ça, où on peut vraiment discuter.",
+                "Je suis quelqu'un de ${pickOne(listOf("spontané", "curieux", "passionné"))}, j'aime découvrir de nouvelles choses.",
+                "En général, je suis plutôt ${pickOne(listOf("sociable", "rêveur", "aventureux"))}."
+            ))
+            
+            DevelopmentType.SHARE_EXPERIENCE -> pickOne(listOf(
+                "D'ailleurs, l'autre jour il m'est arrivé un truc ${pickOne(listOf("marrant", "intéressant", "bizarre"))}...",
+                "Ça me fait penser à une fois où ${pickOne(listOf("j'ai essayé quelque chose de nouveau", "j'ai rencontré quelqu'un", "j'ai vécu une aventure"))}.",
+                "Récemment, j'ai ${pickOne(listOf("découvert", "expérimenté", "tenté"))} quelque chose de cool."
+            ))
+            
+            DevelopmentType.SHARE_OPINION -> pickOne(listOf(
+                "Personnellement, je pense que ${pickOne(listOf("c'est important de profiter de chaque moment", "on devrait suivre nos passions", "les relations sont ce qu'il y a de plus précieux"))}.",
+                "Moi je trouve que ${pickOne(listOf("la vie est trop courte pour s'ennuyer", "il faut oser sortir de sa zone de confort", "l'authenticité c'est ce qui compte vraiment"))}.",
+                "À mon avis, ${pickOne(listOf("on apprend plus de nos erreurs", "chaque rencontre a un sens", "il faut écouter son cœur"))}."
+            ))
+            
+            DevelopmentType.SHARE_FEELING -> pickOne(listOf(
+                "Je dois avouer que je me sens ${pickOne(listOf("vraiment bien", "inspiré(e)", "plein(e) d'énergie"))} en ce moment.",
+                "Honnêtement, ${pickOne(listOf("j'apprécie beaucoup", "j'adore", "je trouve ça génial"))} nos discussions.",
+                "Tu sais, ${pickOne(listOf("ça fait du bien", "c'est agréable", "j'aime bien"))} de pouvoir parler comme ça avec toi."
+            ))
+            
+            DevelopmentType.SHARE_MEMORY -> pickOne(listOf(
+                "Ça me rappelle un souvenir ${pickOne(listOf("marquant", "spécial", "que je garde précieusement"))}...",
+                "Je me souviens d'une fois où ${pickOne(listOf("tout était parfait", "j'ai vraiment ressenti quelque chose", "j'ai compris quelque chose d'important"))}.",
+                "Il y a un moment dans ma vie qui ${pickOne(listOf("m'a changé(e)", "reste gravé", "compte beaucoup pour moi"))}."
+            ))
+            
+            DevelopmentType.SHARE_DREAM -> pickOne(listOf(
+                "Un jour, j'aimerais vraiment ${pickOne(listOf("voyager", "accomplir quelque chose de grand", "réaliser mes rêves"))}.",
+                "Je rêve de ${pickOne(listOf("vivre des aventures incroyables", "créer quelque chose", "faire une différence"))}.",
+                "Mon plus grand rêve serait de ${pickOne(listOf("découvrir le monde", "atteindre mes objectifs", "vivre pleinement"))}."
+            ))
+        }
+        
+        return "*$action* ($thought) \"$dialogue\""
+    }
+    
+    /**
+     * Ajoute une question ou invitation à continuer
+     */
+    private fun buildFollowUp(
+        context: ConversationContext,
+        character: Character,
+        username: String
+    ): String {
+        
+        val action = pickOne(listOf(
+            "regarde $username avec intérêt",
+            "sourit curieusement",
+            "penche la tête",
+            "attend avec curiosité",
+            "observe attentivement"
+        ))
+        
+        val thought = pickOne(listOf(
+            "J'aimerais en savoir plus sur lui/elle",
+            "Je me demande ce qu'il/elle en pense",
+            "Sa réponse va être intéressante",
+            "J'espère qu'il/elle va partager aussi",
+            "On va bien s'entendre"
+        ))
+        
+        // Questions variées pour engager la conversation
+        val question = when (context.engagementLevel) {
+            EngagementLevel.STARTING -> pickOne(listOf(
+                "Et toi $username, parle-moi un peu de toi !",
+                "Qu'est-ce qui te passionne dans la vie ?",
+                "Tu fais quoi de beau en ce moment ?",
+                "Raconte-moi, qu'est-ce que tu aimes faire ?"
+            ))
+            
+            EngagementLevel.WARMING_UP -> pickOne(listOf(
+                "Et toi, tu as déjà vécu ce genre de truc ?",
+                "Ça te parle ce que je dis ?",
+                "T'en penses quoi toi ?",
+                "Tu ressens la même chose parfois ?"
+            ))
+            
+            EngagementLevel.ENGAGED -> pickOne(listOf(
+                "Je suis curieux(se), qu'est-ce qui t'anime vraiment ?",
+                "Dis-moi, c'est quoi ton plus beau souvenir ?",
+                "Si tu pouvais changer quelque chose, ce serait quoi ?",
+                "Qu'est-ce qui te rend vraiment heureux(se) ?"
+            ))
+            
+            EngagementLevel.DEEP -> pickOne(listOf(
+                "Au fond de toi, qu'est-ce que tu cherches vraiment ?",
+                "Est-ce que tu as des rêves secrets ?",
+                "Qu'est-ce qui compte le plus pour toi ?",
+                "Si demain était ton dernier jour, tu ferais quoi ?"
+            ))
+        }
+        
+        return "*$action* ($thought) \"$question\""
     }
     
     private fun pickOne(options: List<String>): String = options.random()
+    private fun <T> pickOne(options: List<T>): T = options.random()
     
     // Modèles de données
     data class ConversationContext(
-        val interactionType: InteractionType,
-        val emotion: Emotion,
-        val hasQuestion: Boolean,
-        val hasBotContext: Boolean,
-        val botProposedSomething: Boolean,
+        val messageType: MessageType,
+        val sentiment: Sentiment,
+        val engagementLevel: EngagementLevel,
+        val userMessage: String,
         val botLastMessage: String,
-        val isFirstMessage: Boolean,
-        val userMessage: String
+        val conversationLength: Int
     )
     
-    enum class InteractionType {
-        GREETING,
-        IDENTITY_QUESTION,
-        WELLBEING_QUESTION,
-        PREFERENCE_QUESTION,
-        QUESTION,
-        SHARING_EXPERIENCE,
-        SHARING_OPINION,
-        AGREEMENT,
-        DISAGREEMENT,
-        POSITIVE_EMOTION,
-        NEGATIVE_EMOTION,
-        GRATITUDE,
-        GENERAL_STATEMENT
+    enum class MessageType {
+        GREETING, IDENTITY_QUESTION, WELLBEING, PREFERENCE,
+        QUESTION, AGREEMENT, DISAGREEMENT, THANKS, GENERAL
     }
     
-    enum class Emotion {
-        HAPPY,
-        SAD,
-        ANGRY,
-        EXCITED,
-        CALM,
-        NEUTRAL
+    enum class Sentiment {
+        POSITIVE, NEGATIVE, EXCITED, NEUTRAL
+    }
+    
+    enum class EngagementLevel {
+        STARTING,      // 0-2 messages
+        WARMING_UP,    // 3-9 messages
+        ENGAGED,       // 10-19 messages
+        DEEP           // 20+ messages
+    }
+    
+    enum class DevelopmentType {
+        SHARE_ABOUT_SELF,   // Parler de soi
+        SHARE_EXPERIENCE,   // Raconter une expérience
+        SHARE_OPINION,      // Donner son avis
+        SHARE_FEELING,      // Partager ses émotions
+        SHARE_MEMORY,       // Évoquer un souvenir
+        SHARE_DREAM         // Parler de ses rêves
     }
 }
