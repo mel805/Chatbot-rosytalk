@@ -71,17 +71,23 @@ jobs:
     - name: Upload Release APK
       uses: actions/upload-artifact@v4
       with:
-        name: app-release-unsigned
-        path: app/build/outputs/apk/release/app-release-unsigned.apk
+        name: app-release
+        path: |
+          app/build/outputs/apk/release/app-release.apk
+          app/build/outputs/apk/release/app-release-unsigned.apk
+          app/build/outputs/apk/release/*.apk
         
     - name: Create Release and Upload APK
       if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.tag != '')
       uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
+        fail_on_unmatched_files: false
         files: |
           app/build/outputs/apk/debug/app-debug.apk
+          app/build/outputs/apk/release/app-release.apk
           app/build/outputs/apk/release/app-release-unsigned.apk
+          app/build/outputs/apk/release/*.apk
         draft: false
         prerelease: ${{ (github.ref_type == 'tag' && startsWith(github.ref_name, 'build-')) || inputs.prerelease == 'true' }}
         generate_release_notes: true
