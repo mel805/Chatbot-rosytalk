@@ -135,6 +135,8 @@ class ModelViewModel(application: Application) : AndroidViewModel(application) {
                         val path = modelDownloader.getModelPath(model)
                         if (path != null) {
                             preferencesManager.setModelPath(path)
+                            // ✅ Réutiliser ce même GGUF pour llama.cpp (moteur local)
+                            preferencesManager.setLlamaCppModelPath(path)
                         }
                     }
                 }
@@ -147,10 +149,16 @@ class ModelViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteModel(model: ModelConfig) {
         viewModelScope.launch {
             try {
+                val pathBeforeDelete = modelDownloader.getModelPath(model) ?: ""
                 val deleted = modelDownloader.deleteModel(model)
                 if (deleted) {
                     _modelState.value = ModelState.NotDownloaded
                     preferencesManager.setModelDownloaded(false)
+                    // Si c'était le modèle sélectionné pour llama.cpp, vider le chemin
+                    val currentLlamaPath = preferencesManager.llamaCppModelPath.first()
+                    if (currentLlamaPath.isNotBlank() && currentLlamaPath == pathBeforeDelete) {
+                        preferencesManager.setLlamaCppModelPath("")
+                    }
                     checkSystemResources()
                 }
             } catch (e: Exception) {
