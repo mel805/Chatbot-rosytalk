@@ -192,10 +192,20 @@ class AIOrchestrator(
         return when (engine) {
             AIEngine.GROQ -> {
                 // Parser les clés (peuvent être séparées par virgules)
-                val apiKeys = config.groqApiKey?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() }
-                    ?: throw Exception("Aucune clé API Groq configurée. Ajoutez vos clés dans les paramètres (séparées par des virgules si plusieurs).")
+                val keysString = config.groqApiKey ?: ""
+                Log.d(TAG, "📥 Clés Groq brutes reçues: ${if (keysString.isBlank()) "(vide)" else "'${keysString.take(50)}...'"}")
                 
-                Log.d(TAG, "📊 ${apiKeys.size} clé(s) Groq disponible(s)")
+                val apiKeys = keysString.split(",").map { it.trim() }.filter { it.isNotBlank() }
+                
+                if (apiKeys.isEmpty()) {
+                    Log.e(TAG, "❌ ERREUR: Aucune clé Groq trouvée après parsing!")
+                    throw Exception("Aucune clé API Groq configurée. Ajoutez vos clés dans les paramètres.")
+                }
+                
+                Log.d(TAG, "📊 ${apiKeys.size} clé(s) Groq disponible(s) après parsing")
+                apiKeys.forEachIndexed { i, key ->
+                    Log.d(TAG, "   🔑 Clé ${i + 1}: ${key.take(20)}... (${key.length} caractères)")
+                }
                 
                 val modelId = config.groqModelId ?: "llama-3.1-8b-instant"
                 
