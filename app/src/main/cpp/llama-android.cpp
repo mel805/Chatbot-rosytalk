@@ -125,22 +125,11 @@ Java_com_roleplayai_chatbot_data_ai_LlamaCppEngine_generate(
     const llama_vocab* vocab = llama_model_get_vocab(context->model);
     context->cancel_requested.store(false);
     
-    // IMPORTANT: le commit de llama.cpp embarqué ici ne publie pas d'API KV cache
-    // dans llama.h. Pour éviter l'accumulation d'état entre générations, on recrée
-    // un contexte propre à chaque génération (plus lent mais robuste).
-    if (context->ctx) {
-        llama_free(context->ctx);
-        context->ctx = nullptr;
-    }
-    llama_context_params ctx_params = llama_context_default_params();
-    ctx_params.n_ctx = context->n_ctx > 0 ? context->n_ctx : 2048;
-    ctx_params.n_threads = context->n_threads > 0 ? context->n_threads : 2;
-    ctx_params.n_threads_batch = ctx_params.n_threads;
-    context->ctx = llama_init_from_model(context->model, ctx_params);
-    if (!context->ctx) {
-        LOGE("❌ Échec recréation contexte");
-        return env->NewStringUTF("Erreur llama.cpp: contexte indisponible");
-    }
+    // IMPORTANT: éviter l'accumulation d'état entre générations.
+    // On nettoie la mémoire (KV cache) de la séquence 0 au lieu de recréer le contexte
+    // (bien plus rapide, et évite les timeouts même avec TinyLlama).
+    llama_memory_t mem = llama_get_memory(context->ctx);
+    (void) llama_memory_seq_rm(mem, 0, -1, -1);
 
     // Tokenize le prompt (nouvelle API)
     const int n_prompt_tokens = -llama_tokenize(
