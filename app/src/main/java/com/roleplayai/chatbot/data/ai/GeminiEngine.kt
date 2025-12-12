@@ -50,16 +50,18 @@ class GeminiEngine(
         val recommended: Boolean
     )
     
-    private val generativeModel: GenerativeModel = GenerativeModel(
-        modelName = model,
-        apiKey = apiKey,
-        generationConfig = generationConfig {
-            temperature = 0.9f
-            topK = 40
-            topP = 0.95f
-            maxOutputTokens = 500
-        }
-    )
+    private val generativeModel: GenerativeModel by lazy {
+        GenerativeModel(
+            modelName = "gemini-pro",  // Forcer gemini-pro pour SDK 0.1.2
+            apiKey = apiKey,
+            generationConfig = generationConfig {
+                temperature = 0.9f
+                topK = 40
+                topP = 0.95f
+                maxOutputTokens = 500
+            }
+        )
+    }
     
     /**
      * Génère une réponse
