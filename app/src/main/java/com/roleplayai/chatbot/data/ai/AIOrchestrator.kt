@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.roleplayai.chatbot.data.model.Character
 import com.roleplayai.chatbot.data.model.Message
+import com.roleplayai.chatbot.data.manager.GroqKeyManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -25,9 +26,8 @@ class AIOrchestrator(
     private val context: Context
 ) {
     
-    // Gestion simple de la rotation des clés Groq
-    private var currentGroqKeyIndex = 0
-    private val failedGroqKeys = mutableSetOf<String>()
+    // Gestionnaire de clés Groq (rotation + blacklist persistantes)
+    private val groqKeyManager = GroqKeyManager(context)
     
     companion object {
         private const val TAG = "AIOrchestrator"
@@ -191,63 +191,65 @@ class AIOrchestrator(
     ): String {
         return when (engine) {
             AIEngine.GROQ -> {
-                // Parser les clés (peuvent être séparées par virgules)
+                val modelId = config.groqModelId ?: "llama-3.1-8b-instant"
+                
+                // 1) Utiliser la rotation persistante du GroqKeyManager si possible
+                val totalKeys = groqKeyManager.getTotalKeysCount()
+                if (totalKeys > 0) {
+                    Log.d(TAG, "🔁 Rotation GroqKeyManager active (total: $totalKeys)")
+                    var lastError: Exception? = null
+                    
+                    repeat(totalKeys) { attempt ->
+                        val apiKey = groqKeyManager.getCurrentKey()
+                        if (apiKey.isNullOrBlank()) {
+                            lastError = Exception("Toutes les clés Groq sont temporairement indisponibles (rate limit).")
+                            return@repeat
+                        }
+                        
+                        try {
+                            Log.d(TAG, "🔑 Essai Groq (attempt ${attempt + 1}/$totalKeys) avec index courant")
+                            val groqEngine = GroqAIEngine(apiKey, modelId, config.nsfwMode)
+                            return groqEngine.generateResponse(character, messages, username, userGender, memoryContext)
+                        } catch (e: GroqAIEngine.GroqApiException) {
+                            lastError = e
+                            Log.w(TAG, "⚠️ Erreur Groq HTTP ${e.statusCode}: ${e.apiMessage}")
+                            
+                            if (e.statusCode == 429) {
+                                // Rate limit: blacklist persistante + rotation automatique
+                                groqKeyManager.markCurrentKeyAsRateLimited()
+                            } else {
+                                // Autre erreur (401/403/400/500...): passer à la clé suivante sans blacklister
+                                groqKeyManager.rotateToNextKeyWithoutBlacklist()
+                            }
+                        } catch (e: Exception) {
+                            lastError = e
+                            Log.w(TAG, "⚠️ Erreur Groq (non-HTTP): ${e.message}")
+                            groqKeyManager.rotateToNextKeyWithoutBlacklist()
+                        }
+                    }
+                    
+                    throw lastError ?: Exception("Toutes les clés Groq ont échoué")
+                }
+                
+                // 2) Fallback compat: si aucune clé n'est stockée dans GroqKeyManager, parser la config
                 val keysString = config.groqApiKey ?: ""
-                Log.d(TAG, "📥 Clés Groq brutes reçues: ${if (keysString.isBlank()) "(vide)" else "'${keysString.take(50)}...'"}")
-                
                 val apiKeys = keysString.split(",").map { it.trim() }.filter { it.isNotBlank() }
-                
                 if (apiKeys.isEmpty()) {
-                    Log.e(TAG, "❌ ERREUR: Aucune clé Groq trouvée après parsing!")
                     throw Exception("Aucune clé API Groq configurée. Ajoutez vos clés dans les paramètres.")
                 }
                 
-                Log.d(TAG, "📊 ${apiKeys.size} clé(s) Groq disponible(s) après parsing")
-                apiKeys.forEachIndexed { i, key ->
-                    Log.d(TAG, "   🔑 Clé ${i + 1}: ${key.take(20)}... (${key.length} caractères)")
-                }
-                
-                val modelId = config.groqModelId ?: "llama-3.1-8b-instant"
-                
-                // Essayer chaque clé jusqu'à ce qu'une fonctionne
                 var lastError: Exception? = null
                 for (attempt in 0 until apiKeys.size) {
-                    val keyIndex = (currentGroqKeyIndex + attempt) % apiKeys.size
-                    val apiKey = apiKeys[keyIndex]
-                    
-                    // Ignorer les clés qui ont déjà échoué
-                    if (failedGroqKeys.contains(apiKey)) {
-                        Log.d(TAG, "⏭️ Clé ${keyIndex + 1} déjà en échec, skip")
-                        continue
-                    }
-                    
+                    val apiKey = apiKeys[attempt]
                     try {
-                        Log.d(TAG, "🔑 Essai avec clé ${keyIndex + 1}/${apiKeys.size}")
+                        Log.d(TAG, "🔑 Essai Groq (fallback config) ${attempt + 1}/${apiKeys.size}")
                         val groqEngine = GroqAIEngine(apiKey, modelId, config.nsfwMode)
-                        val response = groqEngine.generateResponse(character, messages, username, userGender, memoryContext)
-                        
-                        // Succès ! Mettre à jour l'index
-                        currentGroqKeyIndex = keyIndex
-                        Log.i(TAG, "✅ Clé ${keyIndex + 1} fonctionne")
-                        return response
-                        
+                        return groqEngine.generateResponse(character, messages, username, userGender, memoryContext)
                     } catch (e: Exception) {
-                        Log.w(TAG, "⚠️ Clé ${keyIndex + 1} échoue: ${e.message}")
-                        
-                        // Si rate limit, marquer comme échouée et essayer la suivante
-                        if (e.message?.contains("429") == true || 
-                            e.message?.contains("rate limit", ignoreCase = true) == true ||
-                            e.message?.contains("Request too large", ignoreCase = true) == true) {
-                            
-                            failedGroqKeys.add(apiKey)
-                            Log.w(TAG, "🚫 Clé ${keyIndex + 1} blacklistée (rate limit)")
-                        }
-                        
                         lastError = e
                     }
                 }
                 
-                // Toutes les clés ont échoué
                 throw lastError ?: Exception("Toutes les clés Groq ont échoué")
             }
             

@@ -91,7 +91,12 @@ class ConversationMemory(
     /**
      * Récupère le contexte pertinent pour la génération
      */
-    fun getRelevantContext(lastMessages: List<Message>, maxTokens: Int = 2000): String {
+    fun getRelevantContext(
+        lastMessages: List<Message>,
+        username: String = "Utilisateur",
+        characterName: String = "Personnage",
+        maxTokens: Int = 2000
+    ): String {
         val context = StringBuilder()
         
         // 1. Résumé de la relation globale
@@ -123,7 +128,7 @@ class ConversationMemory(
         context.append("### CONVERSATION RÉCENTE ###\n")
         val recentCount = minOf(15, lastMessages.size)
         lastMessages.takeLast(recentCount).forEach { msg ->
-            val speaker = if (msg.isUser) "Utilisateur" else "Personnage"
+            val speaker = if (msg.isUser) username else characterName
             context.append("$speaker: ${msg.content}\n")
         }
         

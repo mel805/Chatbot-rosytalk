@@ -142,10 +142,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     android.util.Log.d("ChatViewModel", "🧠 Mémoire: Niveau ${memory.getRelationshipLevel()}/100, ${memory.getFacts().size} faits enregistrés")
                 }
                 
-                // Récupérer le contexte de mémoire pour enrichir les prompts IA
-                val memoryContext = memory.getRelevantContext(updatedChat.messages)
-                android.util.Log.d("ChatViewModel", "🧠 Contexte mémoire : ${memoryContext.take(100)}...")
-                
                 // Obtenir le pseudo et le sexe de l'utilisateur
                 val currentUser = authManager.getCurrentUser()
                 
@@ -169,6 +165,14 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 if (username == "Utilisateur") {
                     android.util.Log.w("ChatViewModel", "⚠️ Utilisation du nom par défaut 'Utilisateur' - le pseudo n'a pas pu être récupéré")
                 }
+
+                // Récupérer le contexte de mémoire pour enrichir les prompts IA (avec pseudo + nom personnage)
+                val memoryContext = memory.getRelevantContext(
+                    lastMessages = updatedChat.messages,
+                    username = username,
+                    characterName = character.name
+                )
+                android.util.Log.d("ChatViewModel", "🧠 Contexte mémoire : ${memoryContext.take(100)}...")
                 
                 // NOUVELLE ARCHITECTURE : AI Orchestrator
                 // Gère automatiquement la cascade des moteurs selon la configuration

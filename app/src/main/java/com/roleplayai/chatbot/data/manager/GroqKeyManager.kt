@@ -185,6 +185,15 @@ class GroqKeyManager(private val context: Context) {
         
         Log.d(TAG, "🔄 Rotation vers clé ${currentIndex + 1}/${apiKeys.size}")
     }
+
+    /**
+     * Passe à la clé suivante SANS blacklister la clé actuelle.
+     * Utile pour ignorer une clé invalide (401/403) ou une erreur ponctuelle.
+     */
+    suspend fun rotateToNextKeyWithoutBlacklist() = mutex.withLock {
+        if (apiKeys.isEmpty()) return@withLock
+        rotateToNextKey()
+    }
     
     /**
      * Obtient toutes les clés

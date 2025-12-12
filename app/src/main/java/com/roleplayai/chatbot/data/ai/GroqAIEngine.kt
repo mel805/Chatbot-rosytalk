@@ -19,6 +19,12 @@ class GroqAIEngine(
     private val model: String = "llama-3.1-70b-versatile",
     private val nsfwMode: Boolean = false
 ) {
+
+    class GroqApiException(
+        val statusCode: Int,
+        val apiMessage: String,
+        val rawBody: String? = null
+    ) : Exception("Groq API error ($statusCode): $apiMessage")
     
     companion object {
         private const val TAG = "GroqAIEngine"
@@ -141,28 +147,23 @@ class GroqAIEngine(
             Log.e(TAG, "Clé API Groq manquante")
             return@withContext "Erreur : Clé API Groq non configurée. Allez dans Paramètres."
         }
-        
-        try {
-            Log.d(TAG, "===== Génération avec Groq API =====")
-            Log.d(TAG, "Modèle: $model, NSFW: $nsfwMode")
-            
-            // Construire le prompt système avec infos utilisateur
-            val systemPrompt = buildSystemPrompt(character, username, userGender, memoryContext)
-            
-            // Construire les messages pour l'API
-            val apiMessages = buildApiMessages(systemPrompt, character, messages)
-            
-            // Appeler l'API Groq
-            val response = callGroqApi(apiMessages)
-            
-            Log.i(TAG, "✅ Réponse reçue de Groq")
-            Log.d(TAG, "Réponse: ${response.take(200)}...")
-            
-            response
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ Erreur lors de l'appel Groq", e)
-            "Erreur de connexion à Groq API. Vérifiez votre connexion Internet."
-        }
+
+        Log.d(TAG, "===== Génération avec Groq API =====")
+        Log.d(TAG, "Modèle: $model, NSFW: $nsfwMode")
+
+        // Construire le prompt système avec infos utilisateur
+        val systemPrompt = buildSystemPrompt(character, username, userGender, memoryContext)
+
+        // Construire les messages pour l'API
+        val apiMessages = buildApiMessages(systemPrompt, character, messages)
+
+        // Appeler l'API Groq (peut lever GroqApiException)
+        val response = callGroqApi(apiMessages)
+
+        Log.i(TAG, "✅ Réponse reçue de Groq")
+        Log.d(TAG, "Réponse: ${response.take(200)}...")
+
+        response
     }
     
     /**
@@ -435,13 +436,22 @@ RAPPEL : TOUJOURS inclure des (pensées) dans tes réponses !
                 Log.e(TAG, "Modèle utilisé: $model")
                 Log.e(TAG, "Clé API (3 premiers car): ${apiKey.take(3)}...")
                 
-                // Parser l'erreur pour message plus clair
+                // Parser l'erreur pour message plus clair + remonter le code HTTP à l'appelant
                 try {
                     val errorJson = JSONObject(error)
                     val errorMessage = errorJson.getJSONObject("error").getString("message")
-                    return "Erreur Groq: $errorMessage"
+                    throw GroqApiException(
+                        statusCode = responseCode,
+                        apiMessage = errorMessage,
+                        rawBody = error
+                    )
                 } catch (e: Exception) {
-                    return "Erreur API Groq (code $responseCode). Vérifiez votre clé API et votre connexion Internet."
+                    // Si parsing impossible, renvoyer l'erreur brute
+                    throw GroqApiException(
+                        statusCode = responseCode,
+                        apiMessage = error.take(200),
+                        rawBody = error
+                    )
                 }
             }
         } finally {
