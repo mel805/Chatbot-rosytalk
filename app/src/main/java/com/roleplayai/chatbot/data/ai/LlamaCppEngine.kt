@@ -61,6 +61,9 @@ class LlamaCppEngine(private val context: Context) {
     
     private var modelPath: String? = null
     private var contextPtr: Long = 0L
+    private var loadedModelPath: String? = null
+    private var loadedNCtx: Int = 0
+    private var loadedThreads: Int = 0
     
     fun setModelPath(path: String) {
         modelPath = path
@@ -78,13 +81,32 @@ class LlamaCppEngine(private val context: Context) {
         return max(1, minOf(4, cpu))
     }
 
+    private fun chooseParamsForModel(modelFile: File): Pair<Int, Int> {
+        val cpu = Runtime.getRuntime().availableProcessors()
+        val sizeMb = (modelFile.length() / (1024 * 1024)).toInt().coerceAtLeast(1)
+
+        val threads = when {
+            sizeMb >= 3500 -> minOf(2, cpu) // ~7B Q4
+            sizeMb >= 1500 -> minOf(3, cpu) // ~2-3B
+            else -> minOf(4, cpu)          // ~1B
+        }.coerceAtLeast(1)
+
+        val nCtx = when {
+            sizeMb >= 3500 -> 512
+            sizeMb >= 1500 -> 768
+            else -> 1024
+        }
+
+        return threads to nCtx
+    }
+
     private fun ensureLoadedOrThrow() {
         val path = modelPath ?: throw IllegalStateException("Aucun modèle GGUF configuré (Paramètres > llama.cpp)")
         val f = File(path)
         if (!f.exists()) throw IllegalStateException("Modèle GGUF introuvable: $path")
         if (!nativeLibLoaded) throw IllegalStateException("Lib native llama-android indisponible sur cet appareil/build")
 
-        if (contextPtr != 0L && isModelLoaded(contextPtr)) {
+        if (contextPtr != 0L && isModelLoaded(contextPtr) && loadedModelPath == path) {
             return
         }
 
@@ -99,13 +121,18 @@ class LlamaCppEngine(private val context: Context) {
             }
         }
 
-        val threads = defaultThreads()
-        val nCtx = 2048
+        val (threads, nCtx) = chooseParamsForModel(f)
+        loadedThreads = threads
+        loadedNCtx = nCtx
+
+        Log.i(TAG, "🦙 Chargement GGUF: ${f.name} (~${f.length() / (1024 * 1024)} MB), threads=$threads, n_ctx=$nCtx")
         contextPtr = loadModel(path, threads, nCtx)
         if (contextPtr == 0L || !isModelLoaded(contextPtr)) {
             contextPtr = 0L
             throw IllegalStateException("Échec chargement modèle llama.cpp (vérifie le GGUF et l'espace disque)")
         }
+
+        loadedModelPath = path
     }
     
     /**
@@ -137,7 +164,7 @@ class LlamaCppEngine(private val context: Context) {
                 generate(
                     contextPtr = contextPtr,
                     prompt = prompt,
-                    maxTokens = 96,
+                    maxTokens = 80,
                     temperature = 0.85f,
                     topP = 0.92f,
                     topK = 40,
@@ -146,7 +173,13 @@ class LlamaCppEngine(private val context: Context) {
             }
 
             val raw = try {
-                future.get(45, TimeUnit.SECONDS)
+                // Timeout adaptatif (certains GGUF 2-7B sont très lents sur mobile)
+                val timeoutSec = when {
+                    loadedNCtx >= 1024 -> 60L
+                    loadedNCtx >= 768 -> 75L
+                    else -> 90L
+                }
+                future.get(timeoutSec, TimeUnit.SECONDS)
             } catch (e: java.util.concurrent.TimeoutException) {
                 try {
                     cancelGeneration(contextPtr)
@@ -155,7 +188,7 @@ class LlamaCppEngine(private val context: Context) {
                 }
                 future.cancel(true)
                 throw IllegalStateException(
-                    "Le modèle local met trop de temps à répondre. Essaie un GGUF plus léger (TinyLlama/Phi-2)."
+                    "Le modèle GGUF est trop lent sur cet appareil. Essaie TinyLlama 1.1B (Q4) ou Phi-2 (Q4) et ferme les apps en arrière-plan."
                 )
             }
 
@@ -178,7 +211,7 @@ class LlamaCppEngine(private val context: Context) {
         memoryContext: String,
         nsfwMode: Boolean
     ): String {
-        val recent = messages.takeLast(16)
+        val recent = messages.takeLast(8)
 
         val nsfwLine = if (nsfwMode) {
             "- Mode adulte: reste consensuel, progression naturelle, cohérent avec le tempérament."
@@ -197,7 +230,7 @@ class LlamaCppEngine(private val context: Context) {
             $nsfwLine
             - Règles: ne décris QUE tes actions (pas celles de l'utilisateur). Reste fidèle au caractère/temperament.
             - Initiative: réagis + fais avancer la scène (propose une action ou un angle), pose au plus une question utile.
-            - Style: 1-3 paragraphes, immersif, concret, pas de métadonnées.
+            - Style: 1-2 paragraphes, immersif, concret, pas de métadonnées.
             - Format: *action* (pensée) "dialogue"
             Utilisateur: $username (sexe: $userGender)
             """.trimIndent()
@@ -205,7 +238,7 @@ class LlamaCppEngine(private val context: Context) {
 
         if (memoryContext.isNotBlank()) {
             sb.append("\n\n### MEMOIRE\n")
-            sb.append(memoryContext.trim())
+            sb.append(memoryContext.trim().take(600))
         }
 
         sb.append("\n\n### CONVERSATION\n")
