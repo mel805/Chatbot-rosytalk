@@ -198,7 +198,7 @@ class AIOrchestrator(
             AIEngine.GROQ -> {
                 // Obtenir la clé courante du key manager (rotation automatique)
                 val apiKey = try {
-                    groqKeyManager.getCurrentKey()
+                    groqKeyManager.getCurrentKey() ?: config.groqApiKey ?: throw Exception("Clé API Groq manquante")
                 } catch (e: Exception) {
                     Log.e(TAG, "Erreur obtention clé Groq: ${e.message}")
                     config.groqApiKey ?: throw Exception("Clé API Groq manquante")
@@ -216,10 +216,10 @@ class AIOrchestrator(
                         response.contains("Request too large", ignoreCase = true)) {
                         
                         Log.w(TAG, "⚠️ Rate limit détecté, rotation de clé...")
-                        groqKeyManager.reportRateLimit()
+                        groqKeyManager.markCurrentKeyAsRateLimited()
                         
                         // Réessayer avec la nouvelle clé
-                        val newApiKey = groqKeyManager.getCurrentKey()
+                        val newApiKey = groqKeyManager.getCurrentKey() ?: throw Exception("Aucune clé Groq disponible")
                         val newGroqEngine = GroqAIEngine(newApiKey, modelId, config.nsfwMode)
                         return newGroqEngine.generateResponse(character, messages, username, userGender, memoryContext)
                     }
@@ -231,10 +231,10 @@ class AIOrchestrator(
                         e.message?.contains("rate limit", ignoreCase = true) == true) {
                         
                         Log.w(TAG, "⚠️ Erreur rate limit, rotation de clé...")
-                        groqKeyManager.reportRateLimit()
+                        groqKeyManager.markCurrentKeyAsRateLimited()
                         
                         // Réessayer avec la nouvelle clé
-                        val newApiKey = groqKeyManager.getCurrentKey()
+                        val newApiKey = groqKeyManager.getCurrentKey() ?: throw Exception("Aucune clé Groq disponible")
                         val newGroqEngine = GroqAIEngine(newApiKey, modelId, config.nsfwMode)
                         return newGroqEngine.generateResponse(character, messages, username, userGender, memoryContext)
                     }
