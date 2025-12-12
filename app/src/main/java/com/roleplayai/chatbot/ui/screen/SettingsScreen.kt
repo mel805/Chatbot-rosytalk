@@ -20,7 +20,6 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.roleplayai.chatbot.data.ai.GroqAIEngine
-import com.roleplayai.chatbot.data.ai.GeminiEngine
 import com.roleplayai.chatbot.data.ai.AIOrchestrator
 import com.roleplayai.chatbot.data.model.ModelConfig
 import com.roleplayai.chatbot.data.model.ModelState
@@ -867,7 +866,6 @@ fun SettingsScreen(
                                         fontWeight = FontWeight.Bold
                                     )
                                     Spacer(Modifier.height(4.dp))
-                                    val currentModel = GeminiEngine.AVAILABLE_MODELS.find { it.id == geminiModelId }
                                     Text(
                                         currentModel?.name ?: geminiModelId,
                                         style = MaterialTheme.typography.bodyMedium,
@@ -1449,7 +1447,6 @@ fun SettingsScreen(
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(GeminiEngine.AVAILABLE_MODELS) { model ->
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()

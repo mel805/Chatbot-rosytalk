@@ -177,8 +177,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 val enableFallbacks = preferencesManager.enableAIFallbacks.first()
                 val groqApiKey = groqKeyManager.getCurrentKey()
                 val groqModelId = preferencesManager.groqModelId.first()
-                val geminiApiKey = preferencesManager.geminiApiKey.first()
-                val geminiModelId = preferencesManager.geminiModelId.first()
                 val nsfwMode = preferencesManager.nsfwMode.first()
                 val llamaCppModelPath = preferencesManager.llamaCppModelPath.first()
                 
@@ -200,8 +198,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     nsfwMode = nsfwMode,
                     groqApiKey = groqApiKey,
                     groqModelId = groqModelId,
-                    geminiApiKey = geminiApiKey,
-                    geminiModelId = geminiModelId,
                     llamaCppModelPath = llamaCppModelPath
                 )
                 

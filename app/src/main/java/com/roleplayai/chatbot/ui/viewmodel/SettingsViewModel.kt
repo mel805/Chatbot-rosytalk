@@ -24,10 +24,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     val groqModelId = preferencesManager.groqModelId
         .stateIn(viewModelScope, SharingStarted.Eagerly, "llama-3.1-70b-versatile")
     
-    val geminiApiKey = preferencesManager.geminiApiKey
         .stateIn(viewModelScope, SharingStarted.Eagerly, "")
     
-    val geminiModelId = preferencesManager.geminiModelId
         .stateIn(viewModelScope, SharingStarted.Eagerly, "gemini-1.5-flash")
     
     val nsfwMode = preferencesManager.nsfwMode
