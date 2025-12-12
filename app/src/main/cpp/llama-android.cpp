@@ -227,6 +227,196 @@ Java_com_roleplayai_chatbot_data_ai_LlamaCppEngine_generate(
 }
 
 /**
+ * Génère du texte à partir de messages (system/user/assistant) en appliquant le chat template du GGUF.
+ * Cela améliore fortement la cohérence/immersion car le format correspond à l'entraînement du modèle.
+ */
+JNIEXPORT jstring JNICALL
+Java_com_roleplayai_chatbot_data_ai_LlamaCppEngine_generateChat(
+    JNIEnv* env, jclass clazz,
+    jlong contextPtr, jobjectArray rolesArr, jobjectArray contentsArr,
+    jint maxTokens, jfloat temperature, jfloat topP, jint topK, jfloat repeatPenalty
+) {
+    ModelContext* context = reinterpret_cast<ModelContext*>(contextPtr);
+
+    if (!context || !context->loaded) {
+        LOGE("❌ Contexte invalide ou modèle non chargé (generateChat)");
+        return env->NewStringUTF("Le moteur llama.cpp n'est pas configuré.");
+    }
+
+    const jsize n_roles = rolesArr ? env->GetArrayLength(rolesArr) : 0;
+    const jsize n_contents = contentsArr ? env->GetArrayLength(contentsArr) : 0;
+    if (n_roles <= 0 || n_roles != n_contents) {
+        LOGE("❌ generateChat: tableaux invalides roles=%d contents=%d", (int) n_roles, (int) n_contents);
+        return env->NewStringUTF("Erreur: messages invalides");
+    }
+
+#ifdef LLAMA_CPP_AVAILABLE
+    const llama_vocab* vocab = llama_model_get_vocab(context->model);
+    context->cancel_requested.store(false);
+
+    // Nettoyer la mémoire de la séquence 0 (on repart d'un prompt propre pour éviter les dérives).
+    llama_memory_t mem = llama_get_memory(context->ctx);
+    (void) llama_memory_seq_rm(mem, 0, -1, -1);
+
+    // Copier les strings Java -> C++ (stables) et construire le tableau de chat messages.
+    std::vector<std::string> roles;
+    std::vector<std::string> contents;
+    roles.reserve(n_roles);
+    contents.reserve(n_roles);
+
+    std::vector<llama_chat_message> chat;
+    chat.reserve(n_roles);
+
+    for (jsize i = 0; i < n_roles; i++) {
+        jstring jrole = (jstring) env->GetObjectArrayElement(rolesArr, i);
+        jstring jcontent = (jstring) env->GetObjectArrayElement(contentsArr, i);
+
+        const char* role_c = jrole ? env->GetStringUTFChars(jrole, nullptr) : nullptr;
+        const char* content_c = jcontent ? env->GetStringUTFChars(jcontent, nullptr) : nullptr;
+
+        roles.emplace_back(role_c ? role_c : "");
+        contents.emplace_back(content_c ? content_c : "");
+
+        if (jrole && role_c) env->ReleaseStringUTFChars(jrole, role_c);
+        if (jcontent && content_c) env->ReleaseStringUTFChars(jcontent, content_c);
+        if (jrole) env->DeleteLocalRef(jrole);
+        if (jcontent) env->DeleteLocalRef(jcontent);
+
+        llama_chat_message msg;
+        msg.role = roles.back().c_str();
+        msg.content = contents.back().c_str();
+        chat.push_back(msg);
+    }
+
+    // Appliquer le template du modèle (tmpl=nullptr => utiliser celui du GGUF si présent).
+    int32_t n_prompt_chars = llama_chat_apply_template(
+        context->model,
+        nullptr,
+        chat.data(),
+        chat.size(),
+        true,   // add_assistant
+        nullptr,
+        0
+    );
+
+    if (n_prompt_chars <= 0) {
+        LOGE("❌ llama_chat_apply_template: n_prompt_chars=%d", (int) n_prompt_chars);
+        return env->NewStringUTF("Erreur: template chat indisponible");
+    }
+
+    std::string prompt_str;
+    prompt_str.resize((size_t) n_prompt_chars);
+    const int32_t n_written = llama_chat_apply_template(
+        context->model,
+        nullptr,
+        chat.data(),
+        chat.size(),
+        true,
+        prompt_str.data(),
+        (int32_t) prompt_str.size()
+    );
+
+    if (n_written <= 0) {
+        LOGE("❌ llama_chat_apply_template (2): n_written=%d", (int) n_written);
+        return env->NewStringUTF("Erreur: template chat indisponible");
+    }
+
+    // Tokenize le prompt
+    const int n_prompt_tokens = -llama_tokenize(
+        vocab,
+        prompt_str.c_str(),
+        (int) prompt_str.size(),
+        nullptr,
+        0,
+        true,  // add_special
+        true   // parse_special
+    );
+
+    if (n_prompt_tokens <= 0) {
+        LOGE("❌ Tokenization (template): n_prompt_tokens=%d", n_prompt_tokens);
+        return env->NewStringUTF("Erreur de tokenization");
+    }
+
+    std::vector<llama_token> tokens;
+    tokens.resize(n_prompt_tokens);
+    if (llama_tokenize(
+            vocab,
+            prompt_str.c_str(),
+            (int) prompt_str.size(),
+            tokens.data(),
+            (int) tokens.size(),
+            true,
+            true) < 0) {
+        LOGE("❌ Échec tokenization (template)");
+        return env->NewStringUTF("Erreur de tokenization");
+    }
+
+    LOGI("🔢 Tokens prompt (template): %d", (int) tokens.size());
+
+    // Décoder le prompt
+    llama_batch batch = llama_batch_get_one(tokens.data(), tokens.size());
+    if (llama_decode(context->ctx, batch) != 0) {
+        LOGE("❌ Échec decode prompt (template)");
+        return env->NewStringUTF("Erreur de génération");
+    }
+
+    // Sampler chain (temp/top-k/top-p + pénalités)
+    llama_sampler_chain_params sampler_params = llama_sampler_chain_default_params();
+    llama_sampler* sampler = llama_sampler_chain_init(sampler_params);
+    llama_sampler_chain_add(sampler, llama_sampler_init_penalties(
+        64,                  // last_n
+        repeatPenalty,       // repeat
+        0.0f,                // freq
+        0.0f                 // present
+    ));
+    llama_sampler_chain_add(sampler, llama_sampler_init_top_k(topK));
+    llama_sampler_chain_add(sampler, llama_sampler_init_top_p(topP, 1));
+    llama_sampler_chain_add(sampler, llama_sampler_init_temp(temperature));
+    llama_sampler_chain_add(sampler, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
+
+    std::string generated_text;
+    int n_gen = 0;
+
+    while (n_gen < maxTokens) {
+        if (context->cancel_requested.load()) {
+            LOGI("🛑 Annulation demandée (cancel_generation)");
+            break;
+        }
+
+        llama_token new_token = llama_sampler_sample(sampler, context->ctx, -1);
+        if (llama_vocab_is_eog(vocab, new_token)) {
+            LOGI("✅ Fin de génération (EOG)");
+            break;
+        }
+
+        char buf[256];
+        int n = llama_token_to_piece(vocab, new_token, buf, sizeof(buf), 0, true);
+        if (n > 0) {
+            generated_text.append(buf, n);
+        }
+
+        batch = llama_batch_get_one(&new_token, 1);
+        if (llama_decode(context->ctx, batch) != 0) {
+            LOGE("❌ Échec decode token %d", n_gen);
+            break;
+        }
+
+        n_gen++;
+    }
+
+    llama_sampler_free(sampler);
+    LOGI("✅ Génération terminée (template): %d tokens", n_gen);
+    return env->NewStringUTF(generated_text.c_str());
+
+#else
+    (void) n_roles;
+    (void) n_contents;
+    LOGI("⚠️ FALLBACK MODE: llama.cpp pas encore compilé (generateChat)");
+    return env->NewStringUTF("Le moteur llama.cpp sera disponible après compilation.");
+#endif
+}
+
+/**
  * Demande l'annulation d'une génération en cours.
  */
 JNIEXPORT void JNICALL

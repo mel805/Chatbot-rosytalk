@@ -11,6 +11,7 @@ import java.io.File
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.math.max
+import kotlin.math.min
 
 /**
  * Moteur llama.cpp (LOCAL) via JNI.
@@ -46,9 +47,10 @@ class LlamaCppEngine(private val context: Context) {
 
         // JNI (voir app/src/main/cpp/llama-android.cpp)
         @JvmStatic private external fun loadModel(modelPath: String, nThreads: Int, nCtx: Int): Long
-        @JvmStatic private external fun generate(
+        @JvmStatic private external fun generateChat(
             contextPtr: Long,
-            prompt: String,
+            roles: Array<String>,
+            contents: Array<String>,
             maxTokens: Int,
             temperature: Float,
             topP: Float,
@@ -94,8 +96,8 @@ class LlamaCppEngine(private val context: Context) {
 
         val nCtx = when {
             sizeMb >= 3500 -> 512
-            sizeMb >= 1500 -> 768
-            else -> 1024
+            sizeMb >= 1500 -> 640
+            else -> 512
         }
 
         return threads to nCtx
@@ -107,11 +109,19 @@ class LlamaCppEngine(private val context: Context) {
         if (!f.exists()) throw IllegalStateException("Modèle GGUF introuvable: $path")
         if (!nativeLibLoaded) throw IllegalStateException("Lib native llama-android indisponible sur cet appareil/build")
 
-        // Empêcher les crashes (OOM) sur modèles trop lourds (ex: Mistral 7B) en amont.
-        // NOTE: même si ça "pourrait" marcher sur certains devices, le crash UX est pire qu'un message.
-        val sizeMb = (f.length() / (1024 * 1024)).toInt()
-        if (sizeMb >= 2500) {
-            throw IllegalStateException("Ce GGUF (${sizeMb} MB) est trop lourd pour l’IA locale sur la majorité des appareils et peut faire crasher l’application. Utilise TinyLlama/Phi-2.")
+        // Empêcher les crashes (OOM) sur modèles trop lourds en amont.
+        // Heuristique: refuser si le GGUF dépasse ~35% de la RAM totale (la quantif + KV cache + overhead JNI/ART).
+        val sizeBytes = f.length()
+        val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+        val mi = ActivityManager.MemoryInfo().also { am?.getMemoryInfo(it) }
+        val totalMem = mi.totalMem.takeIf { it > 0 } ?: 0L
+        if (totalMem > 0) {
+            val maxModelBytes = (totalMem * 0.35).toLong()
+            if (sizeBytes > maxModelBytes) {
+                val sizeMb = (sizeBytes / (1024 * 1024)).toInt()
+                val ramMb = (totalMem / (1024 * 1024)).toInt()
+                throw IllegalStateException("Ce GGUF (~${sizeMb} MB) est trop lourd pour la RAM de cet appareil (~${ramMb} MB) et peut faire crasher l’application. Utilise TinyLlama/Phi-2 (Q4).")
+            }
         }
 
         if (contextPtr != 0L && isModelLoaded(contextPtr) && loadedModelPath == path) {
@@ -156,7 +166,7 @@ class LlamaCppEngine(private val context: Context) {
     ): String = withContext(Dispatchers.IO) {
         ensureLoadedOrThrow()
 
-        val prompt = buildPrompt(
+        val (roles, contents) = buildChatMessages(
             character = character,
             messages = messages,
             username = username,
@@ -169,23 +179,24 @@ class LlamaCppEngine(private val context: Context) {
             // IMPORTANT: l'appel natif est bloquant et peu interruptible.
             // On exécute la génération sur un thread dédié avec timeout + annulation best-effort.
             val future = executor.submit<String> {
-                generate(
+                generateChat(
                     contextPtr = contextPtr,
-                    prompt = prompt,
-                    maxTokens = 80,
-                    temperature = 0.85f,
-                    topP = 0.92f,
+                    roles = roles,
+                    contents = contents,
+                    maxTokens = 120,
+                    temperature = 0.9f,
+                    topP = 0.9f,
                     topK = 40,
-                    repeatPenalty = 1.15f
+                    repeatPenalty = 1.12f
                 )
             }
 
             val raw = try {
                 // Timeout adaptatif (certains GGUF 2-7B sont très lents sur mobile)
                 val timeoutSec = when {
-                    loadedNCtx >= 1024 -> 60L
-                    loadedNCtx >= 768 -> 75L
-                    else -> 90L
+                    loadedNCtx >= 768 -> 70L
+                    loadedNCtx >= 640 -> 85L
+                    else -> 95L
                 }
                 future.get(timeoutSec, TimeUnit.SECONDS)
             } catch (e: java.util.concurrent.TimeoutException) {
@@ -211,53 +222,55 @@ class LlamaCppEngine(private val context: Context) {
         }
     }
 
-    private fun buildPrompt(
+    private fun buildChatMessages(
         character: Character,
         messages: List<Message>,
         username: String,
         userGender: String,
         memoryContext: String,
         nsfwMode: Boolean
-    ): String {
-        val recent = messages.takeLast(8)
+    ): Pair<Array<String>, Array<String>> {
+        // Réduire le coût "prefill" (vitesse) tout en gardant un minimum de contexte.
+        val recent = messages.takeLast(4)
 
         val nsfwLine = if (nsfwMode) {
-            "- Mode adulte: reste consensuel, progression naturelle, cohérent avec le tempérament."
+            "Mode adulte: consensuel, progression naturelle, cohérent."
         } else {
-            "- Contenu tout public."
+            "Contenu tout public."
         }
 
-        val sb = StringBuilder()
-        sb.append(
-            """
-            ### SYSTEM
-            Tu es ${character.name} (personnage de roleplay), pas un assistant.
-            - Personnalité: ${character.personality}
-            - Description: ${character.description}
-            - Scénario: ${character.scenario}
-            $nsfwLine
-            - Règles: ne décris QUE tes actions (pas celles de l'utilisateur). Reste fidèle au caractère/temperament.
-            - Initiative: réagis + fais avancer la scène (propose une action ou un angle), pose au plus une question utile.
-            - Style: 1-2 paragraphes, immersif, concret, pas de métadonnées.
-            - Format: *action* (pensée) "dialogue"
-            Utilisateur: $username (sexe: $userGender)
-            """.trimIndent()
-        )
+        val personality = character.personality.trim().take(280)
+        val description = character.description.trim().take(380)
+        val scenario = character.scenario.trim().take(480)
+        val memo = memoryContext.trim().take(280)
 
-        if (memoryContext.isNotBlank()) {
-            sb.append("\n\n### MEMOIRE\n")
-            sb.append(memoryContext.trim().take(600))
+        val system = buildString {
+            append("Tu es ").append(character.name).append(", un personnage de roleplay (PAS un assistant). ")
+            append("Reste fidèle au caractère, immersive, cohérente, et fais avancer la scène. ")
+            append("Style: 1-2 paragraphes, concret, sensoriel. ")
+            append("Format: *action* (pensée) \"dialogue\". ")
+            append("Ne décris pas les actions internes de l'utilisateur. ")
+            append("Pose au plus une question utile. ")
+            append(nsfwLine).append("\n")
+            if (personality.isNotBlank()) append("Personnalité: ").append(personality).append("\n")
+            if (description.isNotBlank()) append("Description: ").append(description).append("\n")
+            if (scenario.isNotBlank()) append("Scénario: ").append(scenario).append("\n")
+            append("Utilisateur: ").append(username).append(" (sexe: ").append(userGender).append(")\n")
+            if (memo.isNotBlank()) append("Mémoire: ").append(memo).append("\n")
         }
 
-        sb.append("\n\n### CONVERSATION\n")
+        val roles = ArrayList<String>(1 + recent.size)
+        val contents = ArrayList<String>(1 + recent.size)
+
+        roles.add("system")
+        contents.add(system)
+
         for (m in recent) {
-            val speaker = if (m.isUser) username else character.name
-            sb.append(speaker).append(": ").append(m.content.trim()).append("\n")
+            roles.add(if (m.isUser) "user" else "assistant")
+            contents.add(m.content.trim().take(600))
         }
 
-        sb.append("\n### REPONSE\n")
-        sb.append(character.name).append(":")
-        return sb.toString()
+        return roles.toTypedArray() to contents.toTypedArray()
     }
 
     private fun cleanModelOutput(raw: String, characterName: String): String {
