@@ -64,7 +64,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("release")
+            // Utiliser la même signature que debug pour permettre les mises à jour
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     
