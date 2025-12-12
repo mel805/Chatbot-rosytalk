@@ -317,8 +317,8 @@ RAPPEL : TOUJOURS inclure des (pensées) dans tes réponses !
             put("content", systemPrompt)
         })
         
-        // Historique de conversation (30 derniers messages pour excellente mémoire)
-        val recentMessages = messages.takeLast(30)
+        // Historique de conversation (8 derniers messages pour éviter Request too large)
+        val recentMessages = messages.takeLast(8)
         
         // S'assurer que le dernier message est de l'utilisateur
         val validMessages = if (recentMessages.isNotEmpty() && !recentMessages.last().isUser) {
