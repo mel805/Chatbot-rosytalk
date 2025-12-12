@@ -20,7 +20,6 @@ import kotlinx.coroutines.delay
 sealed class Screen(val route: String) {
     object Splash : Screen("splash")
     object Login : Screen("login")
-    object ModelSelection : Screen("model_selection")
     object Main : Screen("main")
     object CharacterList : Screen("character_list")
     object Settings : Screen("settings")
@@ -39,7 +38,6 @@ fun AppNavigation(
     navController: NavHostController = rememberNavController(),
     characterViewModel: CharacterViewModel = viewModel(),
     chatViewModel: ChatViewModel = viewModel(),
-    modelViewModel: ModelViewModel = viewModel(),
     authViewModel: AuthViewModel = viewModel(),
     settingsViewModel: SettingsViewModel = viewModel()
 ) {
@@ -67,20 +65,10 @@ fun AppNavigation(
                         popUpTo(Screen.Splash.route) { inclusive = true }
                     }
                 } else {
-                    // Connecté → Vérifier modèle
-                    val isFirstLaunch = modelViewModel.isFirstLaunch()
-                    val isModelDownloaded = modelViewModel.isModelDownloaded()
-                    
-                    if (isFirstLaunch || !isModelDownloaded) {
-                        // Premier lancement ou modèle pas téléchargé : aller vers sélection
-                        navController.navigate(Screen.ModelSelection.route) {
-                            popUpTo(Screen.Splash.route) { inclusive = true }
-                        }
-                    } else {
-                        // Lancement normal : aller directement vers l'écran principal
-                        navController.navigate(Screen.Main.route) {
-                            popUpTo(Screen.Splash.route) { inclusive = true }
-                        }
+                    // ✅ Plus de téléchargement obligatoire au premier lancement :
+                    // l'utilisateur peut choisir/télécharger un GGUF depuis les Paramètres (llama.cpp).
+                    navController.navigate(Screen.Main.route) {
+                        popUpTo(Screen.Splash.route) { inclusive = true }
                     }
                 }
             }
@@ -89,31 +77,13 @@ fun AppNavigation(
         composable(Screen.Login.route) {
             AuthScreen(
                 onAuthSuccess = {
-                    // Après connexion/inscription, naviguer vers sélection de modèle
-                    navController.navigate(Screen.ModelSelection.route) {
+                    // Après connexion, aller directement à l'écran principal.
+                    navController.navigate(Screen.Main.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
                 },
                 viewModel = authViewModel
             )
-        }
-        
-        composable(Screen.ModelSelection.route) {
-            ModelSelectionScreen(
-                viewModel = modelViewModel,
-                onModelReady = {
-                    navController.navigate(Screen.Main.route) {
-                        popUpTo(Screen.ModelSelection.route) { inclusive = true }
-                    }
-                }
-            )
-            
-            // Marquer le premier lancement comme complété quand le modèle est prêt
-            LaunchedEffect(modelViewModel.modelState.collectAsState().value) {
-                if (modelViewModel.modelState.value == com.roleplayai.chatbot.data.model.ModelState.Loaded) {
-                    modelViewModel.setFirstLaunchCompleted()
-                }
-            }
         }
         
         composable(Screen.Main.route) {
@@ -215,9 +185,6 @@ fun AppNavigation(
         
         composable(Screen.Chat.route) { backStackEntry ->
             val characterId = backStackEntry.arguments?.getString("characterId") ?: return@composable
-            
-            // Initialisation LocalAI supprimée - utilisation uniquement d'APIs externes
-            // Pour améliorer les réponses, activez Groq, Together AI ou HuggingFace dans les paramètres
             
             ChatScreen(
                 viewModel = chatViewModel,

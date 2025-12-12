@@ -5,6 +5,7 @@ import android.util.Log
 import com.roleplayai.chatbot.data.model.Character
 import com.roleplayai.chatbot.data.model.Message
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.math.max
@@ -125,21 +126,29 @@ class LlamaCppEngine(private val context: Context) {
         )
 
         try {
-            val raw = generate(
-                contextPtr = contextPtr,
-                prompt = prompt,
-                maxTokens = 420,
-                temperature = 0.9f,
-                topP = 0.95f,
-                topK = 40,
-                repeatPenalty = 1.12f
-            )
+            // Limites strictes pour éviter les "réflexions infinies" sur appareils lents
+            val raw = withTimeout(45_000) {
+                generate(
+                    contextPtr = contextPtr,
+                    prompt = prompt,
+                    maxTokens = 160,
+                    temperature = 0.85f,
+                    topP = 0.92f,
+                    topK = 40,
+                    repeatPenalty = 1.15f
+                )
+            }
 
             val cleaned = cleanModelOutput(raw, character.name)
             if (cleaned.isBlank()) {
                 throw IllegalStateException("Réponse vide du modèle local")
             }
             return@withContext cleaned
+        } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+            // Note: l'appel natif ne peut pas être interrompu proprement, on limite donc maxTokens
+            // et on remonte un message clair.
+            Log.e(TAG, "⏱️ Timeout génération llama.cpp", e)
+            throw IllegalStateException("Le modèle local met trop de temps à répondre. Essaie un modèle GGUF plus léger (TinyLlama/Phi-2) ou baisse la charge.")
         } catch (e: Exception) {
             Log.e(TAG, "❌ Erreur génération llama.cpp", e)
             throw e

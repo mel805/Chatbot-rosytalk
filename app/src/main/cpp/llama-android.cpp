@@ -118,6 +118,10 @@ Java_com_roleplayai_chatbot_data_ai_LlamaCppEngine_generate(
 #ifdef LLAMA_CPP_AVAILABLE
     const llama_vocab* vocab = llama_model_get_vocab(context->model);
 
+    // IMPORTANT: éviter l'accumulation du KV cache entre générations
+    // (sinon le modèle peut "tourner" très longtemps et ne jamais produire de sortie utile).
+    llama_kv_cache_clear(context->ctx);
+
     // Tokenize le prompt (nouvelle API)
     const int n_prompt_tokens = -llama_tokenize(
         vocab,
