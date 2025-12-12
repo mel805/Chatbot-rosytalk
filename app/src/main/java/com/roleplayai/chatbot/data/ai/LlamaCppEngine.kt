@@ -102,19 +102,20 @@ class LlamaCppEngine(
         memoryContext: String = ""
     ): String = withContext(Dispatchers.IO) {
         
-        if (!nativeLibAvailable) {
-            // Mode Kotlin pur - générateur intelligent
-            return@withContext smartGenerator.generate(
-                character, messages, username, userGender, memoryContext, nsfwMode
-            )
-        }
-        
-        // Mode natif - vraie inférence llama.cpp
-        if (!isLoaded) {
-            loadModel()
-        }
-        
         try {
+            if (!nativeLibAvailable) {
+                // Mode Kotlin pur - générateur intelligent
+                Log.d(TAG, "🧠 Utilisation générateur intelligent Kotlin")
+                return@withContext smartGenerator.generate(
+                    character, messages, username, userGender, memoryContext, nsfwMode
+                )
+            }
+        
+            // Mode natif - vraie inférence llama.cpp
+            if (!isLoaded) {
+                loadModel()
+            }
+            
             Log.d(TAG, "🚀 Génération avec llama.cpp (native)")
             
             val prompt = buildPrompt(character, messages, username, userGender, memoryContext)
@@ -133,11 +134,15 @@ class LlamaCppEngine(
                 throw Exception("Réponse vide")
             }
             
-            cleanResponse(response, character.name)
+            return@withContext cleanResponse(response, character.name)
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Erreur génération native: ${e.message}")
-            throw e
+            Log.e(TAG, "❌ Erreur llama.cpp: ${e.message}", e)
+            // Fallback vers générateur Kotlin si échec
+            Log.w(TAG, "🔄 Fallback vers générateur intelligent Kotlin")
+            return@withContext smartGenerator.generate(
+                character, messages, username, userGender, memoryContext, nsfwMode
+            )
         }
     }
     

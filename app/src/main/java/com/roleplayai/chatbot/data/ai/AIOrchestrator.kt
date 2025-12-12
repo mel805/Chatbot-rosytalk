@@ -162,29 +162,17 @@ class AIOrchestrator(
         }
         
         // Dernier recours : llama.cpp en mode Kotlin pur (ne peut jamais échouer)
-        Log.w(TAG, "🆘 Fallback ultime: llama.cpp (mode Kotlin pur)")
-        try {
-            val llamaEngine = LlamaCppEngine(context, "", config.nsfwMode)
-            val response = llamaEngine.generateResponse(character, messages, username, userGender, memoryContext)
-            val duration = System.currentTimeMillis() - startTime
-            
-            return@withContext GenerationResult(
-                response = response,
-                usedEngine = AIEngine.LLAMA_CPP,
-                generationTimeMs = duration,
-                hadFallback = true
-            )
-        } catch (e: Exception) {
-            // Si même llama.cpp échoue, retourner un message par défaut
-            Log.e(TAG, "❌ Échec total, message par défaut", e)
-            val duration = System.currentTimeMillis() - startTime
-            return@withContext GenerationResult(
-                response = "*sourit* Je suis désolé(e), j'ai rencontré un problème technique. Peux-tu réessayer ?",
-                usedEngine = AIEngine.LLAMA_CPP,
-                generationTimeMs = duration,
-                hadFallback = true
-            )
-        }
+        Log.w(TAG, "🆘 Fallback ultime: llama.cpp (générateur intelligent Kotlin)")
+        val llamaEngine = LlamaCppEngine(context, "", config.nsfwMode)
+        val response = llamaEngine.generateResponse(character, messages, username, userGender, memoryContext)
+        val duration = System.currentTimeMillis() - startTime
+        
+        return@withContext GenerationResult(
+            response = response,
+            usedEngine = AIEngine.LLAMA_CPP,
+            generationTimeMs = duration,
+            hadFallback = true
+        )
     }
     
     /**
@@ -210,7 +198,7 @@ class AIOrchestrator(
             
             AIEngine.GEMINI -> {
                 val apiKey = config.geminiApiKey ?: throw Exception("Clé API Gemini manquante")
-                val modelId = config.geminiModelId ?: "gemini-1.5-flash"
+                val modelId = config.geminiModelId ?: "gemini-pro"
                 
                 val geminiEngine = GeminiEngine(apiKey, modelId, config.nsfwMode)
                 geminiEngine.generateResponse(character, messages, username, userGender, memoryContext)
