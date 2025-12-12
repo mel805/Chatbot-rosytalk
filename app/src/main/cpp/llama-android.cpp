@@ -288,10 +288,10 @@ Java_com_roleplayai_chatbot_data_ai_LlamaCppEngine_generateChat(
         chat.push_back(msg);
     }
 
-    // Appliquer le template du modèle (tmpl=nullptr => utiliser celui du GGUF si présent).
+    // Appliquer le template chat du modèle (si présent dans le GGUF).
+    const char * tmpl = llama_model_chat_template(context->model, nullptr);
     int32_t n_prompt_chars = llama_chat_apply_template(
-        context->model,
-        nullptr,
+        tmpl,
         chat.data(),
         chat.size(),
         true,   // add_assistant
@@ -307,8 +307,7 @@ Java_com_roleplayai_chatbot_data_ai_LlamaCppEngine_generateChat(
     std::string prompt_str;
     prompt_str.resize((size_t) n_prompt_chars);
     const int32_t n_written = llama_chat_apply_template(
-        context->model,
-        nullptr,
+        tmpl,
         chat.data(),
         chat.size(),
         true,
