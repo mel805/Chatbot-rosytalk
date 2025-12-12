@@ -1,25 +1,18 @@
 package com.roleplayai.chatbot.data.ai
 
 import android.util.Log
-import com.google.ai.client.generativeai.GenerativeModel
-import com.google.ai.client.generativeai.type.generationConfig
 import com.roleplayai.chatbot.data.model.Character
 import com.roleplayai.chatbot.data.model.Message
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 
 /**
- * Moteur d'IA utilisant Google Gemini API (cloud)
- * 
- * Gemini offre :
- * - Excellente qualité (équivalent GPT-4)
- * - Très cohérent dans les conversations
- * - Support contexte long (32k tokens)
- * - API gratuite avec quotas généreux
- * - Support NSFW modéré
- * 
- * Obtenir une clé API gratuite :
- * https://makersuite.google.com/app/apikey
+ * Moteur Gemini utilisant l'API REST directement
+ * Évite les problèmes du SDK avec les noms de modèles
  */
 class GeminiEngine(
     private val apiKey: String,
@@ -29,8 +22,8 @@ class GeminiEngine(
     
     companion object {
         private const val TAG = "GeminiEngine"
+        private const val API_URL = "https://generativelanguage.googleapis.com/v1beta/models"
         
-        // Modèles Gemini disponibles pour SDK 0.1.2 (stable)
         val AVAILABLE_MODELS = listOf(
             GeminiModel(
                 id = "gemini-pro",
@@ -50,36 +43,8 @@ class GeminiEngine(
         val recommended: Boolean
     )
     
-    private val generativeModel: GenerativeModel by lazy {
-        try {
-            // Essayer gemini-1.5-flash qui est compatible API v1
-            GenerativeModel(
-                modelName = "gemini-1.5-flash",
-                apiKey = apiKey,
-                generationConfig = generationConfig {
-                    temperature = 0.9f
-                    topK = 40
-                    topP = 0.95f
-                    maxOutputTokens = 500
-                }
-            )
-        } catch (e: Exception) {
-            Log.w(TAG, "Gemini-1.5-flash échoué, essai models/gemini-1.5-flash")
-            GenerativeModel(
-                modelName = "models/gemini-1.5-flash",
-                apiKey = apiKey,
-                generationConfig = generationConfig {
-                    temperature = 0.9f
-                    topK = 40
-                    topP = 0.95f
-                    maxOutputTokens = 500
-                }
-            )
-        }
-    }
-    
     /**
-     * Génère une réponse
+     * Génère une réponse avec l'API REST
      */
     suspend fun generateResponse(
         character: Character,
@@ -90,10 +55,12 @@ class GeminiEngine(
     ): String = withContext(Dispatchers.IO) {
         
         try {
-            Log.d(TAG, "🚀 Génération avec Gemini ($model)")
+            Log.d(TAG, "🚀 Génération avec Gemini API REST")
             
-            // Construire le prompt
+            // Construire le prompt système
             val systemPrompt = buildSystemPrompt(character, username, userGender, memoryContext)
+            
+            // Construire l'historique
             val conversationHistory = buildConversationHistory(messages, username, character.name)
             
             val fullPrompt = """$systemPrompt
@@ -102,19 +69,90 @@ $conversationHistory
 
 ${character.name}:"""
             
-            Log.d(TAG, "📝 Prompt: ${fullPrompt.take(200)}...")
+            // Appeler l'API REST
+            val response = callGeminiAPI(fullPrompt)
             
-            // Générer avec Gemini
-            val response = generativeModel.generateContent(fullPrompt)
-            val generatedText = response.text ?: throw Exception("Réponse vide de Gemini")
-            
-            Log.i(TAG, "✅ Réponse générée: ${generatedText.take(100)}...")
-            
-            return@withContext generatedText.trim()
+            Log.i(TAG, "✅ Réponse générée: ${response.take(100)}...")
+            return@withContext response.trim()
             
         } catch (e: Exception) {
             Log.e(TAG, "❌ Erreur Gemini", e)
             throw Exception("Gemini API erreur: ${e.message}")
+        }
+    }
+    
+    /**
+     * Appelle l'API REST Gemini directement
+     */
+    private fun callGeminiAPI(prompt: String): String {
+        // Utiliser l'endpoint correct pour v1beta
+        val url = URL("$API_URL/gemini-pro:generateContent?key=$apiKey")
+        val connection = url.openConnection() as HttpURLConnection
+        
+        try {
+            connection.requestMethod = "POST"
+            connection.setRequestProperty("Content-Type", "application/json")
+            connection.doOutput = true
+            connection.connectTimeout = 30000
+            connection.readTimeout = 30000
+            
+            // Construire la requête selon le format de l'API
+            val requestBody = JSONObject().apply {
+                val contents = JSONArray()
+                contents.put(JSONObject().apply {
+                    val parts = JSONArray()
+                    parts.put(JSONObject().apply {
+                        put("text", prompt)
+                    })
+                    put("parts", parts)
+                })
+                put("contents", contents)
+                
+                put("generationConfig", JSONObject().apply {
+                    put("temperature", 0.9)
+                    put("topK", 40)
+                    put("topP", 0.95)
+                    put("maxOutputTokens", 500)
+                })
+            }
+            
+            Log.d(TAG, "Request URL: ${url}")
+            Log.d(TAG, "Request body: ${requestBody.toString().take(200)}...")
+            
+            // Envoyer la requête
+            connection.outputStream.use { os ->
+                os.write(requestBody.toString().toByteArray())
+            }
+            
+            // Lire la réponse
+            val responseCode = connection.responseCode
+            Log.d(TAG, "Response code: $responseCode")
+            
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                val response = connection.inputStream.bufferedReader().use { it.readText() }
+                Log.d(TAG, "Response: ${response.take(300)}...")
+                
+                // Parser la réponse
+                val jsonResponse = JSONObject(response)
+                val content = jsonResponse
+                    .getJSONArray("candidates")
+                    .getJSONObject(0)
+                    .getJSONObject("content")
+                    .getJSONArray("parts")
+                    .getJSONObject(0)
+                    .getString("text")
+                
+                return content.trim()
+            } else {
+                val error = connection.errorStream?.bufferedReader()?.use { it.readText() } ?: "Unknown error"
+                Log.e(TAG, "===== ERREUR GEMINI API =====")
+                Log.e(TAG, "Code: $responseCode")
+                Log.e(TAG, "Erreur complète: $error")
+                
+                throw Exception("Erreur API Gemini (code $responseCode): $error")
+            }
+        } finally {
+            connection.disconnect()
         }
     }
     
@@ -154,14 +192,13 @@ ${character.name}:"""
 📋 RÈGLES IMPORTANTES:
 1. Réponds TOUJOURS en tant que ${character.name}
 2. Format: *action* (pensée) "dialogue"
-3. Sois créatif et détaillé dans tes descriptions
-4. Maintiens la cohérence de ta personnalité
-5. Fais évoluer la relation naturellement
-6. N'utilise JAMAIS les pensées de ${username}
+3. Utilise les *actions* pour décrire tes mouvements
+4. Utilise les (pensées) pour tes réflexions internes
+5. Reste cohérent avec ta personnalité
+6. Crée des réponses immersives et détaillées$nsfwInstructions$memorySection
 
-👤 TON PARTENAIRE:
-- Nom: $username
-- Genre: $userGender$nsfwInstructions$memorySection"""
+L'utilisateur s'appelle $username (genre: $userGender).
+Réponds maintenant en tant que ${character.name} !"""
     }
     
     /**
@@ -172,14 +209,15 @@ ${character.name}:"""
         username: String,
         characterName: String
     ): String {
-        val history = StringBuilder()
+        if (messages.isEmpty()) return ""
         
-        messages.takeLast(20).forEach { msg ->
-            val speaker = if (msg.isUser) username else characterName
-            history.append("$speaker: ${msg.content}\n\n")
+        val history = StringBuilder()
+        messages.takeLast(10).forEach { message ->
+            val speaker = if (message.isUser) username else characterName
+            history.append("$speaker: ${message.content}\n")
         }
         
-        return history.toString().trim()
+        return history.toString()
     }
     
     /**
