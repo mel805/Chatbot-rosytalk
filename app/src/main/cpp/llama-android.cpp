@@ -2,6 +2,7 @@
 #include <string>
 #include <android/log.h>
 #include <vector>
+#include <cstring>
 
 #ifdef LLAMA_CPP_AVAILABLE
 #include "llama.h"
@@ -53,13 +54,13 @@ Java_com_roleplayai_chatbot_data_ai_LlamaCppEngine_loadModel(
     
 #ifdef LLAMA_CPP_AVAILABLE
     // Initialiser llama.cpp
-    llama_backend_init(false);
+    llama_backend_init();
     
     // Paramètres du modèle
     llama_model_params model_params = llama_model_default_params();
     
     // Charger le modèle
-    context->model = llama_load_model_from_file(path.c_str(), model_params);
+    context->model = llama_model_load_from_file(path.c_str(), model_params);
     if (!context->model) {
         LOGE("❌ Échec chargement modèle: %s", path.c_str());
         delete context;
@@ -73,10 +74,10 @@ Java_com_roleplayai_chatbot_data_ai_LlamaCppEngine_loadModel(
     ctx_params.n_threads_batch = nThreads;
     
     // Créer le contexte
-    context->ctx = llama_new_context_with_model(context->model, ctx_params);
+    context->ctx = llama_init_from_model(context->model, ctx_params);
     if (!context->ctx) {
         LOGE("❌ Échec création contexte");
-        llama_free_model(context->model);
+        llama_model_free(context->model);
         delete context;
         return 0;
     }
@@ -115,93 +116,89 @@ Java_com_roleplayai_chatbot_data_ai_LlamaCppEngine_generate(
     LOGI("📝 Génération avec prompt: %s...", prompt_str.substr(0, 50).c_str());
     
 #ifdef LLAMA_CPP_AVAILABLE
-    // Tokenize le prompt
-    std::vector<llama_token> tokens_list;
-    tokens_list.resize(prompt_str.size() + 1);
-    int n_tokens = llama_tokenize(
-        context->model,
+    const llama_vocab* vocab = llama_model_get_vocab(context->model);
+
+    // Tokenize le prompt (nouvelle API)
+    const int n_prompt_tokens = -llama_tokenize(
+        vocab,
         prompt_str.c_str(),
-        prompt_str.size(),
-        tokens_list.data(),
-        tokens_list.size(),
-        true,  // add_bos
-        false  // special
+        (int) prompt_str.size(),
+        nullptr,
+        0,
+        true,  // add_special
+        true   // parse_special
     );
-    tokens_list.resize(n_tokens);
-    
-    LOGI("🔢 Tokens: %d", n_tokens);
-    
-    // Évaluer le prompt
-    llama_batch batch = llama_batch_init(tokens_list.size(), 0, 1);
-    for (size_t i = 0; i < tokens_list.size(); i++) {
-        llama_batch_add(batch, tokens_list[i], i, {0}, false);
+
+    if (n_prompt_tokens <= 0) {
+        LOGE("❌ Tokenization: n_prompt_tokens=%d", n_prompt_tokens);
+        return env->NewStringUTF("Erreur de tokenization");
     }
-    batch.logits[batch.n_tokens - 1] = true;  // Calculer logits pour le dernier token
-    
+
+    std::vector<llama_token> tokens;
+    tokens.resize(n_prompt_tokens);
+
+    if (llama_tokenize(
+            vocab,
+            prompt_str.c_str(),
+            (int) prompt_str.size(),
+            tokens.data(),
+            (int) tokens.size(),
+            true,
+            true) < 0) {
+        LOGE("❌ Échec tokenization");
+        return env->NewStringUTF("Erreur de tokenization");
+    }
+
+    LOGI("🔢 Tokens prompt: %d", (int) tokens.size());
+
+    // Décoder le prompt
+    llama_batch batch = llama_batch_get_one(tokens.data(), tokens.size());
     if (llama_decode(context->ctx, batch) != 0) {
-        LOGE("❌ Échec decode");
-        llama_batch_free(batch);
+        LOGE("❌ Échec decode prompt");
         return env->NewStringUTF("Erreur de génération");
     }
-    
-    // Générer la réponse token par token
+
+    // Sampler chain (temp/top-k/top-p + pénalités)
+    llama_sampler_chain_params sampler_params = llama_sampler_chain_default_params();
+    llama_sampler* sampler = llama_sampler_chain_init(sampler_params);
+    llama_sampler_chain_add(sampler, llama_sampler_init_penalties(
+        64,                  // last_n
+        repeatPenalty,       // repeat
+        0.0f,                // freq
+        0.0f                 // present
+    ));
+    llama_sampler_chain_add(sampler, llama_sampler_init_top_k(topK));
+    llama_sampler_chain_add(sampler, llama_sampler_init_top_p(topP, 1));
+    llama_sampler_chain_add(sampler, llama_sampler_init_temp(temperature));
+    llama_sampler_chain_add(sampler, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
+
     std::string generated_text;
-    int n_cur = batch.n_tokens;
     int n_gen = 0;
-    
+
     while (n_gen < maxTokens) {
-        // Obtenir les logits
-        float* logits = llama_get_logits_ith(context->ctx, batch.n_tokens - 1);
-        
-        // Sample le prochain token (sampling simple pour commencer)
-        int n_vocab = llama_n_vocab(context->model);
-        std::vector<llama_token_data> candidates;
-        candidates.reserve(n_vocab);
-        
-        for (llama_token token_id = 0; token_id < n_vocab; token_id++) {
-            candidates.push_back({token_id, logits[token_id], 0.0f});
-        }
-        
-        llama_token_data_array candidates_p = {
-            candidates.data(),
-            candidates.size(),
-            false
-        };
-        
-        // Sample avec temperature
-        llama_sample_top_k(context->ctx, &candidates_p, topK, 1);
-        llama_sample_top_p(context->ctx, &candidates_p, topP, 1);
-        llama_sample_temp(context->ctx, &candidates_p, temperature);
-        llama_token new_token_id = llama_sample_token(context->ctx, &candidates_p);
-        
-        // Vérifier fin de génération
-        if (new_token_id == llama_token_eos(context->model)) {
-            LOGI("✅ Fin de génération (EOS)");
+        llama_token new_token = llama_sampler_sample(sampler, context->ctx, -1);
+
+        if (llama_vocab_is_eog(vocab, new_token)) {
+            LOGI("✅ Fin de génération (EOG)");
             break;
         }
-        
-        // Convertir en texte
+
         char buf[256];
-        int n = llama_token_to_piece(context->model, new_token_id, buf, sizeof(buf));
+        int n = llama_token_to_piece(vocab, new_token, buf, sizeof(buf), 0, true);
         if (n > 0) {
             generated_text.append(buf, n);
         }
-        
-        // Préparer le prochain batch
-        llama_batch_clear(batch);
-        llama_batch_add(batch, new_token_id, n_cur, {0}, true);
-        n_cur++;
-        n_gen++;
-        
-        // Évaluer le nouveau token
+
+        batch = llama_batch_get_one(&new_token, 1);
         if (llama_decode(context->ctx, batch) != 0) {
             LOGE("❌ Échec decode token %d", n_gen);
             break;
         }
+
+        n_gen++;
     }
-    
-    llama_batch_free(batch);
-    
+
+    llama_sampler_free(sampler);
     LOGI("✅ Génération terminée: %d tokens", n_gen);
     return env->NewStringUTF(generated_text.c_str());
     
@@ -228,7 +225,7 @@ Java_com_roleplayai_chatbot_data_ai_LlamaCppEngine_freeModel(
         context->ctx = nullptr;
     }
     if (context->model) {
-        llama_free_model(context->model);
+        llama_model_free(context->model);
         context->model = nullptr;
     }
     llama_backend_free();
