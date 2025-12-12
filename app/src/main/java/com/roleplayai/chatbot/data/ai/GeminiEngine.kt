@@ -51,16 +51,31 @@ class GeminiEngine(
     )
     
     private val generativeModel: GenerativeModel by lazy {
-        GenerativeModel(
-            modelName = "gemini-pro",  // Forcer gemini-pro pour SDK 0.1.2
-            apiKey = apiKey,
-            generationConfig = generationConfig {
-                temperature = 0.9f
-                topK = 40
-                topP = 0.95f
-                maxOutputTokens = 500
-            }
-        )
+        try {
+            // Essayer gemini-1.5-flash qui est compatible API v1
+            GenerativeModel(
+                modelName = "gemini-1.5-flash",
+                apiKey = apiKey,
+                generationConfig = generationConfig {
+                    temperature = 0.9f
+                    topK = 40
+                    topP = 0.95f
+                    maxOutputTokens = 500
+                }
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "Gemini-1.5-flash échoué, essai models/gemini-1.5-flash")
+            GenerativeModel(
+                modelName = "models/gemini-1.5-flash",
+                apiKey = apiKey,
+                generationConfig = generationConfig {
+                    temperature = 0.9f
+                    topK = 40
+                    topP = 0.95f
+                    maxOutputTokens = 500
+                }
+            )
+        }
     }
     
     /**

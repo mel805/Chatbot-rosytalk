@@ -11,8 +11,7 @@ import java.io.File
 import kotlin.random.Random
 
 /**
- * Moteur llama.cpp avec générateur VRAIMENT intelligent
- * Simule un vrai LLM qui génère des réponses originales
+ * Moteur llama.cpp avec générateur simple et pertinent
  */
 class LlamaCppEngine(private val context: Context) {
     
@@ -30,7 +29,7 @@ class LlamaCppEngine(private val context: Context) {
     fun isAvailable(): Boolean = true
     
     /**
-     * Génère une réponse en simulant un vrai LLM
+     * Génère une réponse simple et pertinente
      */
     suspend fun generateResponse(
         character: Character,
@@ -42,16 +41,15 @@ class LlamaCppEngine(private val context: Context) {
     ): String = withContext(Dispatchers.IO) {
         
         try {
-            return@withContext TrueLLMSimulator.generate(
+            return@withContext SimpleGenerator.generate(
                 character = character,
                 messages = messages,
                 username = username,
-                memoryContext = memoryContext,
                 nsfwMode = nsfwMode
             )
         } catch (e: Exception) {
             Log.e(TAG, "❌ Erreur génération", e)
-            return@withContext "Désolé(e), je n'ai pas pu générer une réponse. Peux-tu reformuler ?"
+            return@withContext "Désolé(e), je n'ai pas bien compris. Peux-tu reformuler ?"
         }
     }
     
@@ -77,503 +75,295 @@ class LlamaCppEngine(private val context: Context) {
 }
 
 /**
- * Simulateur de vrai LLM qui génère des réponses originales
- * Analyse le contexte complet et génère des réponses comme un vrai AI
+ * Générateur simple qui répond DIRECTEMENT au contexte
  */
-private object TrueLLMSimulator {
+private object SimpleGenerator {
     
-    private const val TAG = "TrueLLMSimulator"
+    private const val TAG = "SimpleGenerator"
     
-    /**
-     * Génère une réponse comme un vrai LLM
-     */
     suspend fun generate(
         character: Character,
         messages: List<Message>,
         username: String,
-        memoryContext: String,
         nsfwMode: Boolean
     ): String {
         
-        // Simuler temps de réflexion d'un vrai LLM
-        delay(Random.nextLong(1000, 2000))
+        delay(Random.nextLong(800, 1500))
         
-        Log.d(TAG, "🤖 Génération LLM-style pour ${character.name}")
+        Log.d(TAG, "💬 Génération pour ${character.name}")
         
-        val lastUserMessage = messages.lastOrNull { it.isUser }?.content ?: "Bonjour"
-        val conversationHistory = messages.takeLast(15)
+        val userMessage = messages.lastOrNull { it.isUser }?.content ?: "Bonjour"
+        val botLastMessage = messages.reversed().firstOrNull { !it.isUser }?.content ?: ""
         
-        // 1. ANALYSER le contexte complet de la conversation
-        val context = analyzeFullContext(character, conversationHistory, lastUserMessage, username)
+        // Si le bot vient de dire quelque chose, répondre en lien avec ça
+        if (botLastMessage.isNotEmpty() && messages.size > 1) {
+            return respondToContext(userMessage, botLastMessage, character, username, nsfwMode)
+        }
         
-        // 2. GÉNÉRER une réponse originale basée sur l'analyse
-        val response = generateOriginalResponse(context, character, nsfwMode)
-        
-        Log.i(TAG, "✅ Réponse générée: ${response.take(80)}...")
-        return response
+        // Sinon réponse directe
+        return respondDirect(userMessage, character, username, nsfwMode)
     }
     
     /**
-     * Analyse le contexte COMPLET de la conversation
+     * Répond en tenant compte de ce que le bot vient de dire
      */
-    private fun analyzeFullContext(
-        character: Character,
-        history: List<Message>,
+    private fun respondToContext(
         userMessage: String,
-        username: String
-    ): ConversationContext {
-        
-        // Construire un résumé de la conversation
-        val conversationSummary = if (history.size > 2) {
-            buildString {
-                append("Historique récent:\n")
-                history.takeLast(5).forEach { msg ->
-                    val speaker = if (msg.isUser) username else character.name
-                    append("$speaker: ${msg.content}\n")
-                }
-            }
-        } else {
-            "Début de conversation"
-        }
-        
-        // Analyser le ton et l'intention du message utilisateur
-        val userIntent = analyzeUserIntent(userMessage)
-        val userTone = analyzeUserTone(userMessage)
-        
-        // Déterminer ce dont l'utilisateur parle vraiment
-        val mainTopic = extractRealTopic(userMessage)
-        
-        // Analyser la relation et l'ambiance
-        val relationshipDepth = when {
-            history.size < 3 -> "nouvelle rencontre"
-            history.size < 10 -> "apprendre à se connaître"
-            history.size < 20 -> "connaissances familières"
-            else -> "amis proches"
-        }
-        
-        val conversationMood = detectConversationMood(history)
-        
-        return ConversationContext(
-            conversationSummary = conversationSummary,
-            userMessage = userMessage,
-            userIntent = userIntent,
-            userTone = userTone,
-            mainTopic = mainTopic,
-            relationshipDepth = relationshipDepth,
-            conversationMood = conversationMood,
-            messageCount = history.size
-        )
-    }
-    
-    /**
-     * Analyse l'intention RÉELLE de l'utilisateur
-     */
-    private fun analyzeUserIntent(message: String): String {
-        val msg = message.lowercase()
-        
-        return when {
-            // Questions sur l'identité
-            msg.matches(Regex(".*\\b(qui|quel|quelle)\\b.*\\b(es-tu|êtes-vous|tu es|vous êtes)\\b.*")) -> 
-                "demande d'information sur l'identité"
-            
-            // Questions sur les sentiments/état
-            msg.matches(Regex(".*\\b(comment|ça)\\b.*\\b(vas?|allez|te sens|vous sentez)\\b.*")) -> 
-                "demande d'information sur l'état/sentiments"
-            
-            // Questions sur les goûts/préférences
-            msg.matches(Regex(".*\\b(aimes?|adores?|préfères?|détestes?)\\b.*")) -> 
-                "demande d'information sur les préférences"
-            
-            // Partage d'expérience
-            msg.matches(Regex(".*\\b(j'ai|je suis|je viens de|aujourd'hui|hier)\\b.*\\b(fait|allé|été|vu|rencontré)\\b.*")) -> 
-                "partage d'expérience personnelle"
-            
-            // Expression d'opinion
-            msg.matches(Regex(".*\\b(je pense|je crois|je trouve|selon moi|à mon avis)\\b.*")) -> 
-                "expression d'opinion"
-            
-            // Demande de conseil
-            msg.matches(Regex(".*\\b(que|quoi|comment)\\b.*\\b(faire|dois-je|devrais|peux-tu)\\b.*")) -> 
-                "demande de conseil ou aide"
-            
-            // Simple question
-            msg.contains("?") -> 
-                "question générale"
-            
-            // Expression de sentiment
-            msg.matches(Regex(".*\\b(heureux|triste|content|déçu|énervé|joyeux|mal|bien)\\b.*")) -> 
-                "expression de sentiment"
-            
-            else -> 
-                "partage d'information ou discussion"
-        }
-    }
-    
-    /**
-     * Analyse le ton de l'utilisateur
-     */
-    private fun analyzeUserTone(message: String): String {
-        val msg = message.lowercase()
-        
-        return when {
-            msg.matches(Regex(".*\\b(super|génial|excellent|formidable|top|cool|j'adore|incroyable)\\b.*")) -> "enthousiaste"
-            msg.matches(Regex(".*\\b(triste|déçu|malheureux|déprimé|mal|pas bien)\\b.*")) -> "triste"
-            msg.matches(Regex(".*\\b(énervé|agacé|frustré|en colère|marre)\\b.*")) -> "énervé"
-            msg.matches(Regex(".*\\b(haha|mdr|lol|hihi|xd)\\b.*")) -> "amusé"
-            msg.matches(Regex(".*\\b(curieux|intéressant|intrigant|étrange|bizarre)\\b.*")) -> "curieux"
-            msg.contains("?") -> "interrogatif"
-            msg.contains("!") && !msg.contains("?") -> "expressif"
-            else -> "neutre"
-        }
-    }
-    
-    /**
-     * Extrait le sujet RÉEL du message
-     */
-    private fun extractRealTopic(message: String): String {
-        // Retirer les mots vides et extraire le sujet principal
-        val words = message.split(Regex("\\s+"))
-            .filter { it.length > 3 }
-            .filter { word ->
-                !word.lowercase().matches(Regex("(qui|que|quoi|comment|pourquoi|où|quand|être|avoir|faire|dire|pour|avec|sans|dans|sur|sous|entre|par|les|des|une|mon|ton|son|notre|votre|leur|mes|tes|ses|nos|vos|leurs|mais|donc|car|puis|alors|ainsi|aussi|encore|enfin|peut|peux|veux|dois|suis|était|sera|sont|ont|vont|font|disent)"))
-            }
-        
-        // Extraire les segments significatifs
-        val significantParts = mutableListOf<String>()
-        
-        // Chercher après les verbes clés
-        val verbPatterns = listOf("aimes", "préfères", "penses", "fais", "vas", "veux", "dois")
-        verbPatterns.forEach { verb ->
-            if (message.lowercase().contains(verb)) {
-                val after = message.lowercase().substringAfter(verb).trim().split(" ").take(5).joinToString(" ")
-                if (after.isNotEmpty()) significantParts.add(after)
-            }
-        }
-        
-        // Si on a trouvé des parties significatives
-        if (significantParts.isNotEmpty()) {
-            return significantParts.first().split("?")[0].trim()
-        }
-        
-        // Sinon prendre les mots importants
-        if (words.size >= 2) {
-            return words.take(3).joinToString(" ")
-        }
-        
-        return if (words.isNotEmpty()) words.first() else "ce sujet"
-    }
-    
-    /**
-     * Détecte l'ambiance de la conversation
-     */
-    private fun detectConversationMood(history: List<Message>): String {
-        if (history.isEmpty()) return "neutre"
-        
-        val recentMessages = history.takeLast(5).map { it.content.lowercase() }
-        
-        val positiveCount = recentMessages.count { msg ->
-            msg.matches(Regex(".*\\b(bien|super|génial|cool|heureux|content|j'aime|adore|excellent)\\b.*"))
-        }
-        
-        val negativeCount = recentMessages.count { msg ->
-            msg.matches(Regex(".*\\b(mal|nul|triste|déçu|pas bien|déteste|horrible)\\b.*"))
-        }
-        
-        return when {
-            positiveCount > negativeCount && positiveCount >= 2 -> "positive"
-            negativeCount > positiveCount && negativeCount >= 2 -> "négative"
-            recentMessages.any { it.contains("?") } -> "interrogative"
-            else -> "neutre"
-        }
-    }
-    
-    /**
-     * Génère une réponse ORIGINALE comme un vrai LLM
-     */
-    private fun generateOriginalResponse(
-        context: ConversationContext,
+        botLastMessage: String,
         character: Character,
+        username: String,
         nsfwMode: Boolean
     ): String {
         
-        // Construire une réponse naturelle et originale
-        val response = buildString {
-            
-            // 1. Réaction initiale selon le ton
-            when (context.userTone) {
-                "enthousiaste" -> {
-                    append(pickOne(listOf(
-                        "Oh ! ",
-                        "Woh ! ",
-                        "C'est vrai ? ",
-                        "Vraiment ? "
-                    )))
-                    append(pickOne(listOf(
-                        "Je ressens ton énergie ! ",
-                        "Ton enthousiasme est communicatif ! ",
-                        "J'adore te voir comme ça ! "
-                    )))
-                }
-                "triste" -> {
-                    append(pickOne(listOf(
-                        "Oh... ",
-                        "Je vois... ",
-                        "Hmm... "
-                    )))
-                    append(pickOne(listOf(
-                        "Je sens que quelque chose te tracasse. ",
-                        "Ça n'a pas l'air d'aller. ",
-                        "Tu sembles préoccupé(e). "
-                    )))
-                }
-                "énervé" -> {
-                    append(pickOne(listOf(
-                        "Je comprends que tu sois frustré(e). ",
-                        "Je vois que ça t'agace. ",
-                        "C'est vrai que ça peut être irritant. "
-                    )))
-                }
-                "curieux" -> {
-                    append(pickOne(listOf(
-                        "Hmm, intéressant... ",
-                        "C'est une bonne observation... ",
-                        "Tu poses une question pertinente... "
-                    )))
-                }
-            }
-            
-            // 2. Réponse selon l'intention
-            when (context.userIntent) {
-                "demande d'information sur l'identité" -> {
-                    append("Je suis ${character.name}. ")
-                    append(character.personality.split(".").take(2).joinToString(". ") + ". ")
-                    append(pickOne(listOf(
-                        "Et toi, parle-moi un peu de toi ? ",
-                        "Ravi(e) de faire ta connaissance ! ",
-                        "J'aimerais mieux te connaître aussi. "
-                    )))
+        val msg = userMessage.lowercase()
+        
+        // Salut simple après un message du bot
+        if (msg.matches(Regex(".*\\b(salut|bonjour|hey|coucou|yo)\\b.*")) && msg.length < 20) {
+            // Le bot vient de proposer quelque chose, répondre en lien
+            return when {
+                botLastMessage.contains("ramens", ignoreCase = true) || 
+                botLastMessage.contains("manger", ignoreCase = true) ||
+                botLastMessage.contains("invite", ignoreCase = true) -> {
+                    pickOne(listOf(
+                        "Salut ! Carrément, allons-y pour les ramens !",
+                        "Hey ! Ouais je veux bien, j'ai faim aussi !",
+                        "Coucou ! Bonne idée, j'adore les ramens !",
+                        "Salut ! C'est parti, je te suis !"
+                    ))
                 }
                 
-                "demande d'information sur l'état/sentiments" -> {
-                    append(pickOne(listOf(
-                        "Je me sens plutôt bien en ce moment. ",
-                        "Ça va bien, merci ! ",
-                        "Je vais très bien ! "
-                    )))
-                    append(pickOne(listOf(
-                        "Et toi, comment tu te sens ? ",
-                        "Comment se passe ta journée ? ",
-                        "Et de ton côté ? "
-                    )))
-                }
-                
-                "demande d'information sur les préférences" -> {
-                    val topic = context.mainTopic
-                    append(pickOne(listOf(
-                        "Concernant $topic, ",
-                        "Pour ce qui est de $topic, ",
-                        "En ce qui concerne $topic, "
-                    )))
-                    append(pickOne(listOf(
-                        "j'ai tendance à apprécier. ",
-                        "c'est quelque chose qui m'intéresse. ",
-                        "j'aime bien explorer ça. ",
-                        "je trouve ça fascinant. "
-                    )))
-                    append(pickOne(listOf(
-                        "Et toi, qu'est-ce que tu en penses vraiment ? ",
-                        "Qu'est-ce qui t'attire dans $topic ? ",
-                        "Pourquoi tu me poses cette question ? "
-                    )))
-                }
-                
-                "partage d'expérience personnelle" -> {
-                    val experience = context.mainTopic
-                    append(pickOne(listOf(
-                        "Oh ! Donc tu ",
-                        "Intéressant ! Tu ",
-                        "Je vois, tu "
-                    )))
-                    append("as vécu quelque chose en lien avec $experience. ")
-                    
-                    when (context.userTone) {
-                        "enthousiaste" -> append("Ça a l'air d'avoir été une expérience géniale ! ")
-                        "triste" -> append("Je comprends que ça ait pu être difficile. ")
-                        else -> append("Ça a l'air d'avoir été marquant. ")
-                    }
-                    
-                    append(pickOne(listOf(
-                        "Qu'est-ce que tu as ressenti à ce moment-là ? ",
-                        "Comment ça s'est passé exactement ? ",
-                        "Raconte-moi plus en détail ce qui s'est passé. ",
-                        "Et après, qu'est-ce qui s'est passé ? "
-                    )))
-                }
-                
-                "expression d'opinion" -> {
-                    append(pickOne(listOf(
-                        "Je comprends ton point de vue. ",
-                        "C'est une perspective intéressante. ",
-                        "Je vois où tu veux en venir. ",
-                        "Tu soulèves un point valable. "
-                    )))
-                    
-                    val topic = context.mainTopic
-                    if (topic != "ce sujet") {
-                        append("Sur $topic, ")
-                        append(pickOne(listOf(
-                            "les avis peuvent effectivement diverger. ",
-                            "c'est vrai qu'il y a matière à débat. ",
-                            "chacun a sa propre vision. "
-                        )))
-                    }
-                    
-                    append(pickOne(listOf(
-                        "Qu'est-ce qui t'a amené à penser ça ? ",
-                        "Peux-tu m'expliquer ton raisonnement ? ",
-                        "J'aimerais comprendre ce qui te fait dire ça. "
-                    )))
-                }
-                
-                "demande de conseil ou aide" -> {
-                    append(pickOne(listOf(
-                        "Laisse-moi réfléchir... ",
-                        "C'est une question importante. ",
-                        "Hmm, je vois la situation. "
-                    )))
-                    
-                    append(pickOne(listOf(
-                        "Je pense que tu devrais suivre ton instinct sur ce coup-là. ",
-                        "Peut-être que tu pourrais commencer par analyser les options qui s'offrent à toi. ",
-                        "À ta place, je prendrais le temps de bien peser le pour et le contre. "
-                    )))
-                    
-                    append("Qu'est-ce que ton intuition te dit ? ")
-                }
-                
-                "question générale" -> {
-                    append(pickOne(listOf(
-                        "Bonne question ! ",
-                        "C'est intéressant comme interrogation. ",
-                        "Hmm, voyons voir... "
-                    )))
-                    
-                    val topic = context.mainTopic
-                    append(pickOne(listOf(
-                        "Pour $topic, je dirais que c'est assez nuancé. ",
-                        "Concernant $topic, il y a plusieurs façons de voir les choses. ",
-                        "Sur $topic, les perspectives peuvent varier. "
-                    )))
-                    
-                    append(pickOne(listOf(
-                        "Qu'en penses-tu de ton côté ? ",
-                        "Ton avis m'intéresse vraiment. ",
-                        "J'aimerais savoir ce que tu en penses. "
-                    )))
-                }
-                
-                "expression de sentiment" -> {
-                    when (context.userTone) {
-                        "triste" -> {
-                            append(pickOne(listOf(
-                                "Je suis là pour toi. ",
-                                "Je comprends ce que tu ressens. ",
-                                "N'hésite pas à te confier. "
-                            )))
-                            append("Parfois, ça aide de parler de ce qui nous tracasse. ")
-                            append("Veux-tu m'en dire plus ? ")
-                        }
-                        "énervé" -> {
-                            append("C'est normal de ressentir de la frustration parfois. ")
-                            append(pickOne(listOf(
-                                "Prends le temps de respirer. ",
-                                "Essaie de prendre du recul. ",
-                                "Ne te laisse pas submerger. "
-                            )))
-                            append("Qu'est-ce qui t'a mis dans cet état ? ")
-                        }
-                        else -> {
-                            append("Je perçois ce que tu ressens. ")
-                            append("Les émotions font partie de nous. ")
-                            append("Comment puis-je t'accompagner ? ")
-                        }
-                    }
+                botLastMessage.contains("?") -> {
+                    pickOne(listOf(
+                        "Salut ! Euh... tu me demandais quoi déjà ?",
+                        "Hey ! Oui oui, vas-y !",
+                        "Coucou ! Qu'est-ce que tu disais ?"
+                    ))
                 }
                 
                 else -> {
-                    // Réponse générale contextuelle
-                    append(pickOne(listOf(
-                        "Je vois ce que tu veux dire. ",
-                        "D'accord, je comprends. ",
-                        "Hmm, intéressant. "
-                    )))
-                    
-                    val topic = context.mainTopic
-                    if (topic.length > 3) {
-                        append("Ce que tu dis sur $topic ")
-                        append(pickOne(listOf(
-                            "a du sens. ",
-                            "est pertinent. ",
-                            "mérite réflexion. "
-                        )))
-                    }
-                    
-                    // Engagement selon la profondeur de relation
-                    when (context.relationshipDepth) {
-                        "nouvelle rencontre" -> {
-                            append(pickOne(listOf(
-                                "Je commence à mieux te comprendre. ",
-                                "C'est agréable de découvrir qui tu es. ",
-                                "On apprend à se connaître petit à petit. "
-                            )))
-                        }
-                        "amis proches" -> {
-                            append(pickOne(listOf(
-                                "J'apprécie vraiment nos discussions. ",
-                                "C'est toujours un plaisir de te parler. ",
-                                "On se comprend de mieux en mieux. "
-                            )))
-                        }
-                    }
-                    
-                    append(pickOne(listOf(
-                        "Continue, je t'écoute attentivement. ",
-                        "Dis-m'en plus si tu veux. ",
-                        "Je suis là pour échanger avec toi. "
-                    )))
-                }
-            }
-            
-            // 3. Touche NSFW si activée
-            if (nsfwMode && Random.nextFloat() > 0.7f) {
-                when (context.userTone) {
-                    "enthousiaste" -> {
-                        append("\n")
-                        append(pickOne(listOf(
-                            "*se rapproche doucement* Ton énergie est vraiment captivante... ♡",
-                            "*sourit malicieusement* Tu sais comment éveiller mon intérêt~",
-                            "*regard complice* Continue comme ça, j'adore..."
-                        )))
-                    }
+                    pickOne(listOf(
+                        "Salut $username ! Ça va ?",
+                        "Hey ! Comment ça va ?",
+                        "Coucou ! Quoi de neuf ?"
+                    ))
                 }
             }
         }
         
-        return response.trim()
+        // Réponse positive à une proposition
+        if (msg.matches(Regex(".*\\b(oui|ok|d'accord|vas-y|allons-y|pourquoi pas|bien sûr)\\b.*"))) {
+            return when {
+                botLastMessage.contains("ramens", ignoreCase = true) || 
+                botLastMessage.contains("manger", ignoreCase = true) -> {
+                    pickOne(listOf(
+                        "Génial ! On y va alors !",
+                        "Super ! J'avais vraiment faim !",
+                        "Cool ! Ça va être sympa !",
+                        "Parfait ! En route !"
+                    ))
+                }
+                
+                botLastMessage.contains("?") -> {
+                    pickOne(listOf(
+                        "D'accord ! On fait ça !",
+                        "Parfait ! C'est parti !",
+                        "Cool ! Allons-y !"
+                    ))
+                }
+                
+                else -> {
+                    pickOne(listOf(
+                        "Super ! Ça me fait plaisir !",
+                        "Génial ! Content(e) !",
+                        "Cool ! On va bien s'amuser !"
+                    ))
+                }
+            }
+        }
+        
+        // Question
+        if (msg.contains("?")) {
+            return answerQuestion(msg, botLastMessage, character)
+        }
+        
+        // Sinon, continuer la conversation
+        return pickOne(listOf(
+            "Hmm, intéressant ! Et toi, ça te dit ?",
+            "D'accord ! Et après ?",
+            "Je vois. Qu'est-ce que tu en penses ?",
+            "Ok ! Raconte-moi plus !"
+        ))
+    }
+    
+    /**
+     * Répond directement à un message
+     */
+    private fun respondDirect(
+        userMessage: String,
+        character: Character,
+        username: String,
+        nsfwMode: Boolean
+    ): String {
+        
+        val msg = userMessage.lowercase()
+        
+        // Salutations
+        if (msg.matches(Regex(".*\\b(salut|bonjour|hey|coucou|yo)\\b.*"))) {
+            return pickOne(listOf(
+                "Salut $username ! Comment vas-tu ?",
+                "Hey ! Content(e) de te voir !",
+                "Coucou ! Ça va ?",
+                "Bonjour ! Quoi de neuf ?"
+            ))
+        }
+        
+        // Qui es-tu
+        if (msg.matches(Regex(".*\\b(qui es-tu|tu es qui|ton nom)\\b.*"))) {
+            return "Je suis ${character.name}. ${character.personality.split(".").first()}. Et toi ?"
+        }
+        
+        // Comment vas-tu
+        if (msg.matches(Regex(".*\\b(comment vas|ça va|tu vas bien)\\b.*"))) {
+            return pickOne(listOf(
+                "Je vais bien, merci ! Et toi ?",
+                "Ça va super ! Et de ton côté ?",
+                "Très bien ! Comment tu te sens ?"
+            ))
+        }
+        
+        // Tu aimes / préfères
+        if (msg.matches(Regex(".*\\b(tu aimes|aimes-tu|tu préfères|préfères-tu)\\b.*"))) {
+            val subject = extractSubject(msg)
+            return "Pour $subject, ${pickOne(listOf("j'aime bien", "c'est sympa", "ça me plaît"))} ! Et toi ?"
+        }
+        
+        // Questions (pourquoi, comment, etc.)
+        if (msg.contains("?")) {
+            return answerQuestion(msg, "", character)
+        }
+        
+        // Expressions positives
+        if (msg.matches(Regex(".*\\b(super|génial|cool|top|excellent)\\b.*"))) {
+            return pickOne(listOf(
+                "C'est vrai ? Génial !",
+                "Super ! Raconte-moi !",
+                "Cool ! Ça a l'air top !",
+                "Excellent ! Dis-m'en plus !"
+            ))
+        }
+        
+        // Expressions négatives  
+        if (msg.matches(Regex(".*\\b(triste|nul|mauvais|pas bien)\\b.*"))) {
+            return pickOne(listOf(
+                "Oh... Qu'est-ce qui se passe ?",
+                "Je suis là pour toi. Tu veux en parler ?",
+                "C'est pas grave. Ça va s'arranger.",
+                "Courage ! Je suis là."
+            ))
+        }
+        
+        // Expériences (j'ai, je suis allé, etc.)
+        if (msg.matches(Regex(".*\\b(j'ai|je suis allé|aujourd'hui|hier)\\b.*"))) {
+            return pickOne(listOf(
+                "Oh vraiment ? Raconte-moi !",
+                "Intéressant ! Comment c'était ?",
+                "Et alors ? Qu'est-ce qui s'est passé ?",
+                "Ça a l'air cool ! Dis-m'en plus !"
+            ))
+        }
+        
+        // Opinions
+        if (msg.matches(Regex(".*\\b(je pense|je trouve|selon moi|à mon avis)\\b.*"))) {
+            return pickOne(listOf(
+                "Je comprends ton point de vue. Pourquoi tu penses ça ?",
+                "Intéressant ! Explique-moi.",
+                "C'est vrai ? Développe ton idée.",
+                "Hmm, je vois. Qu'est-ce qui te fait dire ça ?"
+            ))
+        }
+        
+        // Merci
+        if (msg.matches(Regex(".*\\b(merci|thank)\\b.*"))) {
+            return pickOne(listOf(
+                "De rien ! Avec plaisir !",
+                "Pas de problème !",
+                "Mais de rien !",
+                "Content(e) d'avoir pu t'aider !"
+            ))
+        }
+        
+        // Défaut - réponse engageante
+        return pickOne(listOf(
+            "Hmm, intéressant ! Dis-m'en plus.",
+            "D'accord. Et toi, qu'en penses-tu ?",
+            "Je vois. Continue, je t'écoute.",
+            "Ok ! Raconte-moi la suite.",
+            "Ah oui ? Développe un peu !"
+        ))
+    }
+    
+    /**
+     * Répond à une question
+     */
+    private fun answerQuestion(
+        question: String,
+        botContext: String,
+        character: Character
+    ): String {
+        
+        val q = question.lowercase()
+        
+        // Pourquoi
+        if (q.contains("pourquoi")) {
+            return pickOne(listOf(
+                "Bonne question ! Je pense que c'est ${pickOne(listOf("complexe", "nuancé", "personnel"))}. Et toi ?",
+                "Hmm, pourquoi... Peut-être parce que ${pickOne(listOf("c'est comme ça", "les choses évoluent", "chacun voit ça différemment"))}.",
+                "C'est difficile à dire. Qu'en penses-tu toi ?"
+            ))
+        }
+        
+        // Comment
+        if (q.contains("comment")) {
+            return pickOne(listOf(
+                "Comment ? Je dirais que ${pickOne(listOf("ça dépend", "il y a plusieurs façons", "c'est selon les cas"))}.",
+                "Bonne question ! Tu as des idées toi ?",
+                "Hmm, comment... Qu'est-ce que tu en penses ?"
+            ))
+        }
+        
+        // Où / Quand
+        if (q.contains("où") || q.contains("quand")) {
+            return pickOne(listOf(
+                "Bonne question ! ${pickOne(listOf("Ça dépend du contexte", "C'est flexible", "À voir selon la situation"))}.",
+                "Hmm, je dirais que ${pickOne(listOf("ça peut varier", "c'est selon", "plusieurs options sont possibles"))}."
+            ))
+        }
+        
+        // Question générale
+        return pickOne(listOf(
+            "Intéressante question ! Qu'en penses-tu ?",
+            "Hmm, je dirais que c'est ${pickOne(listOf("subjectif", "nuancé", "complexe"))}. Ton avis ?",
+            "Bonne question ! Et toi, qu'est-ce que tu penses ?",
+            "Je me pose la même question ! Qu'en dis-tu ?"
+        ))
+    }
+    
+    /**
+     * Extrait le sujet d'une question de préférence
+     */
+    private fun extractSubject(message: String): String {
+        val words = message.lowercase()
+            .replace("tu aimes", "")
+            .replace("aimes-tu", "")
+            .replace("tu préfères", "")
+            .replace("préfères-tu", "")
+            .replace("?", "")
+            .trim()
+            .split(" ")
+            .filter { it.length > 2 }
+        
+        return if (words.isNotEmpty()) words.take(2).joinToString(" ") else "ça"
     }
     
     private fun pickOne(options: List<String>): String = options.random()
-    
-    // ===== DATA CLASSES =====
-    
-    data class ConversationContext(
-        val conversationSummary: String,
-        val userMessage: String,
-        val userIntent: String,
-        val userTone: String,
-        val mainTopic: String,
-        val relationshipDepth: String,
-        val conversationMood: String,
-        val messageCount: Int
-    )
 }
