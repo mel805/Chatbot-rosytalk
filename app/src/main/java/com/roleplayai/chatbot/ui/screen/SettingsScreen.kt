@@ -68,9 +68,7 @@ fun SettingsScreen(
     var showModelSelection by remember { mutableStateOf(false) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     var showGroqModels by remember { mutableStateOf(false) }
-    var showGeminiModels by remember { mutableStateOf(false) }
     var showAddKeyDialog by remember { mutableStateOf(false) }
-    var showGeminiKeyDialog by remember { mutableStateOf(false) }
     var newApiKeyInput by remember { mutableStateOf("") }
     var keyToDelete by remember { mutableStateOf<String?>(null) }
     var showAIEngineSelection by remember { mutableStateOf(false) }
