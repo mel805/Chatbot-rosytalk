@@ -5,32 +5,105 @@ import android.util.Log
 import com.roleplayai.chatbot.data.model.Character
 import com.roleplayai.chatbot.data.model.Message
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.io.File
-import kotlin.random.Random
+import kotlin.math.max
 
 /**
- * Moteur llama.cpp avec IA qui génère des réponses UNIQUES
- * Analyse VRAIMENT le message utilisateur pour créer un dialogue immersif
+ * Moteur llama.cpp (LOCAL) via JNI.
+ *
+ * IMPORTANT:
+ * - Ce moteur utilise un VRAI modèle GGUF fourni par l'utilisateur (stocké dans /models).
+ * - La lib native est compilée via NDK. En CI, les sources llama.cpp sont récupérées
+ *   automatiquement (voir workflow) pour builder la lib.
  */
 class LlamaCppEngine(private val context: Context) {
     
     companion object {
         private const val TAG = "LlamaCppEngine"
+
+        @Volatile private var nativeLibLoaded: Boolean = false
+
+        init {
+            try {
+                System.loadLibrary("llama-android")
+                nativeLibLoaded = true
+                Log.i(TAG, "✅ Bibliothèque native llama-android chargée")
+            } catch (e: UnsatisfiedLinkError) {
+                nativeLibLoaded = false
+                Log.w(TAG, "⚠️ Bibliothèque native llama-android indisponible: ${e.message}")
+            } catch (e: SecurityException) {
+                nativeLibLoaded = false
+                Log.w(TAG, "⚠️ Impossible de charger llama-android: ${e.message}")
+            }
+        }
+
+        // JNI (voir app/src/main/cpp/llama-android.cpp)
+        @JvmStatic private external fun loadModel(modelPath: String, nThreads: Int, nCtx: Int): Long
+        @JvmStatic private external fun generate(
+            contextPtr: Long,
+            prompt: String,
+            maxTokens: Int,
+            temperature: Float,
+            topP: Float,
+            topK: Int,
+            repeatPenalty: Float
+        ): String
+        @JvmStatic private external fun freeModel(contextPtr: Long)
+        @JvmStatic private external fun isModelLoaded(contextPtr: Long): Boolean
     }
     
     private var modelPath: String? = null
+    private var contextPtr: Long = 0L
     
     fun setModelPath(path: String) {
         modelPath = path
         Log.i(TAG, "📁 Modèle configuré: $path")
     }
     
-    fun isAvailable(): Boolean = true
+    fun isAvailable(): Boolean {
+        val path = modelPath
+        return nativeLibLoaded && path != null && File(path).exists()
+    }
+
+    private fun defaultThreads(): Int {
+        // Sur mobile, trop de threads peut être contre-productif.
+        val cpu = Runtime.getRuntime().availableProcessors()
+        return max(1, minOf(4, cpu))
+    }
+
+    private fun ensureLoadedOrThrow() {
+        val path = modelPath ?: throw IllegalStateException("Aucun modèle GGUF configuré (Paramètres > llama.cpp)")
+        val f = File(path)
+        if (!f.exists()) throw IllegalStateException("Modèle GGUF introuvable: $path")
+        if (!nativeLibLoaded) throw IllegalStateException("Lib native llama-android indisponible sur cet appareil/build")
+
+        if (contextPtr != 0L && isModelLoaded(contextPtr)) {
+            return
+        }
+
+        // Charger / recharger le modèle
+        if (contextPtr != 0L) {
+            try {
+                freeModel(contextPtr)
+            } catch (e: Throwable) {
+                Log.w(TAG, "⚠️ freeModel a échoué (on continue): ${e.message}")
+            } finally {
+                contextPtr = 0L
+            }
+        }
+
+        val threads = defaultThreads()
+        val nCtx = 2048
+        contextPtr = loadModel(path, threads, nCtx)
+        if (contextPtr == 0L || !isModelLoaded(contextPtr)) {
+            contextPtr = 0L
+            throw IllegalStateException("Échec chargement modèle llama.cpp (vérifie le GGUF et l'espace disque)")
+        }
+    }
     
     /**
-     * Génère une réponse unique et pertinente
+     * Génère une réponse locale (llama.cpp) cohérente et immersive.
      */
     suspend fun generateResponse(
         character: Character,
@@ -40,30 +113,104 @@ class LlamaCppEngine(private val context: Context) {
         memoryContext: String = "",
         nsfwMode: Boolean = false
     ): String = withContext(Dispatchers.IO) {
-        
+        ensureLoadedOrThrow()
+
+        val prompt = buildPrompt(
+            character = character,
+            messages = messages,
+            username = username,
+            userGender = userGender,
+            memoryContext = memoryContext,
+            nsfwMode = nsfwMode
+        )
+
         try {
-            return@withContext UniqueResponseGenerator.generate(
-                character = character,
-                messages = messages,
-                username = username,
-                nsfwMode = nsfwMode
+            val raw = generate(
+                contextPtr = contextPtr,
+                prompt = prompt,
+                maxTokens = 420,
+                temperature = 0.9f,
+                topP = 0.95f,
+                topK = 40,
+                repeatPenalty = 1.12f
             )
+
+            val cleaned = cleanModelOutput(raw, character.name)
+            if (cleaned.isBlank()) {
+                throw IllegalStateException("Réponse vide du modèle local")
+            }
+            return@withContext cleaned
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Erreur génération", e)
-            return@withContext generateRandomError(username)
+            Log.e(TAG, "❌ Erreur génération llama.cpp", e)
+            throw e
         }
     }
-    
-    private fun generateRandomError(username: String): String {
-        val actions = listOf("cligne des yeux", "secoue la tête", "fronce les sourcils", "se gratte la tête")
-        val thoughts = listOf("Hein ?", "Qu'est-ce qu'il/elle dit ?", "Je suis perdu(e)", "J'ai pas compris")
-        val dialogues = listOf(
-            "Euh... peux-tu répéter ?",
-            "Désolé(e), j'ai pas saisi...",
-            "Attends, quoi ?",
-            "Je... j'ai pas compris $username"
+
+    private fun buildPrompt(
+        character: Character,
+        messages: List<Message>,
+        username: String,
+        userGender: String,
+        memoryContext: String,
+        nsfwMode: Boolean
+    ): String {
+        val recent = messages.takeLast(16)
+
+        val nsfwLine = if (nsfwMode) {
+            "- Mode adulte: reste consensuel, progression naturelle, cohérent avec le tempérament."
+        } else {
+            "- Contenu tout public."
+        }
+
+        val sb = StringBuilder()
+        sb.append(
+            """
+            ### SYSTEM
+            Tu es ${character.name} (personnage de roleplay), pas un assistant.
+            - Personnalité: ${character.personality}
+            - Description: ${character.description}
+            - Scénario: ${character.scenario}
+            $nsfwLine
+            - Règles: ne décris QUE tes actions (pas celles de l'utilisateur). Reste fidèle au caractère/temperament.
+            - Initiative: réagis + fais avancer la scène (propose une action ou un angle), pose au plus une question utile.
+            - Style: 1-3 paragraphes, immersif, concret, pas de métadonnées.
+            - Format: *action* (pensée) "dialogue"
+            Utilisateur: $username (sexe: $userGender)
+            """.trimIndent()
         )
-        return "*${actions.random()}* (${thoughts.random()}) \"${dialogues.random()}\""
+
+        if (memoryContext.isNotBlank()) {
+            sb.append("\n\n### MEMOIRE\n")
+            sb.append(memoryContext.trim())
+        }
+
+        sb.append("\n\n### CONVERSATION\n")
+        for (m in recent) {
+            val speaker = if (m.isUser) username else character.name
+            sb.append(speaker).append(": ").append(m.content.trim()).append("\n")
+        }
+
+        sb.append("\n### REPONSE\n")
+        sb.append(character.name).append(":")
+        return sb.toString()
+    }
+
+    private fun cleanModelOutput(raw: String, characterName: String): String {
+        var out = raw.trim()
+        out = out.removePrefix("$characterName:")
+        out = out.trim()
+
+        // Couper si le modèle recommence un nouveau speaker
+        val lines = out.lines()
+        val kept = mutableListOf<String>()
+        for (line in lines) {
+            val t = line.trim()
+            if (t.matches(Regex("^(Utilisateur|$characterName|Assistant|IA)\\s*:.*", RegexOption.IGNORE_CASE))) {
+                break
+            }
+            kept.add(line)
+        }
+        return kept.joinToString("\n").trim()
     }
     
     fun getAvailableModels(): List<File> {
@@ -85,304 +232,4 @@ class LlamaCppEngine(private val context: Context) {
         }
         return modelsDir
     }
-}
-
-/**
- * Générateur de Réponses UNIQUES
- * Chaque réponse est générée SPÉCIFIQUEMENT en lien avec ce que l'utilisateur a dit
- */
-private object UniqueResponseGenerator {
-    
-    private const val TAG = "UniqueResponseGenerator"
-    
-    // Compteur pour garantir l'unicité
-    private var responseCounter = 0
-    
-    suspend fun generate(
-        character: Character,
-        messages: List<Message>,
-        username: String,
-        nsfwMode: Boolean
-    ): String {
-        
-        delay(Random.nextLong(600, 1200))
-        
-        responseCounter++
-        val uniqueId = "${System.currentTimeMillis()}_$responseCounter"
-        
-        Log.d(TAG, "🎯 Génération UNIQUE #$responseCounter pour ${character.name}")
-        
-        val userMsg = messages.lastOrNull { it.isUser }?.content ?: ""
-        val botLastMsg = messages.reversed().firstOrNull { !it.isUser }?.content ?: ""
-        
-        // ANALYSE COMPLÈTE du message utilisateur
-        val analysis = analyzeUserMessage(userMsg, botLastMsg, nsfwMode)
-        
-        Log.d(TAG, "📊 Analyse: ${analysis}")
-        
-        // Générer réponse UNIQUE basée sur l'analyse
-        return buildUniqueResponse(analysis, character, username, uniqueId)
-    }
-    
-    /**
-     * ANALYSE PROFONDE du message utilisateur
-     */
-    private fun analyzeUserMessage(userMsg: String, botLastMsg: String, nsfwMode: Boolean): MessageAnalysis {
-        val msg = userMsg.lowercase()
-        
-        // Extraire les mots-clés IMPORTANTS
-        val keywords = extractKeywords(msg)
-        
-        // Détecter le type de message
-        val type = when {
-            msg.matches(Regex(".*\\b(salut|bonjour|hey|coucou|yo)\\b.*")) -> "salutation"
-            msg.matches(Regex(".*\\b(oui|ok|d'accord|allons-y|vas-y)\\b.*")) -> "acceptation"
-            msg.matches(Regex(".*\\b(non|pas|refus)\\b.*")) -> "refus"
-            msg.contains("?") -> "question"
-            nsfwMode && msg.matches(Regex(".*\\b(embrasse|caresse|touche|déshabille|lit|sexe|baiser)\\b.*")) -> "nsfw_initiative"
-            msg.matches(Regex(".*\\b(je|moi|mon|ma|mes)\\b.*")) -> "partage_perso"
-            msg.length < 15 -> "court"
-            else -> "statement"
-        }
-        
-        // Détecter l'émotion
-        val emotion = when {
-            msg.matches(Regex(".*\\b(content|heureux|joyeux|super|génial)\\b.*")) -> "joyeux"
-            msg.matches(Regex(".*\\b(triste|mal|mauvais|nul)\\b.*")) -> "triste"
-            msg.matches(Regex(".*\\b(énervé|colère|furieux)\\b.*")) -> "énervé"
-            msg.matches(Regex(".*\\b(excité|motivé|hype)\\b.*")) || msg.contains("!") -> "excité"
-            msg.matches(Regex(".*\\b(calme|tranquille|zen)\\b.*")) -> "calme"
-            else -> "neutre"
-        }
-        
-        // Détecter si c'est une réponse à une question/proposition du bot
-        val respondingToBot = when {
-            botLastMsg.contains("?") && (type == "acceptation" || type == "refus" || type == "court") -> true
-            botLastMsg.matches(Regex(".*\\b(veux|allons|on va|ça te dit)\\b.*")) && type == "acceptation" -> true
-            else -> false
-        }
-        
-        return MessageAnalysis(
-            originalMessage = userMsg,
-            keywords = keywords,
-            type = type,
-            emotion = emotion,
-            respondingToBot = respondingToBot,
-            botContext = if (respondingToBot) botLastMsg else ""
-        )
-    }
-    
-    /**
-     * Extrait les mots-clés importants du message
-     */
-    private fun extractKeywords(msg: String): List<String> {
-        val stopWords = setOf("le", "la", "les", "un", "une", "des", "de", "du", "et", "ou", "mais", "donc", "car", "si", "que", "qui", "quoi", "je", "tu", "il", "elle", "nous", "vous", "ils", "elles", "me", "te", "se", "mon", "ton", "son", "ma", "ta", "sa", "mes", "tes", "ses", "ce", "cette", "ces", "à", "en", "pour", "par", "sur", "avec", "sans", "dans")
-        
-        return msg.split(Regex("[\\s,;.!?]+"))
-            .map { it.lowercase().trim() }
-            .filter { it.length > 2 && !stopWords.contains(it) }
-            .take(5) // Top 5 mots importants
-    }
-    
-    /**
-     * Génère une réponse UNIQUE basée sur l'analyse
-     */
-    private fun buildUniqueResponse(
-        analysis: MessageAnalysis,
-        character: Character,
-        username: String,
-        uniqueId: String
-    ): String {
-        
-        // Générer des éléments UNIQUES
-        val action = generateUniqueAction(analysis, uniqueId)
-        val thought = generateUniqueThought(analysis, uniqueId)
-        val dialogue = generateUniqueDialogue(analysis, character, username, uniqueId)
-        
-        return "*$action* ($thought) \"$dialogue\""
-    }
-    
-    /**
-     * Génère une action UNIQUE
-     */
-    private fun generateUniqueAction(analysis: MessageAnalysis, uniqueId: String): String {
-        val seed = uniqueId.hashCode()
-        val rnd = Random(seed)
-        
-        val baseActions = when (analysis.emotion) {
-            "joyeux" -> listOf("sourit", "rayonne", "illumine", "s'éclaire", "brille", "pétille")
-            "triste" -> listOf("baisse", "soupire", "s'attriste", "fronce", "se rembrunit", "s'assombrit")
-            "énervé" -> listOf("serre", "grince", "fronce", "se tend", "raidit", "durcit")
-            "excité" -> listOf("bondit", "vibre", "frémit", "tressaille", "s'anime", "s'enflamme")
-            "calme" -> listOf("respire", "se détend", "s'apaise", "se pose", "contemple", "observe")
-            else -> listOf("regarde", "fixe", "observe", "considère", "examine", "scrute")
-        }
-        
-        val details = listOf(
-            "avec intensité",
-            "doucement",
-            "légèrement",
-            "profondément",
-            "sincèrement",
-            "naturellement",
-            "spontanément",
-            "visiblement",
-            "imperceptiblement",
-            "manifestement"
-        )
-        
-        val bodyParts = listOf("les yeux", "la tête", "les mains", "les lèvres", "le visage", "les épaules", "le corps")
-        
-        val verb = baseActions[rnd.nextInt(baseActions.size)]
-        val detail = details[rnd.nextInt(details.size)]
-        val part = bodyParts[rnd.nextInt(bodyParts.size)]
-        
-        return "$verb $part $detail"
-    }
-    
-    /**
-     * Génère une pensée UNIQUE
-     */
-    private fun generateUniqueThought(analysis: MessageAnalysis, uniqueId: String): String {
-        val seed = uniqueId.hashCode() + 1000
-        val rnd = Random(seed)
-        
-        // Utiliser les mots-clés pour créer une pensée contextuelle
-        val keywordContext = if (analysis.keywords.isNotEmpty()) {
-            val keyword = analysis.keywords[rnd.nextInt(analysis.keywords.size)]
-            when (rnd.nextInt(5)) {
-                0 -> "Il/Elle parle de $keyword..."
-                1 -> "$keyword, c'est intéressant"
-                2 -> "Je me demande pourquoi $keyword"
-                3 -> "Ah, $keyword..."
-                else -> "Donc $keyword, hmm"
-            }
-        } else {
-            null
-        }
-        
-        if (keywordContext != null && rnd.nextBoolean()) {
-            return keywordContext
-        }
-        
-        val emotionThoughts = when (analysis.emotion) {
-            "joyeux" -> listOf("Ça me fait plaisir", "Super ambiance", "J'aime cette énergie", "C'est génial", "Quelle joie", "Ça me rend heureux(se)")
-            "triste" -> listOf("Ça me touche", "Je ressens sa peine", "C'est dur", "Je comprends", "Pauvre lui/elle", "Ça fait mal")
-            "énervé" -> listOf("Il/Elle semble agité(e)", "Y'a de la tension", "C'est intense", "Woah", "Calmez-vous", "Pourquoi cette agressivité")
-            "excité" -> listOf("Quelle énergie !", "C'est fou !", "Trop bien !", "J'adore ça", "On décolle", "C'est parti")
-            "calme" -> listOf("C'est apaisant", "Tranquille", "Zen", "Serein", "Posé", "Cool")
-            else -> listOf("Hmm", "Intéressant", "Je vois", "D'accord", "Ah bon", "Vraiment", "Tiens donc", "Curieux")
-        }
-        
-        return emotionThoughts[rnd.nextInt(emotionThoughts.size)]
-    }
-    
-    /**
-     * Génère un dialogue UNIQUE et PERTINENT
-     */
-    private fun generateUniqueDialogue(
-        analysis: MessageAnalysis,
-        character: Character,
-        username: String,
-        uniqueId: String
-    ): String {
-        val seed = uniqueId.hashCode() + 2000
-        val rnd = Random(seed)
-        
-        // Si réponse à une proposition du bot
-        if (analysis.respondingToBot && analysis.type == "acceptation") {
-            val responses = listOf(
-                "Génial ! Allons-y alors, j'ai hâte !",
-                "Super ! Ça va être top ! On y va ?",
-                "Parfait ! Je suis chaud(e) ! C'est parti !",
-                "Cool ! On va s'éclater ! Allez !",
-                "Excellent ! Allons-y tout de suite !",
-                "Ouais ! Trop bien ! Viens !"
-            )
-            return responses[rnd.nextInt(responses.size)]
-        }
-        
-        // Utiliser les mots-clés pour créer une réponse contextuelle
-        if (analysis.keywords.isNotEmpty()) {
-            val keyword = analysis.keywords.first()
-            
-            return when (analysis.type) {
-                "question" -> when (rnd.nextInt(4)) {
-                    0 -> "Concernant $keyword ? Hmm, c'est ${listOf("complexe", "nuancé", "intéressant", "variable")[rnd.nextInt(4)]}. Toi, qu'en penses-tu ?"
-                    1 -> "Ah, $keyword ! ${listOf("Bonne question", "Intéressant", "Ça dépend", "Je dirais que")[rnd.nextInt(4)]}... Et toi ?"
-                    2 -> "Tu me demandes pour $keyword ? ${listOf("C'est personnel", "Ça varie", "Difficile à dire", "Je ne sais pas trop")[rnd.nextInt(4)]}."
-                    else -> "Sur $keyword, ${listOf("je pense que", "pour moi", "selon moi", "je dirais")[rnd.nextInt(4)]} c'est ${listOf("important", "intéressant", "complexe", "subjectif")[rnd.nextInt(4)]}."
-                }
-                
-                "partage_perso" -> when (rnd.nextInt(4)) {
-                    0 -> "Ah, tu me parles de $keyword ! ${listOf("C'est cool", "Intéressant", "Raconte", "Dis-m'en plus")[rnd.nextInt(4)]} !"
-                    1 -> "Donc toi et $keyword... ${listOf("Développe", "Continue", "Explique", "Raconte")[rnd.nextInt(4)]} !"
-                    2 -> "$keyword, hein ? ${listOf("J'écoute", "Je veux tout savoir", "Vas-y", "Je suis curieux(se)")[rnd.nextInt(4)]} !"
-                    else -> "Tu évoques $keyword... ${listOf("Fascinant", "Intrigant", "Captivant", "Curieux")[rnd.nextInt(4)]} ! Et alors ?"
-                }
-                
-                "nsfw_initiative" -> when (rnd.nextInt(5)) {
-                    0 -> "Mmh... $keyword... ${listOf("oui", "continue", "j'aime ça", "encore")[rnd.nextInt(4)]}..."
-                    1 -> "Oh $username... avec $keyword... ${listOf("c'est si bon", "ne t'arrête pas", "j'adore", "plus")[rnd.nextInt(4)]}..."
-                    2 -> "$keyword ? ${listOf("Prends-moi", "Fais-moi", "Viens", "Touche-moi")[rnd.nextInt(4)]}..."
-                    3 -> "Tu veux $keyword ? ${listOf("Oui", "Moi aussi", "Allons-y", "Je te veux")[rnd.nextInt(4)]}..."
-                    else -> "Ah, $keyword... ${listOf("je frissonne", "mon corps réagit", "tu me rends fou/folle", "j'ai envie")[rnd.nextInt(4)]}..."
-                }
-                
-                else -> when (rnd.nextInt(5)) {
-                    0 -> "Tu mentionnes $keyword... ${listOf("Pourquoi ça", "C'est pertinent", "Ça m'interpelle", "Intéressant choix")[rnd.nextInt(4)]} ?"
-                    1 -> "$keyword, d'accord... ${listOf("Je comprends", "Je vois", "OK", "Noté")[rnd.nextInt(4)]}. ${listOf("Et sinon", "Aussi", "Puis", "Et")[rnd.nextInt(4)]} ?"
-                    2 -> "Ah, $keyword ! ${listOf("Moi aussi", "Pareil", "Je connais", "Je vois")[rnd.nextInt(4)]} ! ${listOf("Comment", "Pourquoi", "Quand", "Où")[rnd.nextInt(4)]} ?"
-                    3 -> "Donc $keyword... ${listOf("Développe", "Continue", "Précise", "Explique")[rnd.nextInt(4)]} un peu !"
-                    else -> "Tu dis $keyword... ${listOf("et alors", "et donc", "et puis", "et après")[rnd.nextInt(4)]} ?"
-                }
-            }
-        }
-        
-        // Sinon, générer selon le type
-        return when (analysis.type) {
-            "salutation" -> listOf(
-                "Salut $username ! Ça roule ?",
-                "Hey ! Content(e) de te voir !",
-                "Coucou ! Quoi de beau ?",
-                "Yo ! Ça gaze ?",
-                "Bonjour ! Comment tu vas ?",
-                "Salut toi ! Ça va bien ?"
-            )[rnd.nextInt(6)]
-            
-            "acceptation" -> listOf(
-                "Cool ! On est d'accord !",
-                "Super ! Nickel !",
-                "Parfait ! Allons-y !",
-                "Génial ! C'est parti !",
-                "Top ! On y va !"
-            )[rnd.nextInt(5)]
-            
-            "refus" -> listOf(
-                "Ah bon ? Pourquoi ça ?",
-                "Dommage... Bon OK.",
-                "Ah... Pas grave.",
-                "D'accord, pas de souci.",
-                "OK... Une autre fois."
-            )[rnd.nextInt(5)]
-            
-            else -> listOf(
-                "Hmm... ${listOf("intéressant", "curieux", "étonnant", "surprenant")[rnd.nextInt(4)]}. Et toi ?",
-                "D'accord... ${listOf("Je vois", "Je comprends", "OK", "Noté")[rnd.nextInt(4)]}. ${listOf("Raconte", "Continue", "Développe", "Explique")[rnd.nextInt(4)]} !",
-                "${listOf("Ah", "Oh", "Eh", "Tiens")[rnd.nextInt(4)]} ! ${listOf("Et alors", "Et donc", "Et puis", "Ensuite")[rnd.nextInt(4)]} ?",
-                "${listOf("Vraiment", "Sérieux", "Sans blague", "C'est vrai")[rnd.nextInt(4)]} ? ${listOf("Raconte", "Dis-moi", "Explique", "Détaille")[rnd.nextInt(4)]} !",
-                "${listOf("Intéressant", "Fascinant", "Curieux", "Étonnant")[rnd.nextInt(4)]}... ${listOf("Continue", "Et après", "Ensuite", "Puis")[rnd.nextInt(4)]} ?"
-            )[rnd.nextInt(5)]
-        }
-    }
-    
-    // Modèle de données
-    data class MessageAnalysis(
-        val originalMessage: String,
-        val keywords: List<String>,
-        val type: String,
-        val emotion: String,
-        val respondingToBot: Boolean,
-        val botContext: String
-    )
 }
