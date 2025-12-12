@@ -175,13 +175,18 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 
                 val selectedEngine = preferencesManager.selectedAIEngine.first()
                 val enableFallbacks = preferencesManager.enableAIFallbacks.first()
-                val groqApiKey = groqKeyManager.getCurrentKey()
+                
+                // Récupérer TOUTES les clés Groq pour la rotation
+                val allGroqKeys = groqKeyManager.getAllKeys()
+                val groqApiKey = allGroqKeys.joinToString(",") // Jointure pour AIOrchestrator
+                
                 val groqModelId = preferencesManager.groqModelId.first()
                 val nsfwMode = preferencesManager.nsfwMode.first()
                 val llamaCppModelPath = preferencesManager.llamaCppModelPath.first()
                 
                 android.util.Log.i("ChatViewModel", "🤖 Moteur sélectionné: $selectedEngine")
                 android.util.Log.d("ChatViewModel", "Fallbacks: $enableFallbacks, NSFW: $nsfwMode")
+                android.util.Log.d("ChatViewModel", "🔑 Clés Groq disponibles: ${allGroqKeys.size}")
                 
                 // Convertir le string en enum
                 val engineEnum = try {
