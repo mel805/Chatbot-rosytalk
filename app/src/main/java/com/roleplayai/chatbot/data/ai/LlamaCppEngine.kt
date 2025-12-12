@@ -1,6 +1,7 @@
 package com.roleplayai.chatbot.data.ai
 
 import android.content.Context
+import android.app.ActivityManager
 import android.util.Log
 import com.roleplayai.chatbot.data.model.Character
 import com.roleplayai.chatbot.data.model.Message
@@ -105,6 +106,13 @@ class LlamaCppEngine(private val context: Context) {
         val f = File(path)
         if (!f.exists()) throw IllegalStateException("Modèle GGUF introuvable: $path")
         if (!nativeLibLoaded) throw IllegalStateException("Lib native llama-android indisponible sur cet appareil/build")
+
+        // Empêcher les crashes (OOM) sur modèles trop lourds (ex: Mistral 7B) en amont.
+        // NOTE: même si ça "pourrait" marcher sur certains devices, le crash UX est pire qu'un message.
+        val sizeMb = (f.length() / (1024 * 1024)).toInt()
+        if (sizeMb >= 2500) {
+            throw IllegalStateException("Ce GGUF (${sizeMb} MB) est trop lourd pour l’IA locale sur la majorité des appareils et peut faire crasher l’application. Utilise TinyLlama/Phi-2.")
+        }
 
         if (contextPtr != 0L && isModelLoaded(contextPtr) && loadedModelPath == path) {
             return

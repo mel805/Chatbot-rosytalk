@@ -28,9 +28,25 @@ class AIOrchestrator(
     // Gestion simple de la rotation des clés Groq
     private var currentGroqKeyIndex = 0
     private val failedGroqKeys = mutableSetOf<String>()
+
+    // IMPORTANT: conserver une instance llama.cpp pour éviter de recharger le GGUF à chaque message
+    private val llamaEngine: LlamaCppEngine by lazy { LlamaCppEngine(context) }
+    private var llamaEnginePath: String? = null
     
     companion object {
         private const val TAG = "AIOrchestrator"
+    }
+
+    private fun getOrConfigureLlamaEngine(modelPath: String?): LlamaCppEngine {
+        if (modelPath.isNullOrBlank()) {
+            // L'appelant gère l'erreur "GGUF non configuré"
+            return llamaEngine
+        }
+        if (llamaEnginePath != modelPath) {
+            llamaEngine.setModelPath(modelPath)
+            llamaEnginePath = modelPath
+        }
+        return llamaEngine
     }
     
     /**
@@ -258,11 +274,8 @@ class AIOrchestrator(
             }
             
             AIEngine.LLAMA_CPP -> {
-                val llamaEngine = LlamaCppEngine(context)
-                if (config.llamaCppModelPath != null) {
-                    llamaEngine.setModelPath(config.llamaCppModelPath)
-                }
-                llamaEngine.generateResponse(character, messages, username, userGender, memoryContext, config.nsfwMode)
+                val engineInstance = getOrConfigureLlamaEngine(config.llamaCppModelPath)
+                engineInstance.generateResponse(character, messages, username, userGender, memoryContext, config.nsfwMode)
             }
         }
     }
@@ -285,8 +298,8 @@ class AIOrchestrator(
             when (engine) {
                 AIEngine.GROQ -> config.groqApiKey?.isNotBlank() == true
                 AIEngine.LLAMA_CPP -> {
-                    val llamaEngine = LlamaCppEngine(context)
-                    llamaEngine.isAvailable()
+                    val engineInstance = getOrConfigureLlamaEngine(config.llamaCppModelPath)
+                    engineInstance.isAvailable()
                 }
             }
         } catch (e: Exception) {
