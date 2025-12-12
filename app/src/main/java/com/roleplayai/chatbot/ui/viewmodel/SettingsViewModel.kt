@@ -78,18 +78,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
     
-    fun setGeminiApiKey(apiKey: String) {
-        viewModelScope.launch {
-            preferencesManager.setGeminiApiKey(apiKey)
-        }
-    }
-    
-    fun setGeminiModelId(modelId: String) {
-        viewModelScope.launch {
-            preferencesManager.setGeminiModelId(modelId)
-        }
-    }
-    
     fun setNsfwMode(enabled: Boolean) {
         viewModelScope.launch {
             val user = authManager.getCurrentUser()
