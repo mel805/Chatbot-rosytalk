@@ -163,8 +163,11 @@ class AIOrchestrator(
         
         // Dernier recours : llama.cpp en mode Kotlin pur (ne peut jamais échouer)
         Log.w(TAG, "🆘 Fallback ultime: llama.cpp (générateur intelligent Kotlin)")
-        val llamaEngine = LlamaCppEngine(context, "", config.nsfwMode)
-        val response = llamaEngine.generateResponse(character, messages, username, userGender, memoryContext)
+        val llamaEngine = LlamaCppEngine(context)
+        if (config.llamaCppModelPath != null) {
+            llamaEngine.setModelPath(config.llamaCppModelPath)
+        }
+        val response = llamaEngine.generateResponse(character, messages, username, userGender, memoryContext, config.nsfwMode)
         val duration = System.currentTimeMillis() - startTime
         
         return@withContext GenerationResult(
@@ -205,8 +208,11 @@ class AIOrchestrator(
             }
             
             AIEngine.LLAMA_CPP -> {
-                val llamaEngine = LlamaCppEngine(context, config.llamaCppModelPath ?: "", config.nsfwMode)
-                llamaEngine.generateResponse(character, messages, username, userGender, memoryContext)
+                val llamaEngine = LlamaCppEngine(context)
+                if (config.llamaCppModelPath != null) {
+                    llamaEngine.setModelPath(config.llamaCppModelPath)
+                }
+                llamaEngine.generateResponse(character, messages, username, userGender, memoryContext, config.nsfwMode)
             }
             
         }
@@ -243,7 +249,7 @@ class AIOrchestrator(
                 AIEngine.GEMINI -> config.geminiApiKey?.isNotBlank() == true
                 
                 AIEngine.LLAMA_CPP -> {
-                    val llamaEngine = LlamaCppEngine(context, config.llamaCppModelPath ?: "", false)
+                    val llamaEngine = LlamaCppEngine(context)
                     llamaEngine.isAvailable()
                 }
             }
