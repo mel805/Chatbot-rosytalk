@@ -130,7 +130,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     
     // Google Gemini AI
-    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
+    implementation("com.google.ai.client.generativeai:generativeai:0.7.0")
     
     // Networking
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
