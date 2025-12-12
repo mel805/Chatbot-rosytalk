@@ -23,28 +23,21 @@ import kotlinx.coroutines.Dispatchers
  */
 class GeminiEngine(
     private val apiKey: String,
-    private val model: String = "gemini-1.5-flash",
+    private val model: String = "gemini-pro",
     private val nsfwMode: Boolean = false
 ) {
     
     companion object {
         private const val TAG = "GeminiEngine"
         
-        // Modèles Gemini disponibles pour SDK 0.7.0 (v1beta)
+        // Modèles Gemini disponibles pour SDK 0.1.2 (stable)
         val AVAILABLE_MODELS = listOf(
             GeminiModel(
-                id = "gemini-1.5-flash",
-                name = "Gemini 1.5 Flash",
-                description = "Rapide et efficace, 1M tokens",
-                contextLength = 1048576,
+                id = "gemini-pro",
+                name = "Gemini Pro",
+                description = "Modèle principal, 32k tokens",
+                contextLength = 32768,
                 recommended = true
-            ),
-            GeminiModel(
-                id = "gemini-1.5-pro",
-                name = "Gemini 1.5 Pro",
-                description = "Plus puissant, 2M tokens",
-                contextLength = 2097152,
-                recommended = false
             )
         )
     }

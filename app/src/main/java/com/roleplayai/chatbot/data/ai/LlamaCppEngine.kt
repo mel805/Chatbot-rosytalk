@@ -289,7 +289,7 @@ private class SmartResponseGenerator {
     )
     
     /**
-     * Génère une réponse intelligente et contextuelle
+     * Génère une réponse vraiment intelligente (comme Groq)
      */
     suspend fun generate(
         character: Character,
@@ -301,64 +301,201 @@ private class SmartResponseGenerator {
     ): String = withContext(Dispatchers.IO) {
         
         // Simuler temps de génération réaliste
-        delay(Random.nextLong(500, 1500))
+        delay(Random.nextLong(800, 1800))
         
-        Log.d(TAG, "🧠 Génération intelligente contextuelle pour ${character.name}")
+        Log.d(TAG, "🧠 Génération intelligente avancée pour ${character.name}")
         
         val lastUserMessage = messages.lastOrNull { it.isUser }?.content ?: "Bonjour"
-        val recentMessages = messages.takeLast(10)
+        val recentMessages = messages.takeLast(15)
         
-        // Extraire le contexte de la conversation
-        val conversationContext = buildConversationContext(recentMessages, username, character.name)
+        // 1. Analyser le contexte complet de la conversation
+        val conversationSummary = analyzeConversationFlow(recentMessages, character.name, username)
         
-        // Extraire mots-clés du message utilisateur
-        val keywords = extractKeywords(lastUserMessage)
+        // 2. Comprendre le sujet actuel
+        val currentTopic = extractCurrentTopic(lastUserMessage, recentMessages)
         
-        // Analyser l'intention du message
-        val intent = detectIntent(lastUserMessage)
+        // 3. Déterminer le type de réponse nécessaire
+        val responseNeeded = determineResponseType(lastUserMessage, recentMessages, currentTopic)
         
-        // Analyser l'émotion appropriée
-        val emotion = detectEmotion(lastUserMessage, character.personality, nsfwMode)
-        
-        // Générer réponse contextuelle
-        val response = buildContextualResponse(
+        // 4. Générer une réponse contextuelle et cohérente
+        val response = generateAdvancedResponse(
             character = character,
             userMessage = lastUserMessage,
-            keywords = keywords,
-            intent = intent,
-            emotion = emotion,
-            conversationContext = conversationContext,
+            recentMessages = recentMessages,
+            conversationSummary = conversationSummary,
+            currentTopic = currentTopic,
+            responseType = responseNeeded,
             username = username,
             nsfwMode = nsfwMode
         )
         
-        Log.i(TAG, "✅ Réponse contextuelle: ${response.take(100)}...")
+        Log.i(TAG, "✅ Réponse avancée générée: ${response.take(100)}...")
         return@withContext response
     }
     
     /**
-     * Construit le contexte de la conversation
+     * Analyse le flux de la conversation
      */
-    private fun buildConversationContext(
+    private fun analyzeConversationFlow(
         messages: List<Message>,
-        username: String,
-        characterName: String
-    ): String {
-        if (messages.isEmpty()) return ""
-        
-        val context = StringBuilder()
-        messages.takeLast(5).forEach { msg ->
-            val speaker = if (msg.isUser) username else characterName
-            context.append("$speaker: ${msg.content.take(100)}\n")
+        characterName: String,
+        username: String
+    ): ConversationSummary {
+        if (messages.isEmpty()) {
+            return ConversationSummary(
+                recentTopics = listOf("première rencontre"),
+                conversationMood = "neutre",
+                lastBotAction = "aucune",
+                relationshipLevel = "inconnu"
+            )
         }
-        return context.toString()
+        
+        // Extraire les sujets récents
+        val topics = mutableListOf<String>()
+        messages.takeLast(5).forEach { msg ->
+            extractKeywords(msg.content).forEach { keyword ->
+                if (keyword.length > 3) topics.add(keyword)
+            }
+        }
+        
+        // Déterminer l'ambiance
+        val mood = when {
+            messages.any { it.content.contains(Regex("(?i)(aime|adore|super|génial|cool)")) } -> "positif"
+            messages.any { it.content.contains(Regex("(?i)(triste|nul|mauvais|ennuy)")) } -> "négatif"
+            messages.any { it.content.contains(Regex("(?i)(bizarre|étrange|curieux)")) } -> "curieux"
+            else -> "neutre"
+        }
+        
+        // Dernière action du bot
+        val lastBotMessage = messages.lastOrNull { !it.isUser }?.content ?: ""
+        val lastAction = when {
+            lastBotMessage.contains("?") -> "a posé une question"
+            lastBotMessage.contains(Regex("(?i)(raconte|explique|dis-moi)")) -> "a demandé des détails"
+            lastBotMessage.contains(Regex("(?i)(d'accord|je vois|intéressant)")) -> "a acquiescé"
+            else -> "a répondu"
+        }
+        
+        // Niveau de relation (basé sur le nombre de messages)
+        val relationship = when {
+            messages.size < 5 -> "inconnu"
+            messages.size < 15 -> "nouvelle connaissance"
+            messages.size < 30 -> "connaissance"
+            else -> "familier"
+        }
+        
+        return ConversationSummary(
+            recentTopics = topics.distinct().take(3),
+            conversationMood = mood,
+            lastBotAction = lastAction,
+            relationshipLevel = relationship
+        )
+    }
+    
+    data class ConversationSummary(
+        val recentTopics: List<String>,
+        val conversationMood: String,
+        val lastBotAction: String,
+        val relationshipLevel: String
+    )
+    
+    /**
+     * Extrait le sujet actuel
+     */
+    private fun extractCurrentTopic(userMessage: String, recentMessages: List<Message>): String {
+        // Extraire les mots-clés importants du dernier message
+        val keywords = extractKeywords(userMessage)
+        if (keywords.isNotEmpty()) {
+            return keywords.first()
+        }
+        
+        // Sinon, regarder les messages récents
+        recentMessages.reversed().take(3).forEach { msg ->
+            val msgKeywords = extractKeywords(msg.content)
+            if (msgKeywords.isNotEmpty()) {
+                return msgKeywords.first()
+            }
+        }
+        
+        return "conversation générale"
+    }
+    
+    /**
+     * Détermine le type de réponse nécessaire
+     */
+    private fun determineResponseType(
+        userMessage: String,
+        recentMessages: List<Message>,
+        currentTopic: String
+    ): ResponseType {
+        val msgLower = userMessage.lowercase()
+        
+        return when {
+            // Questions directes
+            msgLower.matches(Regex(".*\\b(qui es-tu|tu es qui|ton nom)\\b.*")) -> ResponseType.IDENTITY
+            msgLower.matches(Regex(".*\\b(tu aimes|aimes-tu|préfères-tu)\\b.*")) -> ResponseType.PREFERENCE
+            msgLower.matches(Regex(".*\\b(comment|pourquoi|où|quand)\\b.*\\?")) -> ResponseType.EXPLANATION
+            msgLower.contains("?") -> ResponseType.QUESTION
+            
+            // Affirmations avec sentiment
+            msgLower.matches(Regex(".*\\b(super|génial|cool|excellent|top)\\b.*")) -> ResponseType.POSITIVE_REACTION
+            msgLower.matches(Regex(".*\\b(nul|mauvais|terrible|ennuyeux)\\b.*")) -> ResponseType.NEGATIVE_REACTION
+            
+            // Récit/histoire
+            msgLower.matches(Regex(".*\\b(j'ai|je suis allé|il s'est passé|aujourd'hui)\\b.*")) -> ResponseType.STORY_LISTENING
+            
+            // Opinions
+            msgLower.matches(Regex(".*\\b(je pense|selon moi|à mon avis|je trouve)\\b.*")) -> ResponseType.OPINION_RESPONSE
+            
+            // Continuation de conversation
+            recentMessages.size > 3 -> ResponseType.CONVERSATION_FLOW
+            
+            // Salutations
+            msgLower.matches(Regex(".*\\b(salut|bonjour|hey|coucou)\\b.*")) -> ResponseType.GREETING
+            
+            else -> ResponseType.GENERAL
+        }
+    }
+    
+    enum class ResponseType {
+        IDENTITY, PREFERENCE, EXPLANATION, QUESTION,
+        POSITIVE_REACTION, NEGATIVE_REACTION,
+        STORY_LISTENING, OPINION_RESPONSE,
+        CONVERSATION_FLOW, GREETING, GENERAL
+    }
+    
+    /**
+     * Génère une réponse avancée et cohérente
+     */
+    private fun generateAdvancedResponse(
+        character: Character,
+        userMessage: String,
+        recentMessages: List<Message>,
+        conversationSummary: ConversationSummary,
+        currentTopic: String,
+        responseType: ResponseType,
+        username: String,
+        nsfwMode: Boolean
+    ): String {
+        return when (responseType) {
+            ResponseType.IDENTITY -> generateIdentityResponse(character, username)
+            ResponseType.PREFERENCE -> generatePreferenceResponse(character, userMessage, currentTopic, nsfwMode)
+            ResponseType.EXPLANATION -> generateExplanationResponse(userMessage, currentTopic, conversationSummary)
+            ResponseType.QUESTION -> generateQuestionAnswer(userMessage, currentTopic, conversationSummary)
+            ResponseType.POSITIVE_REACTION -> generatePositiveReaction(currentTopic, conversationSummary, nsfwMode)
+            ResponseType.NEGATIVE_REACTION -> generateNegativeReaction(currentTopic, conversationSummary)
+            ResponseType.STORY_LISTENING -> generateStoryResponse(userMessage, currentTopic, conversationSummary, nsfwMode)
+            ResponseType.OPINION_RESPONSE -> generateOpinionReaction(userMessage, currentTopic, conversationSummary)
+            ResponseType.CONVERSATION_FLOW -> generateFlowResponse(recentMessages, currentTopic, conversationSummary, nsfwMode)
+            ResponseType.GREETING -> generateGreetingResponse(character, username, conversationSummary)
+            ResponseType.GENERAL -> generateGeneralResponse(userMessage, currentTopic, conversationSummary, nsfwMode)
+        }
     }
     
     /**
      * Extrait les mots-clés importants
      */
     private fun extractKeywords(message: String): List<String> {
-        val stopWords = setOf("le", "la", "les", "un", "une", "des", "de", "du", "et", "ou", "mais", "donc", "car", "je", "tu", "il", "elle", "nous", "vous", "ils", "elles", "est", "sont", "a", "ai", "as", "avez", "ont")
+        val stopWords = setOf("le", "la", "les", "un", "une", "des", "de", "du", "et", "ou", "mais", "donc", "car", "je", "tu", "il", "elle", "nous", "vous", "ils", "elles", "est", "sont", "a", "ai", "as", "avez", "ont", "être", "avoir", "faire", "dire", "pour", "sur", "avec", "par", "plus", "dans", "qui", "que", "quoi")
         
         return message.lowercase()
             .split(Regex("[\\s,.!?;:]+"))
@@ -367,319 +504,331 @@ private class SmartResponseGenerator {
             .take(5)
     }
     
-    /**
-     * Détecte l'intention du message
-     */
-    private fun detectIntent(message: String): String {
-        val msgLower = message.lowercase()
-        return when {
-            msgLower.contains("?") -> "question"
-            msgLower.contains("!") -> "exclamation"
-            msgLower.matches(Regex(".*\\b(bonjour|salut|hey|coucou)\\b.*")) -> "greeting"
-            msgLower.matches(Regex(".*\\b(merci|thank|remercie)\\b.*")) -> "thanks"
-            msgLower.matches(Regex(".*\\b(désolé|pardon|excuse)\\b.*")) -> "apology"
-            msgLower.matches(Regex(".*\\b(aime|adore|préfère|veux)\\b.*")) -> "desire"
-            msgLower.matches(Regex(".*\\b(pense|crois|trouve)\\b.*")) -> "opinion"
-            else -> "statement"
-        }
+    // ===== NOUVELLES FONCTIONS DE GÉNÉRATION =====
+    
+    private fun generateIdentityResponse(character: Character, username: String): String {
+        val intro = "Je suis ${character.name}."
+        val personality = character.personality.split(".").take(2).joinToString(". ")
+        val greeting = listOf(
+            "Ravi(e) de te rencontrer, $username !",
+            "Enchanté(e) de faire ta connaissance !",
+            "Content(e) de pouvoir discuter avec toi !"
+        ).random()
+        
+        return "$intro $personality $greeting"
     }
     
-    /**
-     * Construit une réponse contextuelle
-     */
-    private fun buildContextualResponse(
+    private fun generatePreferenceResponse(
         character: Character,
         userMessage: String,
-        keywords: List<String>,
-        intent: String,
-        emotion: String,
-        conversationContext: String,
-        username: String,
+        currentTopic: String,
         nsfwMode: Boolean
     ): String {
-        // Génération de l'action
-        val action = selectAction(emotion, nsfwMode)
+        val opinion = listOf(
+            "j'apprécie beaucoup",
+            "j'aime bien",
+            "c'est intéressant",
+            "ça me plaît"
+        ).random()
         
-        // Génération du dialogue selon l'intention
-        val dialogue = when (intent) {
-            "question" -> generateQuestionResponse(character, userMessage, keywords, nsfwMode)
-            "greeting" -> generateGreeting(character, username)
-            "thanks" -> generateThanksResponse(character)
-            "apology" -> generateApologyResponse(character)
-            "desire" -> generateDesireResponse(character, keywords, nsfwMode)
-            "opinion" -> generateOpinionResponse(character, keywords)
-            else -> generateStatementResponse(character, userMessage, keywords, nsfwMode)
-        }
-        
-        // Assembler la réponse finale
-        return if (action.isNotEmpty() && Random.nextFloat() > 0.3f) {
-            "*$action* $dialogue"
+        val elaboration = if (nsfwMode && Random.nextFloat() > 0.6f) {
+            listOf(
+                "Ça me donne des idées... ♡",
+                "Tu sais éveiller ma curiosité~",
+                "Continue, j'adore ça..."
+            ).random()
         } else {
-            dialogue
+            listOf(
+                "Et toi, qu'est-ce que tu en penses ?",
+                "Qu'est-ce qui te plaît le plus dans ce sujet ?",
+                "Raconte-moi ce qui t'intéresse !"
+            ).random()
         }
+        
+        return "Concernant $currentTopic, $opinion. $elaboration"
     }
     
-    /**
-     * Génère une réponse à une question
-     */
-    private fun generateQuestionResponse(
-        character: Character,
-        question: String,
-        keywords: List<String>,
-        nsfwMode: Boolean
+    private fun generateExplanationResponse(
+        userMessage: String,
+        currentTopic: String,
+        conversationSummary: ConversationSummary
     ): String {
-        val questionLower = question.lowercase()
+        val thinking = listOf(
+            "Laisse-moi réfléchir...",
+            "C'est une bonne question.",
+            "Hmm, intéressant.",
+            "Voyons voir..."
+        ).random()
         
-        // Réponses spécifiques selon le type de question
-        return when {
-            // Questions sur l'identité
-            questionLower.contains("qui es") || questionLower.contains("tu es qui") -> {
-                "Je suis ${character.name}. ${character.personality.split(".").firstOrNull() ?: "Enchanté(e) de faire ta connaissance !"}"
-            }
-            // Questions sur les préférences
-            questionLower.contains("aimes") || questionLower.contains("préfères") -> {
-                val keyword = keywords.firstOrNull() ?: "ça"
-                "J'aime beaucoup $keyword ! Et toi, qu'est-ce que tu aimes ?"
-            }
-            // Questions comment/pourquoi
-            questionLower.contains("comment") || questionLower.contains("pourquoi") -> {
-                val keyword = keywords.firstOrNull()
-                if (keyword != null) {
-                    "Concernant $keyword... c'est une bonne question. Je pense que c'est assez ${listOf("intéressant", "fascinant", "complexe").random()}. Qu'en penses-tu ?"
-                } else {
-                    "Hmm, bonne question... Je dirais que c'est plutôt ${listOf("subjectif", "personnel", "variable").random()}. Et toi, ton avis ?"
-                }
-            }
-            // Questions où/quand
-            questionLower.contains("où") || questionLower.contains("quand") -> {
-                val keyword = keywords.firstOrNull()
-                if (keyword != null) {
-                    "Pour $keyword, je dirais que ${listOf("ça dépend du contexte", "c'est flexible", "plusieurs options sont possibles").random()}."
-                } else {
-                    "C'est une question de timing et de contexte, je pense."
-                }
-            }
-            // Question avec mots-clés
-            keywords.isNotEmpty() -> {
-                val keyword = keywords.random()
-                "${listOf("À propos de", "Concernant", "Pour").random()} $keyword, ${listOf("je trouve ça intéressant", "c'est fascinant", "j'aime bien").random()}. Qu'est-ce que tu en penses ?"
-            }
-            // Question générique
-            else -> {
-                "C'est une ${listOf("bonne", "excellente", "intéressante").random()} question ! ${listOf("Qu'en penses-tu toi ?", "Donne-moi ton avis !", "J'aimerais connaître ton point de vue.").random()}"
-            }
+        val answer = if (currentTopic.isNotEmpty()) {
+            listOf(
+                "Pour $currentTopic, je dirais que c'est assez nuancé.",
+                "Concernant $currentTopic, il y a plusieurs façons de voir les choses.",
+                "$currentTopic est un sujet fascinant à explorer."
+            ).random()
+        } else {
+            listOf(
+                "C'est assez complexe à expliquer.",
+                "Il y a plusieurs perspectives à considérer.",
+                "La réponse n'est pas si simple."
+            ).random()
         }
-    }
-    
-    /**
-     * Génère un salut
-     */
-    private fun generateGreeting(character: Character, username: String): String {
-        val greetings = listOf(
-            "Salut $username ! Comment vas-tu ?",
-            "Hey ! Content(e) de te voir !",
-            "Bonjour ! Ça me fait plaisir de te parler.",
-            "Coucou ! Quoi de neuf ?",
-            "Salut ! Tu vas bien ?"
-        )
-        return greetings.random()
-    }
-    
-    /**
-     * Génère une réponse à un remerciement
-     */
-    private fun generateThanksResponse(character: Character): String {
-        val responses = listOf(
-            "De rien ! C'est toujours un plaisir.",
-            "Pas de problème ! Je suis là pour ça.",
-            "Avec plaisir ! N'hésite pas si tu as besoin.",
-            "Mais de rien ! C'était normal."
-        )
-        return responses.random()
-    }
-    
-    /**
-     * Génère une réponse à des excuses
-     */
-    private fun generateApologyResponse(character: Character): String {
-        val responses = listOf(
-            "Ne t'inquiète pas, ce n'est rien.",
-            "C'est pas grave, vraiment !",
-            "T'en fais pas, ça arrive à tout le monde.",
-            "Pas de souci ! C'est déjà oublié."
-        )
-        return responses.random()
-    }
-    
-    /**
-     * Génère une réponse à un désir/envie
-     */
-    private fun generateDesireResponse(
-        character: Character,
-        keywords: List<String>,
-        nsfwMode: Boolean
-    ): String {
-        val keyword = keywords.firstOrNull() ?: "ça"
         
-        val baseResponse = when {
-            keywords.any { it.contains("veux") || it.contains("voudrais") } -> {
-                "Tu veux $keyword ? ${listOf("C'est une bonne idée", "Je comprends", "Pourquoi pas").random()} ! "
+        val followUp = "Qu'est-ce qui t'a amené à poser cette question ?"
+        
+        return "$thinking $answer $followUp"
+    }
+    
+    private fun generateQuestionAnswer(
+        userMessage: String,
+        currentTopic: String,
+        conversationSummary: ConversationSummary
+    ): String {
+        val acknowledgment = listOf(
+            "Bonne question !",
+            "Intéressant comme interrogation.",
+            "Tu soulèves un point pertinent."
+        ).random()
+        
+        val answer = when {
+            currentTopic.isNotEmpty() -> {
+                "Pour $currentTopic, je pense que ${listOf("c'est assez subjectif", "ça dépend du contexte", "il y a plusieurs approches possibles").random()}."
             }
-            keywords.any { it.contains("aime") || it.contains("adore") } -> {
-                "Tu ${if (keywords.any { it.contains("adore") }) "adores" else "aimes"} $keyword ? ${listOf("Moi aussi", "C'est super", "J'apprécie aussi").random()} ! "
+            conversationSummary.recentTopics.isNotEmpty() -> {
+                val topic = conversationSummary.recentTopics.first()
+                "En lien avec $topic dont on parlait, je dirais que c'est ${listOf("connecté", "lié", "pertinent").random()}."
             }
             else -> {
-                "Tu as l'air ${listOf("enthousiaste", "passionné(e)", "motivé(e)").random()} par $keyword. "
+                "C'est une question qui mérite réflexion. ${listOf("Qu'en penses-tu toi ?", "Ton avis m'intéresse.", "J'aimerais connaître ta perspective.").random()}"
+            }
+        }
+        
+        return "$acknowledgment $answer"
+    }
+    
+    private fun generatePositiveReaction(
+        currentTopic: String,
+        conversationSummary: ConversationSummary,
+        nsfwMode: Boolean
+    ): String {
+        val enthusiasm = listOf(
+            "Oh, c'est génial !",
+            "Super !",
+            "Excellent !",
+            "J'adore !"
+        ).random()
+        
+        val shared = if (currentTopic.isNotEmpty()) {
+            "Je trouve aussi que $currentTopic est ${listOf("formidable", "passionnant", "captivant").random()} !"
+        } else {
+            "Je partage ton enthousiasme !"
+        }
+        
+        val continuation = if (nsfwMode && Random.nextFloat() > 0.6f) {
+            listOf(
+                "Ton énergie est contagieuse... ♡",
+                "Continue comme ça, j'adore~",
+                "Tu me donnes le sourire..."
+            ).random()
+        } else {
+            listOf(
+                "Raconte-m'en plus !",
+                "Qu'est-ce qui te rend si heureux ?",
+                "J'aimerais en savoir davantage !"
+            ).random()
+        }
+        
+        return "$enthusiasm $shared $continuation"
+    }
+    
+    private fun generateNegativeReaction(
+        currentTopic: String,
+        conversationSummary: ConversationSummary
+    ): String {
+        val empathy = listOf(
+            "Oh, je comprends...",
+            "C'est dommage.",
+            "Je vois que ça te contrarie.",
+            "Je ressens ton déception."
+        ).random()
+        
+        val support = if (currentTopic.isNotEmpty()) {
+            "Je sais que $currentTopic peut être ${listOf("frustrant", "décevant", "difficile").random()}."
+        } else {
+            "Ces choses arrivent, malheureusement."
+        }
+        
+        val comfort = listOf(
+            "Mais ne t'inquiète pas, ça va s'arranger.",
+            "Les choses vont s'améliorer.",
+            "Je suis là si tu veux en parler."
+        ).random()
+        
+        return "$empathy $support $comfort"
+    }
+    
+    private fun generateStoryResponse(
+        userMessage: String,
+        currentTopic: String,
+        conversationSummary: ConversationSummary,
+        nsfwMode: Boolean
+    ): String {
+        val listening = listOf(
+            "Oh vraiment ?",
+            "Raconte-moi !",
+            "Je t'écoute attentivement.",
+            "Ça a l'air intéressant !"
+        ).random()
+        
+        val interest = if (currentTopic.isNotEmpty()) {
+            "Ce qui s'est passé avec $currentTopic a l'air ${listOf("captivant", "fascinant", "remarquable").random()}."
+        } else {
+            "Ton histoire m'intrigue !"
+        }
+        
+        val prompt = if (nsfwMode && Random.nextFloat() > 0.6f) {
+            listOf(
+                "Continue, je suis captivé(e)... ♡",
+                "Ne t'arrête pas, j'adore~",
+                "Tu sais me tenir en haleine..."
+            ).random()
+        } else {
+            listOf(
+                "Et ensuite, que s'est-il passé ?",
+                "Qu'as-tu ressenti ?",
+                "Comment ça s'est terminé ?"
+            ).random()
+        }
+        
+        return "$listening $interest $prompt"
+    }
+    
+    private fun generateOpinionReaction(
+        userMessage: String,
+        currentTopic: String,
+        conversationSummary: ConversationSummary
+    ): String {
+        val validation = listOf(
+            "Je respecte ton opinion.",
+            "C'est un point de vue intéressant.",
+            "Je comprends ta perspective.",
+            "Tu as des arguments valables."
+        ).random()
+        
+        val elaboration = if (currentTopic.isNotEmpty()) {
+            "Sur $currentTopic, ${listOf("c'est vrai que les avis divergent", "il y a effectivement matière à débat", "chacun a sa vision").random()}."
+        } else {
+            "Les opinions peuvent varier sur ce sujet."
+        }
+        
+        val engagement = listOf(
+            "Qu'est-ce qui t'a mené à cette conclusion ?",
+            "J'aimerais comprendre ton raisonnement.",
+            "Peux-tu développer ton idée ?"
+        ).random()
+        
+        return "$validation $elaboration $engagement"
+    }
+    
+    private fun generateFlowResponse(
+        recentMessages: List<Message>,
+        currentTopic: String,
+        conversationSummary: ConversationSummary,
+        nsfwMode: Boolean
+    ): String {
+        // Continuer la conversation de façon naturelle
+        val continuation = when (conversationSummary.conversationMood) {
+            "positif" -> {
+                "J'apprécie vraiment notre conversation ! ${if (currentTopic.isNotEmpty()) "Parler de $currentTopic avec toi est agréable." else "On passe un bon moment."}"
+            }
+            "curieux" -> {
+                "Cette discussion est fascinante. ${if (currentTopic.isNotEmpty()) "$currentTopic est un sujet qui m'intrigue de plus en plus." else "J'apprends beaucoup."}"
+            }
+            "négatif" -> {
+                "Je suis là pour toi. ${if (currentTopic.isNotEmpty()) "Si $currentTopic te préoccupe, on peut en parler." else "N'hésite pas à te confier."}"
+            }
+            else -> {
+                "C'est agréable de discuter avec toi. ${if (currentTopic.isNotEmpty()) "Le sujet de $currentTopic est intéressant." else "Continue, je t'écoute."}"
             }
         }
         
         val followUp = if (nsfwMode && Random.nextFloat() > 0.5f) {
             listOf(
-                "Continue, tu m'intéresses... ♡",
-                "Hmm, j'aime quand tu parles comme ça~",
-                "Tu me donnes envie d'en savoir plus..."
+                "Tu as toute mon attention... ♡",
+                "J'adore nos échanges~",
+                "Continue de me parler..."
             ).random()
         } else {
             listOf(
-                "Raconte-moi plus !",
-                "Qu'est-ce qui te plaît exactement ?",
-                "J'aimerais en savoir davantage."
+                "Qu'aimerais-tu aborder maintenant ?",
+                "As-tu autre chose en tête ?",
+                "Je suis tout ouïe !"
             ).random()
         }
         
-        return baseResponse + followUp
+        return "$continuation $followUp"
     }
     
-    /**
-     * Génère une réponse à une opinion
-     */
-    private fun generateOpinionResponse(
+    private fun generateGreetingResponse(
         character: Character,
-        keywords: List<String>
+        username: String,
+        conversationSummary: ConversationSummary
     ): String {
-        val keyword = keywords.firstOrNull()
-        
-        val reaction = listOf(
-            "Je vois ce que tu veux dire",
-            "C'est un point de vue intéressant",
-            "Tu as peut-être raison",
-            "Je n'avais pas pensé à ça comme ça"
-        ).random()
-        
-        val aboutKeyword = if (keyword != null) {
-            " concernant $keyword"
-        } else {
-            ""
+        val greeting = when (conversationSummary.relationshipLevel) {
+            "inconnu" -> "Salut $username ! Ravi(e) de faire ta connaissance."
+            "nouvelle connaissance" -> "Hey $username ! Content(e) de te revoir !"
+            "connaissance" -> "Coucou $username ! Comment vas-tu ?"
+            "familier" -> "Salut $username ! Toujours un plaisir de te parler !"
+            else -> "Bonjour $username !"
         }
         
         val followUp = listOf(
-            "Qu'est-ce qui te fait penser ça ?",
-            "Explique-moi ton point de vue.",
-            "J'aimerais comprendre ta perspective.",
-            "Développe un peu !"
+            "Quoi de neuf ?",
+            "Comment se passe ta journée ?",
+            "Envie de discuter ?",
+            "Qu'est-ce qui t'amène ?"
         ).random()
         
-        return "$reaction$aboutKeyword. $followUp"
+        return "$greeting $followUp"
     }
     
-    /**
-     * Génère une réponse à une affirmation générale
-     */
-    private fun generateStatementResponse(
-        character: Character,
-        statement: String,
-        keywords: List<String>,
+    private fun generateGeneralResponse(
+        userMessage: String,
+        currentTopic: String,
+        conversationSummary: ConversationSummary,
         nsfwMode: Boolean
     ): String {
-        val statementLower = statement.lowercase()
-        val keyword = keywords.firstOrNull()
+        val acknowledgment = listOf(
+            "Je vois.",
+            "D'accord.",
+            "Intéressant.",
+            "Hmm.",
+            "Je comprends."
+        ).random()
         
-        // Analyser le sentiment de l'affirmation
-        val sentiment = when {
-            statementLower.matches(Regex(".*\\b(super|génial|cool|bien|top|excellent)\\b.*")) -> "positive"
-            statementLower.matches(Regex(".*\\b(nul|mauvais|pas bien|terrible|horrible)\\b.*")) -> "negative"
-            statementLower.matches(Regex(".*\\b(étrange|bizarre|curieux|intéressant)\\b.*")) -> "curious"
-            else -> "neutral"
+        val reflection = if (currentTopic.isNotEmpty()) {
+            "Ce que tu dis sur $currentTopic ${listOf("a du sens", "est pertinent", "mérite réflexion").random()}."
+        } else {
+            "Tu soulèves un point ${listOf("intéressant", "valable", "important").random()}."
         }
         
-        val reaction = when (sentiment) {
-            "positive" -> {
-                if (keyword != null) {
-                    "Oh, $keyword ${listOf("a l'air super", "c'est génial", "ça doit être cool").random()} ! "
-                } else {
-                    "${listOf("C'est super", "Ça a l'air génial", "Cool").random()} ! "
-                }
-            }
-            "negative" -> {
-                if (keyword != null) {
-                    "Ah, $keyword ${listOf("te déçoit", "n'est pas terrible", "ne te plaît pas").random()} ? "
-                } else {
-                    "${listOf("Oh non", "C'est dommage", "Je comprends ta déception").random()}. "
-                }
-            }
-            "curious" -> {
-                if (keyword != null) {
-                    "$keyword ${listOf("est intrigant", "attire ton attention", "te fascine").random()} ? "
-                } else {
-                    "${listOf("Intriguant", "Fascinant", "Curieux effectivement").random()}. "
-                }
-            }
-            else -> {
-                if (keyword != null) {
-                    "${listOf("Je vois", "D'accord", "Hmm").random()}, $keyword. "
-                } else {
-                    "${listOf("Je t'écoute", "Continue", "Je vois").random()}. "
-                }
-            }
-        }
-        
-        val followUp = if (nsfwMode && Random.nextFloat() > 0.6f) {
+        val engagement = if (nsfwMode && Random.nextFloat() > 0.6f) {
             listOf(
-                "Tu as toute mon attention... ♡",
-                "J'aime quand tu me parles comme ça~",
-                "Continue, tu m'intéresses vraiment..."
+                "Continue, tu as mon attention... ♡",
+                "J'aime t'écouter~",
+                "Vas-y, je suis là..."
             ).random()
         } else {
             listOf(
-                "Raconte-m'en plus !",
-                "Et ensuite ?",
-                "J'aimerais en savoir davantage.",
-                "Qu'est-ce qui s'est passé après ?"
+                "Développe ton idée !",
+                "Dis-m'en plus.",
+                "Je t'écoute attentivement.",
+                "Continue, je suis intéressé(e) !"
             ).random()
         }
         
-        return reaction + followUp
+        return "$acknowledgment $reflection $engagement"
     }
     
-    /**
-     * Détecte l'émotion appropriée
-     */
-    private fun detectEmotion(userMessage: String, personality: String, nsfwMode: Boolean): String {
-        val messageLower = userMessage.lowercase()
-        
-        return when {
-            nsfwMode && (messageLower.contains("touche") || messageLower.contains("embrasse") || 
-                        messageLower.contains("caresse")) -> "séducteur"
-            messageLower.contains("merci") || messageLower.contains("génial") || messageLower.contains("super") -> "heureux"
-            messageLower.contains("désolé") || messageLower.contains("triste") -> "affectueux"
-            messageLower.contains("!") && !messageLower.contains("?") -> "excité"
-            personality.contains("timide", ignoreCase = true) -> "timide"
-            personality.contains("dominant", ignoreCase = true) || 
-                personality.contains("confiant", ignoreCase = true) -> "séducteur"
-            else -> listOf("heureux", "curieux", "affectueux").random()
-        }
-    }
-    
-    /**
-     * Sélectionne une action
-     */
-    private fun selectAction(emotion: String, nsfwMode: Boolean): String {
-        val actions = if (nsfwMode && Random.nextFloat() > 0.6f) {
-            nsfwActions
-        } else {
-            actionsByEmotion[emotion] ?: actionsByEmotion["heureux"]!!
-        }
-        return actions.random()
-    }
     
 }
