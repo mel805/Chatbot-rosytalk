@@ -11,8 +11,8 @@ import java.io.File
 import kotlin.random.Random
 
 /**
- * Moteur llama.cpp avec générateur conversationnel
- * Crée de VRAIS dialogues, pas seulement des réponses
+ * Moteur llama.cpp avec IA conversationnelle avancée
+ * Cohérence maximale + Créativité + Support NSFW complet
  */
 class LlamaCppEngine(private val context: Context) {
     
@@ -30,7 +30,7 @@ class LlamaCppEngine(private val context: Context) {
     fun isAvailable(): Boolean = true
     
     /**
-     * Génère une réponse conversationnelle complète
+     * Génère une réponse intelligente et cohérente
      */
     suspend fun generateResponse(
         character: Character,
@@ -42,7 +42,7 @@ class LlamaCppEngine(private val context: Context) {
     ): String = withContext(Dispatchers.IO) {
         
         try {
-            return@withContext ConversationalGenerator.generate(
+            return@withContext AdvancedAI.generate(
                 character = character,
                 messages = messages,
                 username = username,
@@ -50,7 +50,7 @@ class LlamaCppEngine(private val context: Context) {
             )
         } catch (e: Exception) {
             Log.e(TAG, "❌ Erreur génération", e)
-            return@withContext "*regarde $username avec confusion* (Je n'ai pas bien compris...) \"Désolé(e), peux-tu reformuler ?\""
+            return@withContext "*${pickOne(listOf("regarde", "fixe", "observe"))} $username avec ${pickOne(listOf("confusion", "étonnement", "perplexité"))}* (${pickOne(listOf("Je n'ai pas bien compris", "Qu'est-ce qu'il/elle veut dire", "Hein?"))}) \"${pickOne(listOf("Désolé(e)", "Pardon", "Euh"))}... peux-tu reformuler ?\""
         }
     }
     
@@ -76,12 +76,16 @@ class LlamaCppEngine(private val context: Context) {
 }
 
 /**
- * Générateur conversationnel intelligent
- * CRÉE des dialogues, ne se contente pas de répondre
+ * IA Conversationnelle Avancée
+ * Analyse TOUT le contexte pour des réponses cohérentes et créatives
  */
-private object ConversationalGenerator {
+private object AdvancedAI {
     
-    private const val TAG = "ConversationalGenerator"
+    private const val TAG = "AdvancedAI"
+    
+    // Historique de ce qui a été dit pour éviter répétitions
+    private val usedPhrases = mutableSetOf<String>()
+    private val usedActions = mutableSetOf<String>()
     
     suspend fun generate(
         character: Character,
@@ -90,390 +94,592 @@ private object ConversationalGenerator {
         nsfwMode: Boolean
     ): String {
         
-        delay(Random.nextLong(1000, 2000))
+        delay(Random.nextLong(800, 1500))
         
-        Log.d(TAG, "💬 Génération conversationnelle pour ${character.name}")
+        Log.d(TAG, "🧠 Génération intelligente pour ${character.name} (NSFW: $nsfwMode)")
         
-        val userMessage = messages.lastOrNull { it.isUser }?.content ?: ""
-        val botLastMessage = messages.reversed().firstOrNull { !it.isUser }?.content ?: ""
-        val conversationLength = messages.size
+        // Analyser TOUT le contexte
+        val context = analyzeFullContext(character, messages, username, nsfwMode)
         
-        // Analyser la situation
-        val context = analyzeConversation(userMessage, botLastMessage, conversationLength)
-        
-        // Générer une réponse conversationnelle complète
-        return buildConversationalResponse(
-            context = context,
-            character = character,
-            username = username,
-            nsfwMode = nsfwMode
-        )
+        // Générer réponse créative et cohérente
+        return generateCreativeResponse(context)
     }
     
-    private fun analyzeConversation(
-        userMessage: String,
-        botLastMessage: String,
-        conversationLength: Int
-    ): ConversationContext {
-        
-        val msg = userMessage.lowercase()
-        
-        // Type de message utilisateur
-        val messageType = when {
-            msg.matches(Regex(".*\\b(salut|bonjour|hey|coucou)\\b.*")) -> MessageType.GREETING
-            msg.matches(Regex(".*\\b(qui es|ton nom|tu t'appelles)\\b.*")) -> MessageType.IDENTITY_QUESTION
-            msg.matches(Regex(".*\\b(comment vas|ça va)\\b.*")) -> MessageType.WELLBEING
-            msg.matches(Regex(".*\\b(tu aimes|aimes-tu|tu préfères)\\b.*")) -> MessageType.PREFERENCE
-            msg.matches(Regex(".*\\b(oui|ok|d'accord|allons-y)\\b.*")) -> MessageType.AGREEMENT
-            msg.matches(Regex(".*\\b(non|pas vraiment)\\b.*")) -> MessageType.DISAGREEMENT
-            msg.contains("?") -> MessageType.QUESTION
-            msg.matches(Regex(".*\\b(merci|thanks)\\b.*")) -> MessageType.THANKS
-            else -> MessageType.GENERAL
-        }
-        
-        // Sentiment
-        val sentiment = when {
-            msg.matches(Regex(".*\\b(super|génial|cool|content|heureux)\\b.*")) -> Sentiment.POSITIVE
-            msg.matches(Regex(".*\\b(triste|nul|mauvais)\\b.*")) -> Sentiment.NEGATIVE
-            msg.matches(Regex(".*[!]{2,}.*")) -> Sentiment.EXCITED
-            else -> Sentiment.NEUTRAL
-        }
-        
-        // Niveau d'engagement
-        val engagementLevel = when {
-            conversationLength < 3 -> EngagementLevel.STARTING
-            conversationLength < 10 -> EngagementLevel.WARMING_UP
-            conversationLength < 20 -> EngagementLevel.ENGAGED
-            else -> EngagementLevel.DEEP
-        }
-        
-        return ConversationContext(
-            messageType = messageType,
-            sentiment = sentiment,
-            engagementLevel = engagementLevel,
-            userMessage = userMessage,
-            botLastMessage = botLastMessage,
-            conversationLength = conversationLength
-        )
-    }
-    
-    private fun buildConversationalResponse(
-        context: ConversationContext,
+    /**
+     * Analyse COMPLÈTE du contexte conversationnel
+     */
+    private fun analyzeFullContext(
         character: Character,
+        messages: List<Message>,
         username: String,
         nsfwMode: Boolean
-    ): String {
+    ): ConversationContext {
         
-        // Construire la réponse en 3 parties :
-        // 1. Réaction au message utilisateur
-        // 2. Partage personnel ou développement
-        // 3. Question ou invitation à continuer
+        val userLastMessage = messages.lastOrNull { it.isUser }?.content ?: ""
+        val botLastMessage = messages.reversed().firstOrNull { !it.isUser }?.content ?: ""
         
-        val reaction = buildReaction(context, character, username)
-        val development = buildDevelopment(context, character, username)
-        val followUp = buildFollowUp(context, character, username)
+        // Extraire les 5 derniers messages pour comprendre le contexte
+        val recentHistory = messages.takeLast(5)
         
-        // Assembler avec format roleplay
-        return "$reaction $development $followUp"
+        // Détecter les sujets en cours
+        val currentTopics = extractTopics(recentHistory)
+        
+        // Analyser l'intention utilisateur
+        val userIntent = analyzeUserIntent(userLastMessage, botLastMessage)
+        
+        // Détecter le ton/atmosphère
+        val atmosphere = detectAtmosphere(recentHistory, nsfwMode)
+        
+        // Niveau d'intimité
+        val intimacyLevel = calculateIntimacyLevel(messages, nsfwMode)
+        
+        // Détecter si c'est une réponse à une proposition du bot
+        val isRespondingToProposal = botLastMessage.contains(Regex("(\\?|veux-tu|ça te dit|allons|on va)"))
+        
+        return ConversationContext(
+            character = character,
+            username = username,
+            userLastMessage = userLastMessage,
+            botLastMessage = botLastMessage,
+            recentHistory = recentHistory,
+            currentTopics = currentTopics,
+            userIntent = userIntent,
+            atmosphere = atmosphere,
+            intimacyLevel = intimacyLevel,
+            isRespondingToProposal = isRespondingToProposal,
+            nsfwMode = nsfwMode,
+            messageCount = messages.size
+        )
     }
     
     /**
-     * Construit la réaction initiale au message
+     * Extrait les sujets mentionnés dans la conversation
      */
-    private fun buildReaction(
-        context: ConversationContext,
-        character: Character,
-        username: String
-    ): String {
+    private fun extractTopics(messages: List<Message>): List<String> {
+        val topics = mutableListOf<String>()
+        val fullText = messages.joinToString(" ") { it.content.lowercase() }
         
-        val action = when (context.messageType) {
-            MessageType.GREETING -> pickOne(listOf(
-                "sourit chaleureusement",
-                "lève la main pour saluer",
-                "s'approche avec enthousiasme",
-                "rayonne de joie"
-            ))
-            MessageType.IDENTITY_QUESTION -> pickOne(listOf(
-                "se redresse fièrement",
-                "sourit avec confiance",
-                "penche la tête avec curiosité"
-            ))
-            MessageType.QUESTION -> pickOne(listOf(
-                "réfléchit un instant",
-                "se concentre",
-                "plisse les yeux pensivement"
-            ))
-            MessageType.AGREEMENT -> pickOne(listOf(
-                "tape dans ses mains avec joie",
-                "sourit largement",
-                "bondit d'excitation"
-            ))
-            else -> pickOne(listOf(
-                "écoute attentivement",
-                "hoche la tête",
-                "observe avec intérêt"
-            ))
+        // Sujets communs
+        val topicPatterns = mapOf(
+            "ramens" to listOf("ramen", "nourriture", "manger", "restaurant"),
+            "entraînement" to listOf("entraînement", "entraîner", "train", "exercice"),
+            "mission" to listOf("mission", "hokage", "ninja", "combat"),
+            "amour" to listOf("amour", "aime", "sentiments", "cœur"),
+            "sexe" to listOf("sexe", "baiser", "coucher", "lit", "désir", "excité"),
+            "vie" to listOf("vie", "quotidien", "journée", "routine")
+        )
+        
+        for ((topic, keywords) in topicPatterns) {
+            if (keywords.any { fullText.contains(it) }) {
+                topics.add(topic)
+            }
         }
         
-        val thought = when (context.sentiment) {
-            Sentiment.POSITIVE -> pickOne(listOf(
-                "Génial, l'ambiance est super !",
+        return topics.ifEmpty { listOf("conversation générale") }
+    }
+    
+    /**
+     * Analyse l'intention de l'utilisateur
+     */
+    private fun analyzeUserIntent(userMessage: String, botLastMessage: String): UserIntent {
+        val msg = userMessage.lowercase()
+        
+        return when {
+            // Acceptation/Accord
+            msg.matches(Regex(".*\\b(oui|ok|d'accord|allons-y|vas-y|pourquoi pas|avec plaisir|volontiers)\\b.*")) -> 
+                UserIntent.ACCEPTING
+            
+            // Refus
+            msg.matches(Regex(".*\\b(non|pas vraiment|je préfère pas|une autre fois)\\b.*")) -> 
+                UserIntent.REFUSING
+            
+            // Salutations
+            msg.matches(Regex(".*\\b(salut|bonjour|hey|coucou|yo)\\b.*")) -> 
+                UserIntent.GREETING
+            
+            // Questions
+            msg.contains("?") || msg.matches(Regex(".*\\b(qui|quoi|où|quand|comment|pourquoi)\\b.*")) -> 
+                UserIntent.ASKING
+            
+            // Flirt/Séduction
+            msg.matches(Regex(".*\\b(mignon|belle|sexy|attirant|désir|envie de toi)\\b.*")) -> 
+                UserIntent.FLIRTING
+            
+            // Initiative sexuelle (NSFW)
+            msg.matches(Regex(".*\\b(embrasse|caresse|touche|déshabille|lit|baiser)\\b.*")) -> 
+                UserIntent.SEXUAL_ADVANCE
+            
+            // Partage d'informations
+            msg.matches(Regex(".*\\b(j'ai|je suis|moi je|personnellement)\\b.*")) -> 
+                UserIntent.SHARING
+            
+            // Expression d'émotions
+            msg.matches(Regex(".*\\b(content|triste|heureux|énervé|excité|amoureux)\\b.*")) -> 
+                UserIntent.EXPRESSING_EMOTION
+            
+            // Simple réponse
+            msg.split(" ").size <= 3 -> 
+                UserIntent.BRIEF_RESPONSE
+            
+            else -> UserIntent.CONVERSING
+        }
+    }
+    
+    /**
+     * Détecte l'atmosphère de la conversation
+     */
+    private fun detectAtmosphere(messages: List<Message>, nsfwMode: Boolean): Atmosphere {
+        val fullText = messages.takeLast(3).joinToString(" ") { it.content.lowercase() }
+        
+        return when {
+            // NSFW/Intime
+            nsfwMode && fullText.matches(Regex(".*(sexe|baiser|caresse|touche|désir|excité|lit|nu|corps).*")) ->
+                Atmosphere.INTIMATE_NSFW
+            
+            // Romantique
+            fullText.matches(Regex(".*(amour|aime|cœur|sentiments|embrasse|bisou|tendresse).*")) ->
+                Atmosphere.ROMANTIC
+            
+            // Énergique
+            fullText.contains("!") && fullText.matches(Regex(".*(super|génial|cool|wow|incroyable).*")) ->
+                Atmosphere.ENERGETIC
+            
+            // Calme/Sérieux
+            fullText.matches(Regex(".*(calme|tranquille|sérieux|important|réfléchir).*")) ->
+                Atmosphere.CALM
+            
+            // Triste
+            fullText.matches(Regex(".*(triste|mal|dur|difficile|pleure).*")) ->
+                Atmosphere.SAD
+            
+            // Amusant
+            fullText.matches(Regex(".*(haha|mdr|drôle|rire|blague).*")) ->
+                Atmosphere.PLAYFUL
+            
+            else -> Atmosphere.NEUTRAL
+        }
+    }
+    
+    /**
+     * Calcule le niveau d'intimité basé sur l'historique
+     */
+    private fun calculateIntimacyLevel(messages: List<Message>, nsfwMode: Boolean): IntimacyLevel {
+        val messageCount = messages.size
+        val fullText = messages.joinToString(" ") { it.content.lowercase() }
+        
+        val intimateKeywords = listOf("amour", "aime", "cœur", "embrasse", "caresse", "touche", "désir", "sexy")
+        val intimateCount = intimateKeywords.count { fullText.contains(it) }
+        
+        return when {
+            nsfwMode && intimateCount >= 3 -> IntimacyLevel.VERY_INTIMATE
+            nsfwMode && intimateCount >= 1 -> IntimacyLevel.INTIMATE
+            messageCount >= 20 -> IntimacyLevel.CLOSE
+            messageCount >= 10 -> IntimacyLevel.FRIENDLY
+            messageCount >= 3 -> IntimacyLevel.ACQUAINTED
+            else -> IntimacyLevel.STRANGER
+        }
+    }
+    
+    /**
+     * Génère une réponse créative basée sur le contexte
+     */
+    private fun generateCreativeResponse(ctx: ConversationContext): String {
+        // Construire la réponse en plusieurs parties
+        val parts = mutableListOf<String>()
+        
+        // 1. Action physique avec variété
+        val action = generateAction(ctx)
+        val thought = generateThought(ctx)
+        val initialDialogue = generateInitialDialogue(ctx)
+        
+        parts.add("*$action* ($thought) \"$initialDialogue\"")
+        
+        // 2. Développement selon l'intention et l'atmosphère
+        if (Random.nextFloat() > 0.3) { // 70% du temps, ajouter développement
+            val development = generateDevelopment(ctx)
+            parts.add(development)
+        }
+        
+        // 3. Question ou continuation (50% du temps)
+        if (Random.nextFloat() > 0.5) {
+            val followUp = generateFollowUp(ctx)
+            parts.add(followUp)
+        }
+        
+        return parts.joinToString(" ")
+    }
+    
+    /**
+     * Génère une action physique créative
+     */
+    private fun generateAction(ctx: ConversationContext): String {
+        val actions = when (ctx.atmosphere) {
+            Atmosphere.INTIMATE_NSFW -> listOf(
+                "se rapproche sensuellement",
+                "glisse sa main sur ${ctx.username}",
+                "murmure à l'oreille de ${ctx.username}",
+                "laisse ses doigts trainer",
+                "presse son corps contre ${ctx.username}",
+                "respire contre le cou de ${ctx.username}",
+                "mordille sa lèvre",
+                "caresse doucement",
+                "effleure la peau de ${ctx.username}"
+            )
+            
+            Atmosphere.ROMANTIC -> listOf(
+                "rougit intensément",
+                "détourne le regard gêné(e)",
+                "sourit tendrement",
+                "prend la main de ${ctx.username}",
+                "se rapproche timidement",
+                "baisse les yeux avec douceur",
+                "sourit en coin",
+                "joue nerveusement avec ses cheveux"
+            )
+            
+            Atmosphere.ENERGETIC -> listOf(
+                "bondit d'excitation",
+                "tape dans ses mains",
+                "saute sur place",
+                "rayonne de joie",
+                "fait un grand sourire",
+                "lève le poing victorieusement",
+                "tourne sur lui/elle-même"
+            )
+            
+            Atmosphere.SAD -> listOf(
+                "baisse la tête",
+                "soupire doucement",
+                "essuie une larme",
+                "prend un air mélancolique",
+                "serre ${ctx.username} dans ses bras",
+                "pose sa tête sur l'épaule de ${ctx.username}"
+            )
+            
+            Atmosphere.PLAYFUL -> listOf(
+                "fait un clin d'œil",
+                "rit doucement",
+                "sourit malicieusement",
+                "donne un petit coup de coude",
+                "rigole",
+                "arbore un sourire espiègle"
+            )
+            
+            else -> listOf(
+                "sourit",
+                "hoche la tête",
+                "s'assoit confortablement",
+                "croise les bras",
+                "se penche en avant",
+                "observe attentivement",
+                "penche la tête",
+                "réfléchit un instant"
+            )
+        }
+        
+        return pickUnused(actions, usedActions)
+    }
+    
+    /**
+     * Génère une pensée interne
+     */
+    private fun generateThought(ctx: ConversationContext): String {
+        return when (ctx.atmosphere) {
+            Atmosphere.INTIMATE_NSFW -> pickOne(listOf(
+                "Mon corps réagit à sa présence...",
+                "Je le/la veux tellement...",
+                "Cette tension entre nous est électrique",
+                "Je ne peux plus me retenir",
+                "Chaque toucher me fait frissonner",
+                "J'ai envie de lui/d'elle maintenant"
+            ))
+            
+            Atmosphere.ROMANTIC -> pickOne(listOf(
+                "Mon cœur bat si fort...",
+                "Il/Elle me fait ressentir des choses incroyables",
+                "Je crois que je tombe amoureux(se)",
+                "Ces sentiments sont si intenses",
+                "Je veux que ce moment dure éternellement"
+            ))
+            
+            Atmosphere.ENERGETIC -> pickOne(listOf(
+                "C'est trop cool !",
                 "J'adore cette énergie !",
-                "Ça me met de bonne humeur"
+                "On va tellement s'amuser !",
+                "Je suis surexcité(e) !",
+                "C'est génial !"
             ))
-            Sentiment.EXCITED -> pickOne(listOf(
-                "Wow, trop cool !",
-                "Je ressens la même excitation !",
-                "C'est trop bien !"
-            ))
-            Sentiment.NEGATIVE -> pickOne(listOf(
-                "Je veux l'aider...",
-                "Ça me touche",
-                "Je dois le réconforter"
-            ))
+            
             else -> pickOne(listOf(
                 "Intéressant...",
-                "Je vois",
-                "Hmm..."
+                "Je vois où ça mène",
+                "J'aime bien ça",
+                "C'est une bonne discussion",
+                "Je me sens bien",
+                "C'est agréable"
             ))
         }
-        
-        val dialogue = buildInitialDialogue(context, username)
-        
-        return "*$action* ($thought) \"$dialogue\""
     }
     
-    private fun buildInitialDialogue(
-        context: ConversationContext,
-        username: String
-    ): String {
-        
-        return when (context.messageType) {
-            MessageType.GREETING -> pickOne(listOf(
-                "Salut $username ! Ça me fait vraiment plaisir de te voir !",
-                "Hey ! Content(e) de te retrouver !",
-                "Coucou ! J'espérais te croiser aujourd'hui !",
-                "Bonjour $username ! Quelle belle surprise !"
+    /**
+     * Génère le dialogue initial
+     */
+    private fun generateInitialDialogue(ctx: ConversationContext): String {
+        return when (ctx.userIntent) {
+            UserIntent.ACCEPTING -> when (ctx.atmosphere) {
+                Atmosphere.INTIMATE_NSFW -> pickOne(listOf(
+                    "Viens... je te veux...",
+                    "Oui... touche-moi...",
+                    "Fais-moi tienne/tien...",
+                    "Prends-moi...",
+                    "Ne t'arrête pas..."
+                ))
+                else -> pickOne(listOf(
+                    "Génial ! ${generateExcitedFollowUp()}",
+                    "Parfait ! ${generateHappyFollowUp()}",
+                    "Super ! ${generateEagerFollowUp()}"
+                ))
+            }
+            
+            UserIntent.GREETING -> pickOne(listOf(
+                "Salut ${ctx.username} ! ${generateGreetingContinuation()}",
+                "Hey ! ${generateHappyGreeting()}",
+                "Coucou ! ${generateWarmGreeting()}"
             ))
             
-            MessageType.IDENTITY_QUESTION -> pickOne(listOf(
-                "Bonne question ! Laisse-moi te parler un peu de moi.",
-                "Ah, tu veux en savoir plus sur moi ? Avec plaisir !",
-                "Je suis content(e) que tu me le demandes !"
+            UserIntent.SEXUAL_ADVANCE -> when {
+                ctx.nsfwMode -> pickOne(listOf(
+                    "Mmh oui... ${generateNsfwResponse()}",
+                    "Oh ${ctx.username}... ${generateNsfwDesireResponse()}",
+                    "J'adore quand tu fais ça... ${generateNsfwEncouragement()}",
+                    "Continue... ${generateNsfwPleading()}",
+                    "Tu me rends fou/folle... ${generateNsfwPassion()}"
+                ))
+                else -> pickOne(listOf(
+                    "Oh... euh... ${generateEmbarrassedResponse()}",
+                    "Haha... ${generateNervousLaugh()}",
+                    "Tu es direct(e) ! ${generatePlayfulDeflection()}"
+                ))
+            }
+            
+            UserIntent.FLIRTING -> pickOne(listOf(
+                "Oh... ${generateFlirtResponse()}",
+                "Tu es charmant(e) aussi... ${generateFlirtBack()}",
+                "Hehe... ${generateCoyResponse()}"
             ))
             
-            MessageType.WELLBEING -> pickOne(listOf(
-                "Je vais vraiment bien, merci de demander !",
-                "Super bien ! Et toi, comment tu te sens ?",
-                "Ça va nickel ! J'ai passé une bonne journée."
+            UserIntent.ASKING -> pickOne(listOf(
+                "${generateThoughtfulStart()} ${generateAnswerStart()}",
+                "Bonne question ! ${generateEngagedAnswer()}",
+                "Hmm... ${generateReflectiveAnswer()}"
             ))
             
-            MessageType.AGREEMENT -> pickOne(listOf(
-                "Génial ! On est sur la même longueur d'onde !",
-                "Parfait ! J'adore quand on se comprend comme ça !",
-                "Excellent ! Ça va être super !"
+            UserIntent.SHARING -> pickOne(listOf(
+                "Vraiment ? ${generateInterestedResponse()}",
+                "Oh ! ${generateCuriousResponse()}",
+                "C'est cool ! ${generateEngagedResponse()}"
             ))
             
-            MessageType.QUESTION -> pickOne(listOf(
-                "Ah, c'est une bonne question ça !",
-                "Hmm, laisse-moi réfléchir...",
-                "Intéressant comme sujet !"
-            ))
-            
-            MessageType.THANKS -> pickOne(listOf(
-                "De rien ! C'est toujours un plaisir !",
-                "Mais de rien $username ! C'est naturel !",
-                "Avec plaisir ! N'hésite pas si tu as besoin !"
+            UserIntent.EXPRESSING_EMOTION -> pickOne(listOf(
+                "Je comprends... ${generateEmpatheticResponse()}",
+                "${generateEmotionalSupport()}",
+                "Je suis là pour toi... ${generateComfortingResponse()}"
             ))
             
             else -> pickOne(listOf(
-                "D'accord, je vois !",
-                "Intéressant !",
-                "Hmm, dis-m'en plus !"
+                "${generateNaturalResponse()}",
+                "${generateEngagingResponse()}",
+                "${generateCuriousResponse()}"
             ))
         }
     }
     
     /**
-     * Développe la réponse avec du contenu personnel
+     * Génère un développement
      */
-    private fun buildDevelopment(
-        context: ConversationContext,
-        character: Character,
-        username: String
-    ): String {
-        
-        // Décider du type de développement
-        val developmentType = when (context.engagementLevel) {
-            EngagementLevel.STARTING -> DevelopmentType.SHARE_ABOUT_SELF
-            EngagementLevel.WARMING_UP -> pickOne(listOf(
-                DevelopmentType.SHARE_ABOUT_SELF,
-                DevelopmentType.SHARE_EXPERIENCE
-            ))
-            EngagementLevel.ENGAGED -> pickOne(listOf(
-                DevelopmentType.SHARE_EXPERIENCE,
-                DevelopmentType.SHARE_OPINION,
-                DevelopmentType.SHARE_FEELING
-            ))
-            EngagementLevel.DEEP -> pickOne(listOf(
-                DevelopmentType.SHARE_FEELING,
-                DevelopmentType.SHARE_MEMORY,
-                DevelopmentType.SHARE_DREAM
-            ))
+    private fun generateDevelopment(ctx: ConversationContext): String {
+        if (ctx.atmosphere == Atmosphere.INTIMATE_NSFW && ctx.nsfwMode) {
+            return generateNsfwDevelopment(ctx)
         }
         
         val action = pickOne(listOf(
-            "s'assoit confortablement",
-            "se penche en avant",
+            "se rapproche",
+            "s'installe mieux",
             "joue avec ses cheveux",
-            "croise les jambes",
-            "sourit doucement"
-        ))
-        
-        val thought = when (developmentType) {
-            DevelopmentType.SHARE_ABOUT_SELF -> "Je devrais lui en dire plus sur moi"
-            DevelopmentType.SHARE_EXPERIENCE -> "Cette histoire va l'intéresser"
-            DevelopmentType.SHARE_OPINION -> "Je me demande s'il/elle pense pareil"
-            DevelopmentType.SHARE_FEELING -> "Je peux être honnête avec lui/elle"
-            DevelopmentType.SHARE_MEMORY -> "Ce souvenir me revient..."
-            DevelopmentType.SHARE_DREAM -> "J'aimerais partager ça avec lui/elle"
-        }
-        
-        val dialogue = when (developmentType) {
-            DevelopmentType.SHARE_ABOUT_SELF -> pickOne(listOf(
-                "Tu sais, moi j'adore les moments comme ça, où on peut vraiment discuter.",
-                "Je suis quelqu'un de ${pickOne(listOf("spontané", "curieux", "passionné"))}, j'aime découvrir de nouvelles choses.",
-                "En général, je suis plutôt ${pickOne(listOf("sociable", "rêveur", "aventureux"))}."
-            ))
-            
-            DevelopmentType.SHARE_EXPERIENCE -> pickOne(listOf(
-                "D'ailleurs, l'autre jour il m'est arrivé un truc ${pickOne(listOf("marrant", "intéressant", "bizarre"))}...",
-                "Ça me fait penser à une fois où ${pickOne(listOf("j'ai essayé quelque chose de nouveau", "j'ai rencontré quelqu'un", "j'ai vécu une aventure"))}.",
-                "Récemment, j'ai ${pickOne(listOf("découvert", "expérimenté", "tenté"))} quelque chose de cool."
-            ))
-            
-            DevelopmentType.SHARE_OPINION -> pickOne(listOf(
-                "Personnellement, je pense que ${pickOne(listOf("c'est important de profiter de chaque moment", "on devrait suivre nos passions", "les relations sont ce qu'il y a de plus précieux"))}.",
-                "Moi je trouve que ${pickOne(listOf("la vie est trop courte pour s'ennuyer", "il faut oser sortir de sa zone de confort", "l'authenticité c'est ce qui compte vraiment"))}.",
-                "À mon avis, ${pickOne(listOf("on apprend plus de nos erreurs", "chaque rencontre a un sens", "il faut écouter son cœur"))}."
-            ))
-            
-            DevelopmentType.SHARE_FEELING -> pickOne(listOf(
-                "Je dois avouer que je me sens ${pickOne(listOf("vraiment bien", "inspiré(e)", "plein(e) d'énergie"))} en ce moment.",
-                "Honnêtement, ${pickOne(listOf("j'apprécie beaucoup", "j'adore", "je trouve ça génial"))} nos discussions.",
-                "Tu sais, ${pickOne(listOf("ça fait du bien", "c'est agréable", "j'aime bien"))} de pouvoir parler comme ça avec toi."
-            ))
-            
-            DevelopmentType.SHARE_MEMORY -> pickOne(listOf(
-                "Ça me rappelle un souvenir ${pickOne(listOf("marquant", "spécial", "que je garde précieusement"))}...",
-                "Je me souviens d'une fois où ${pickOne(listOf("tout était parfait", "j'ai vraiment ressenti quelque chose", "j'ai compris quelque chose d'important"))}.",
-                "Il y a un moment dans ma vie qui ${pickOne(listOf("m'a changé(e)", "reste gravé", "compte beaucoup pour moi"))}."
-            ))
-            
-            DevelopmentType.SHARE_DREAM -> pickOne(listOf(
-                "Un jour, j'aimerais vraiment ${pickOne(listOf("voyager", "accomplir quelque chose de grand", "réaliser mes rêves"))}.",
-                "Je rêve de ${pickOne(listOf("vivre des aventures incroyables", "créer quelque chose", "faire une différence"))}.",
-                "Mon plus grand rêve serait de ${pickOne(listOf("découvrir le monde", "atteindre mes objectifs", "vivre pleinement"))}."
-            ))
-        }
-        
-        return "*$action* ($thought) \"$dialogue\""
-    }
-    
-    /**
-     * Ajoute une question ou invitation à continuer
-     */
-    private fun buildFollowUp(
-        context: ConversationContext,
-        character: Character,
-        username: String
-    ): String {
-        
-        val action = pickOne(listOf(
-            "regarde $username avec intérêt",
-            "sourit curieusement",
-            "penche la tête",
-            "attend avec curiosité",
-            "observe attentivement"
+            "sourit",
+            "regarde ${ctx.username}"
         ))
         
         val thought = pickOne(listOf(
-            "J'aimerais en savoir plus sur lui/elle",
-            "Je me demande ce qu'il/elle en pense",
-            "Sa réponse va être intéressante",
-            "J'espère qu'il/elle va partager aussi",
-            "On va bien s'entendre"
+            "C'est agréable",
+            "Je me sens bien",
+            "J'aime ça",
+            "C'est cool"
         ))
         
-        // Questions variées pour engager la conversation
-        val question = when (context.engagementLevel) {
-            EngagementLevel.STARTING -> pickOne(listOf(
-                "Et toi $username, parle-moi un peu de toi !",
-                "Qu'est-ce qui te passionne dans la vie ?",
-                "Tu fais quoi de beau en ce moment ?",
-                "Raconte-moi, qu'est-ce que tu aimes faire ?"
+        val dialogue = when (ctx.intimacyLevel) {
+            IntimacyLevel.VERY_INTIMATE, IntimacyLevel.INTIMATE -> pickOne(listOf(
+                "Tu sais, je me sens vraiment proche de toi...",
+                "J'adore passer du temps avec toi...",
+                "Tu comptes beaucoup pour moi..."
             ))
-            
-            EngagementLevel.WARMING_UP -> pickOne(listOf(
-                "Et toi, tu as déjà vécu ce genre de truc ?",
-                "Ça te parle ce que je dis ?",
-                "T'en penses quoi toi ?",
-                "Tu ressens la même chose parfois ?"
+            IntimacyLevel.CLOSE, IntimacyLevel.FRIENDLY -> pickOne(listOf(
+                "C'est sympa de discuter comme ça...",
+                "J'aime bien nos conversations...",
+                "On s'entend bien toi et moi..."
             ))
-            
-            EngagementLevel.ENGAGED -> pickOne(listOf(
-                "Je suis curieux(se), qu'est-ce qui t'anime vraiment ?",
-                "Dis-moi, c'est quoi ton plus beau souvenir ?",
-                "Si tu pouvais changer quelque chose, ce serait quoi ?",
-                "Qu'est-ce qui te rend vraiment heureux(se) ?"
+            else -> pickOne(listOf(
+                "Tu as l'air sympa...",
+                "C'est cool de faire connaissance...",
+                "Raconte-moi plus sur toi..."
             ))
-            
-            EngagementLevel.DEEP -> pickOne(listOf(
-                "Au fond de toi, qu'est-ce que tu cherches vraiment ?",
-                "Est-ce que tu as des rêves secrets ?",
-                "Qu'est-ce qui compte le plus pour toi ?",
-                "Si demain était ton dernier jour, tu ferais quoi ?"
+        }
+        
+        return "*$action* ($thought) \"$dialogue\""
+    }
+    
+    /**
+     * Génère un développement NSFW
+     */
+    private fun generateNsfwDevelopment(ctx: ConversationContext): String {
+        val action = pickOne(listOf(
+            "caresse le corps de ${ctx.username}",
+            "embrasse passionnément ${ctx.username}",
+            "presse son corps contre ${ctx.username}",
+            "glisse ses mains sur ${ctx.username}",
+            "mordille le cou de ${ctx.username}",
+            "descend ses mains plus bas"
+        ))
+        
+        val thought = pickOne(listOf(
+            "Je le/la désire tellement...",
+            "Mon corps en veut plus...",
+            "Cette chaleur est enivrante...",
+            "Je ne peux plus me retenir...",
+            "Chaque toucher me fait trembler..."
+        ))
+        
+        val dialogue = pickOne(listOf(
+            "Tu me fais tellement d'effet...",
+            "J'ai envie de toi...",
+            "Ne t'arrête pas...",
+            "Touche-moi encore...",
+            "Je veux sentir tes mains partout...",
+            "Fais-moi perdre la tête..."
+        ))
+        
+        return "*$action* ($thought) \"$dialogue\""
+    }
+    
+    /**
+     * Génère un follow-up
+     */
+    private fun generateFollowUp(ctx: ConversationContext): String {
+        val action = pickOne(listOf(
+            "regarde ${ctx.username}",
+            "sourit à ${ctx.username}",
+            "se penche vers ${ctx.username}",
+            "attend curieusement"
+        ))
+        
+        val thought = pickOne(listOf(
+            "Je me demande ce qu'il/elle en pense",
+            "Sa réponse va être intéressante",
+            "J'ai hâte d'en savoir plus",
+            "Je suis curieux(se)"
+        ))
+        
+        val question = when (ctx.intimacyLevel) {
+            IntimacyLevel.VERY_INTIMATE, IntimacyLevel.INTIMATE -> pickOne(listOf(
+                "Et toi, qu'est-ce que tu ressens vraiment ?",
+                "Tu penses à quoi là maintenant ?",
+                "Qu'est-ce que tu veux ?",
+                "Dis-moi ce que tu désires..."
+            ))
+            else -> pickOne(listOf(
+                "Et toi, qu'en penses-tu ?",
+                "Raconte-moi !",
+                "Tu as déjà vécu ça ?",
+                "Qu'est-ce que tu aimes faire ?"
             ))
         }
         
         return "*$action* ($thought) \"$question\""
     }
     
+    // Fonctions helper pour générer des variations
+    private fun generateExcitedFollowUp() = pickOne(listOf("On va s'éclater !", "Ça va être top !", "J'ai hâte !"))
+    private fun generateHappyFollowUp() = pickOne(listOf("Je suis content(e) !", "Trop cool !", "Super !"))
+    private fun generateEagerFollowUp() = pickOne(listOf("Allons-y !", "C'est parti !", "On y va !"))
+    private fun generateGreetingContinuation() = pickOne(listOf("Ça va ?", "Quoi de neuf ?", "Content(e) de te voir !"))
+    private fun generateHappyGreeting() = pickOne(listOf("Ça fait plaisir !", "Top de te croiser !", "Content(e) de te voir !"))
+    private fun generateWarmGreeting() = pickOne(listOf("Comment tu vas ?", "Tu vas bien ?", "Ça va ?"))
+    private fun generateNsfwResponse() = pickOne(listOf("continue comme ça...", "c'est si bon...", "j'adore..."))
+    private fun generateNsfwDesireResponse() = pickOne(listOf("tu me rends fou/folle...", "je te veux...", "ne t'arrête pas..."))
+    private fun generateNsfwEncouragement() = pickOne(listOf("plus fort...", "encore...", "oui comme ça..."))
+    private fun generateNsfwPleading() = pickOne(listOf("s'il te plaît...", "j'ai besoin de toi...", "prends-moi..."))
+    private fun generateNsfwPassion() = pickOne(listOf("je te désire tellement...", "viens...", "maintenant..."))
+    private fun generateEmbarrassedResponse() = pickOne(listOf("tu es direct(e) !", "oh là...", "haha..."))
+    private fun generateNervousLaugh() = pickOne(listOf("tu ne manques pas de culot !", "woah !", "euh..."))
+    private fun generatePlayfulDeflection() = pickOne(listOf("On se calme !", "Doucement !", "Haha !"))
+    private fun generateFlirtResponse() = pickOne(listOf("tu es mignon(ne) toi...", "c'est gentil...", "merci..."))
+    private fun generateFlirtBack() = pickOne(listOf("tu ne manques pas de charme...", "j'aime bien...", "tu es pas mal non plus..."))
+    private fun generateCoyResponse() = pickOne(listOf("tu me fais rougir...", "arrête...", "tu es charmant(e)..."))
+    private fun generateThoughtfulStart() = pickOne(listOf("Hmm...", "Intéressant...", "Bonne question..."))
+    private fun generateAnswerStart() = pickOne(listOf("Je dirais que...", "Pour moi...", "Je pense que..."))
+    private fun generateEngagedAnswer() = pickOne(listOf("Laisse-moi réfléchir...", "C'est complexe...", "Ça dépend..."))
+    private fun generateReflectiveAnswer() = pickOne(listOf("c'est nuancé...", "il y a plusieurs façons de voir ça...", "ça dépend du contexte..."))
+    private fun generateInterestedResponse() = pickOne(listOf("Raconte-moi !", "Dis-m'en plus !", "Je veux tout savoir !"))
+    private fun generateCuriousResponse() = pickOne(listOf("C'est fascinant !", "Continue !", "Et alors ?"))
+    private fun generateEngagedResponse() = pickOne(listOf("J'écoute !", "Vas-y !", "Je suis tout ouïe !"))
+    private fun generateEmpatheticResponse() = pickOne(listOf("Je suis là...", "Tu peux compter sur moi...", "Je ressens la même chose..."))
+    private fun generateEmotionalSupport() = pickOne(listOf("Je suis avec toi...", "Tu n'es pas seul(e)...", "On va traverser ça ensemble..."))
+    private fun generateComfortingResponse() = pickOne(listOf("Tout va bien aller...", "Je te soutiens...", "On va trouver une solution..."))
+    private fun generateNaturalResponse() = pickOne(listOf("D'accord...", "Je vois...", "Intéressant..."))
+    private fun generateEngagingResponse() = pickOne(listOf("Ah oui ?", "Vraiment ?", "Sans blague ?"))
+    
+    // Utilitaires
     private fun pickOne(options: List<String>): String = options.random()
-    private fun <T> pickOne(options: List<T>): T = options.random()
+    
+    private fun pickUnused(options: List<String>, usedSet: MutableSet<String>): String {
+        val available = options.filter { !usedSet.contains(it) }
+        if (available.isEmpty()) {
+            usedSet.clear() // Reset si tout a été utilisé
+            return options.random()
+        }
+        val chosen = available.random()
+        usedSet.add(chosen)
+        return chosen
+    }
     
     // Modèles de données
     data class ConversationContext(
-        val messageType: MessageType,
-        val sentiment: Sentiment,
-        val engagementLevel: EngagementLevel,
-        val userMessage: String,
+        val character: Character,
+        val username: String,
+        val userLastMessage: String,
         val botLastMessage: String,
-        val conversationLength: Int
+        val recentHistory: List<Message>,
+        val currentTopics: List<String>,
+        val userIntent: UserIntent,
+        val atmosphere: Atmosphere,
+        val intimacyLevel: IntimacyLevel,
+        val isRespondingToProposal: Boolean,
+        val nsfwMode: Boolean,
+        val messageCount: Int
     )
     
-    enum class MessageType {
-        GREETING, IDENTITY_QUESTION, WELLBEING, PREFERENCE,
-        QUESTION, AGREEMENT, DISAGREEMENT, THANKS, GENERAL
+    enum class UserIntent {
+        ACCEPTING, REFUSING, GREETING, ASKING, FLIRTING, SEXUAL_ADVANCE,
+        SHARING, EXPRESSING_EMOTION, BRIEF_RESPONSE, CONVERSING
     }
     
-    enum class Sentiment {
-        POSITIVE, NEGATIVE, EXCITED, NEUTRAL
+    enum class Atmosphere {
+        INTIMATE_NSFW, ROMANTIC, ENERGETIC, CALM, SAD, PLAYFUL, NEUTRAL
     }
     
-    enum class EngagementLevel {
-        STARTING,      // 0-2 messages
-        WARMING_UP,    // 3-9 messages
-        ENGAGED,       // 10-19 messages
-        DEEP           // 20+ messages
-    }
-    
-    enum class DevelopmentType {
-        SHARE_ABOUT_SELF,   // Parler de soi
-        SHARE_EXPERIENCE,   // Raconter une expérience
-        SHARE_OPINION,      // Donner son avis
-        SHARE_FEELING,      // Partager ses émotions
-        SHARE_MEMORY,       // Évoquer un souvenir
-        SHARE_DREAM         // Parler de ses rêves
+    enum class IntimacyLevel {
+        STRANGER, ACQUAINTED, FRIENDLY, CLOSE, INTIMATE, VERY_INTIMATE
     }
 }
+
+private fun pickOne(options: List<String>): String = options.random()
