@@ -2,7 +2,6 @@ package com.roleplayai.chatbot.data.ai
 
 import android.content.Context
 import android.util.Log
-import com.roleplayai.chatbot.data.manager.GroqKeyManager
 import com.roleplayai.chatbot.data.model.Character
 import com.roleplayai.chatbot.data.model.Message
 import kotlinx.coroutines.Dispatchers
@@ -12,22 +11,23 @@ import kotlinx.coroutines.withContext
  * AI Orchestrator - Routeur intelligent des moteurs d'IA
  * 
  * Gère automatiquement la cascade des moteurs d'IA :
- * 1. Moteur principal (Groq / Gemini / llama.cpp selon config)
+ * 1. Moteur principal (Groq / llama.cpp selon config)
  * 2. Fallbacks automatiques si échec
  * 3. llama.cpp en dernier recours (ne peut jamais échouer)
  * 
  * Architecture :
- * - AIEngine : Enum des moteurs disponibles
+ * - Rotation automatique des clés Groq (séparées par virgules)
  * - Cascade intelligente avec fallbacks
  * - Logs détaillés pour debug
  * - Support NSFW sur tous les moteurs
- * - Rotation automatique des clés Groq
  */
 class AIOrchestrator(
     private val context: Context
 ) {
     
-    private val groqKeyManager = GroqKeyManager(context)
+    // Gestion simple de la rotation des clés Groq
+    private var currentGroqKeyIndex = 0
+    private val failedGroqKeys = mutableSetOf<String>()
     
     companion object {
         private const val TAG = "AIOrchestrator"
@@ -38,23 +38,20 @@ class AIOrchestrator(
      */
     enum class AIEngine {
         GROQ,           // API Groq (ultra-rapide, cloud)
-        GEMINI,         // Google Gemini (cloud, excellente qualité)
-        LLAMA_CPP;      // llama.cpp (modèles GGUF locaux)
+        LLAMA_CPP;      // llama.cpp (local, intelligent)
         
         fun getDisplayName(): String = when(this) {
             GROQ -> "Groq API (Cloud)"
-            GEMINI -> "Google Gemini (Cloud)"
             LLAMA_CPP -> "llama.cpp (Local)"
         }
         
         fun getDescription(): String = when(this) {
-            GROQ -> "Ultra-rapide (1-2s), excellente qualité. Nécessite clé API gratuite."
-            GEMINI -> "Intelligence Google de haute qualité. Très cohérent. Nécessite clé API."
-            LLAMA_CPP -> "Modèles locaux GGUF. 100% privé, fonctionne hors-ligne."
+            GROQ -> "Ultra-rapide (1-2s), excellente qualité. Nécessite clé API gratuite. Supporte plusieurs clés séparées par virgules."
+            LLAMA_CPP -> "IA locale intelligente. 100% privé, fonctionne hors-ligne. Réponses uniques et pertinentes."
         }
         
         fun isLocal(): Boolean = when(this) {
-            GROQ, GEMINI -> false
+            GROQ -> false
             LLAMA_CPP -> true
         }
         
@@ -68,10 +65,8 @@ class AIOrchestrator(
         val primaryEngine: AIEngine,
         val enableFallbacks: Boolean = true,
         val nsfwMode: Boolean = false,
-        val groqApiKey: String? = null,
+        val groqApiKey: String? = null,  // Peut contenir plusieurs clés séparées par virgules
         val groqModelId: String? = null,
-        val geminiApiKey: String? = null,
-        val geminiModelId: String? = null,
         val llamaCppModelPath: String? = null
     )
     
@@ -166,7 +161,7 @@ class AIOrchestrator(
         }
         
         // Dernier recours : llama.cpp en mode Kotlin pur (ne peut jamais échouer)
-        Log.w(TAG, "🆘 Fallback ultime: llama.cpp (générateur intelligent Kotlin)")
+        Log.w(TAG, "🆘 Fallback ultime: llama.cpp (IA intelligente Kotlin)")
         val llamaEngine = LlamaCppEngine(context)
         if (config.llamaCppModelPath != null) {
             llamaEngine.setModelPath(config.llamaCppModelPath)
@@ -196,59 +191,54 @@ class AIOrchestrator(
     ): String {
         return when (engine) {
             AIEngine.GROQ -> {
-                // Obtenir la clé courante du key manager (rotation automatique)
-                val apiKey = try {
-                    groqKeyManager.getCurrentKey() ?: config.groqApiKey ?: throw Exception("Clé API Groq manquante")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Erreur obtention clé Groq: ${e.message}")
-                    config.groqApiKey ?: throw Exception("Clé API Groq manquante")
-                }
+                // Parser les clés (peuvent être séparées par virgules)
+                val apiKeys = config.groqApiKey?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() }
+                    ?: throw Exception("Aucune clé API Groq configurée. Ajoutez vos clés dans les paramètres (séparées par des virgules si plusieurs).")
+                
+                Log.d(TAG, "📊 ${apiKeys.size} clé(s) Groq disponible(s)")
                 
                 val modelId = config.groqModelId ?: "llama-3.1-8b-instant"
                 
-                try {
-                    val groqEngine = GroqAIEngine(apiKey, modelId, config.nsfwMode)
-                    val response = groqEngine.generateResponse(character, messages, username, userGender, memoryContext)
+                // Essayer chaque clé jusqu'à ce qu'une fonctionne
+                var lastError: Exception? = null
+                for (attempt in 0 until apiKeys.size) {
+                    val keyIndex = (currentGroqKeyIndex + attempt) % apiKeys.size
+                    val apiKey = apiKeys[keyIndex]
                     
-                    // Vérifier si la réponse contient une erreur de rate limit
-                    if (response.contains("rate limit", ignoreCase = true) || 
-                        response.contains("429", ignoreCase = true) ||
-                        response.contains("Request too large", ignoreCase = true)) {
-                        
-                        Log.w(TAG, "⚠️ Rate limit détecté, rotation de clé...")
-                        groqKeyManager.markCurrentKeyAsRateLimited()
-                        
-                        // Réessayer avec la nouvelle clé
-                        val newApiKey = groqKeyManager.getCurrentKey() ?: throw Exception("Aucune clé Groq disponible")
-                        val newGroqEngine = GroqAIEngine(newApiKey, modelId, config.nsfwMode)
-                        return newGroqEngine.generateResponse(character, messages, username, userGender, memoryContext)
+                    // Ignorer les clés qui ont déjà échoué
+                    if (failedGroqKeys.contains(apiKey)) {
+                        Log.d(TAG, "⏭️ Clé ${keyIndex + 1} déjà en échec, skip")
+                        continue
                     }
                     
-                    response
-                } catch (e: Exception) {
-                    // Si erreur contient rate limit, signaler et réessayer
-                    if (e.message?.contains("429") == true || 
-                        e.message?.contains("rate limit", ignoreCase = true) == true) {
+                    try {
+                        Log.d(TAG, "🔑 Essai avec clé ${keyIndex + 1}/${apiKeys.size}")
+                        val groqEngine = GroqAIEngine(apiKey, modelId, config.nsfwMode)
+                        val response = groqEngine.generateResponse(character, messages, username, userGender, memoryContext)
                         
-                        Log.w(TAG, "⚠️ Erreur rate limit, rotation de clé...")
-                        groqKeyManager.markCurrentKeyAsRateLimited()
+                        // Succès ! Mettre à jour l'index
+                        currentGroqKeyIndex = keyIndex
+                        Log.i(TAG, "✅ Clé ${keyIndex + 1} fonctionne")
+                        return response
                         
-                        // Réessayer avec la nouvelle clé
-                        val newApiKey = groqKeyManager.getCurrentKey() ?: throw Exception("Aucune clé Groq disponible")
-                        val newGroqEngine = GroqAIEngine(newApiKey, modelId, config.nsfwMode)
-                        return newGroqEngine.generateResponse(character, messages, username, userGender, memoryContext)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "⚠️ Clé ${keyIndex + 1} échoue: ${e.message}")
+                        
+                        // Si rate limit, marquer comme échouée et essayer la suivante
+                        if (e.message?.contains("429") == true || 
+                            e.message?.contains("rate limit", ignoreCase = true) == true ||
+                            e.message?.contains("Request too large", ignoreCase = true) == true) {
+                            
+                            failedGroqKeys.add(apiKey)
+                            Log.w(TAG, "🚫 Clé ${keyIndex + 1} blacklistée (rate limit)")
+                        }
+                        
+                        lastError = e
                     }
-                    
-                    throw e
                 }
-            }
-            
-            AIEngine.GEMINI -> {
-                val apiKey = config.geminiApiKey ?: throw Exception("Clé API Gemini manquante")
-                val modelId = config.geminiModelId ?: "gemini-pro"
                 
-                val geminiEngine = GeminiEngine(apiKey, modelId, config.nsfwMode)
-                geminiEngine.generateResponse(character, messages, username, userGender, memoryContext)
+                // Toutes les clés ont échoué
+                throw lastError ?: Exception("Toutes les clés Groq ont échoué")
             }
             
             AIEngine.LLAMA_CPP -> {
@@ -258,7 +248,6 @@ class AIOrchestrator(
                 }
                 llamaEngine.generateResponse(character, messages, username, userGender, memoryContext, config.nsfwMode)
             }
-            
         }
     }
     
@@ -267,18 +256,8 @@ class AIOrchestrator(
      */
     private fun getFallbackCascade(primaryEngine: AIEngine): List<AIEngine> {
         return when (primaryEngine) {
-            AIEngine.GROQ -> listOf(
-                AIEngine.GEMINI,
-                AIEngine.LLAMA_CPP
-            )
-            AIEngine.GEMINI -> listOf(
-                AIEngine.GROQ,
-                AIEngine.LLAMA_CPP
-            )
-            AIEngine.LLAMA_CPP -> listOf(
-                AIEngine.GROQ,
-                AIEngine.GEMINI
-            )
+            AIEngine.GROQ -> listOf(AIEngine.LLAMA_CPP)
+            AIEngine.LLAMA_CPP -> listOf(AIEngine.GROQ)
         }
     }
     
@@ -289,9 +268,6 @@ class AIOrchestrator(
         return try {
             when (engine) {
                 AIEngine.GROQ -> config.groqApiKey?.isNotBlank() == true
-                
-                AIEngine.GEMINI -> config.geminiApiKey?.isNotBlank() == true
-                
                 AIEngine.LLAMA_CPP -> {
                     val llamaEngine = LlamaCppEngine(context)
                     llamaEngine.isAvailable()

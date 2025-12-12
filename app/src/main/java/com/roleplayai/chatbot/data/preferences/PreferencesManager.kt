@@ -27,10 +27,6 @@ class PreferencesManager(private val context: Context) {
         private val NSFW_MODE_ENABLED = booleanPreferencesKey("nsfw_mode_enabled")
         private val USE_GROQ_API = booleanPreferencesKey("use_groq_api")
         
-        // Gemini API settings
-        private val GEMINI_API_KEY = stringPreferencesKey("gemini_api_key")
-        private val GEMINI_MODEL_ID = stringPreferencesKey("gemini_model_id")
-        
         // AI Engine selection
         private val SELECTED_AI_ENGINE = stringPreferencesKey("selected_ai_engine")
         private val ENABLE_AI_FALLBACKS = booleanPreferencesKey("enable_ai_fallbacks")
@@ -161,26 +157,5 @@ class PreferencesManager(private val context: Context) {
     
     val llamaCppModelPath: Flow<String> = context.dataStore.data.map { preferences ->
         preferences[LLAMA_CPP_MODEL_PATH] ?: ""
-    }
-    
-    // Gemini API settings
-    suspend fun setGeminiApiKey(apiKey: String) {
-        context.dataStore.edit { preferences ->
-            preferences[GEMINI_API_KEY] = apiKey
-        }
-    }
-    
-    val geminiApiKey: Flow<String> = context.dataStore.data.map { preferences ->
-        preferences[GEMINI_API_KEY] ?: ""
-    }
-    
-    suspend fun setGeminiModelId(modelId: String) {
-        context.dataStore.edit { preferences ->
-            preferences[GEMINI_MODEL_ID] = modelId
-        }
-    }
-    
-    val geminiModelId: Flow<String> = context.dataStore.data.map { preferences ->
-        preferences[GEMINI_MODEL_ID] ?: "gemini-1.5-flash"
     }
 }
