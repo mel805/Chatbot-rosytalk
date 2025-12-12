@@ -4,8 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.roleplayai.chatbot.data.ai.GroqAIEngine
-import com.roleplayai.chatbot.data.ai.TogetherAIEngine
-import com.roleplayai.chatbot.data.ai.SmartLocalAI
+import com.roleplayai.chatbot.data.ai.AIOrchestrator
 import com.roleplayai.chatbot.data.memory.ConversationMemory
 import com.roleplayai.chatbot.data.manager.GroqKeyManager
 import com.roleplayai.chatbot.data.auth.AuthManager
@@ -28,10 +27,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val preferencesManager = PreferencesManager(application)
     private val authManager = AuthManager.getInstance(application)
     
-    // Moteurs d'IA
+    // AI Orchestrator - Gère tous les moteurs d'IA
+    private val aiOrchestrator = AIOrchestrator(application)
+    
+    // Moteurs d'IA (legacy, pour compatibilité)
     private var groqAIEngine: GroqAIEngine? = null
-    private var togetherAIEngine: TogetherAIEngine? = null
-    private val smartLocalAIs = mutableMapOf<String, SmartLocalAI>()
     
     // Gestionnaire de clés Groq avec rotation
     private val groqKeyManager = GroqKeyManager(application)
@@ -168,23 +168,60 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 // Avertissement si on utilise le fallback
                 if (username == "Utilisateur") {
                     android.util.Log.w("ChatViewModel", "⚠️ Utilisation du nom par défaut 'Utilisateur' - le pseudo n'a pas pu être récupéré")
-                
-                // CASCADE SIMPLIFIÉE : Groq (multi-clés) → Together AI → SmartLocalAI
-                // Groq = Principal (rotation automatique de clés)
-                // Together AI = Fallback 1 (API gratuite)
-                // SmartLocalAI = Fallback 2 (local, toujours disponible, avec mémoire)
-                
-                val useGroq = preferencesManager.useGroqApi.first()
-                
-                val response = if (useGroq) {
-                    // STRATÉGIE 1 : Tenter Groq d'abord
-                    android.util.Log.i("ChatViewModel", "🚀 Tentative avec Groq API...")
-                    tryGroqWithFallback(character, updatedChat.messages, username, userGender, memoryContext)
-                } else {
-                    // STRATÉGIE 2 : Groq désactivé, utiliser directement les fallbacks
-                    android.util.Log.i("ChatViewModel", "💡 Groq désactivé, utilisation des IA alternatives...")
-                    tryFallbackEngines(character, updatedChat.messages, username, userGender, memoryContext)
                 }
+                
+                // NOUVELLE ARCHITECTURE : AI Orchestrator
+                // Gère automatiquement la cascade des moteurs selon la configuration
+                
+                val selectedEngine = preferencesManager.selectedAIEngine.first()
+                val enableFallbacks = preferencesManager.enableAIFallbacks.first()
+                
+                // Récupérer TOUTES les clés Groq pour la rotation
+                val allGroqKeys = groqKeyManager.getAllKeys()
+                val groqApiKey = allGroqKeys.joinToString(",") // Jointure pour AIOrchestrator
+                
+                val groqModelId = preferencesManager.groqModelId.first()
+                val nsfwMode = preferencesManager.nsfwMode.first()
+                val llamaCppModelPath = preferencesManager.llamaCppModelPath.first()
+                
+                android.util.Log.i("ChatViewModel", "🤖 Moteur sélectionné: $selectedEngine")
+                android.util.Log.d("ChatViewModel", "Fallbacks: $enableFallbacks, NSFW: $nsfwMode")
+                android.util.Log.d("ChatViewModel", "🔑 Clés Groq disponibles: ${allGroqKeys.size}")
+                
+                // Convertir le string en enum
+                val engineEnum = try {
+                    AIOrchestrator.AIEngine.valueOf(selectedEngine)
+                } catch (e: Exception) {
+                    android.util.Log.w("ChatViewModel", "Moteur invalide: $selectedEngine, fallback vers GROQ")
+                    AIOrchestrator.AIEngine.GROQ
+                }
+                
+                // Configuration de génération
+                val generationConfig = AIOrchestrator.GenerationConfig(
+                    primaryEngine = engineEnum,
+                    enableFallbacks = enableFallbacks,
+                    nsfwMode = nsfwMode,
+                    groqApiKey = groqApiKey,
+                    groqModelId = groqModelId,
+                    llamaCppModelPath = llamaCppModelPath
+                )
+                
+                // Générer avec l'orchestrateur
+                val result = aiOrchestrator.generateResponse(
+                    character = character,
+                    messages = updatedChat.messages,
+                    username = username,
+                    userGender = userGender,
+                    memoryContext = memoryContext,
+                    config = generationConfig
+                )
+                
+                android.util.Log.i("ChatViewModel", "✅ Réponse générée par ${result.usedEngine.name} en ${result.generationTimeMs}ms")
+                if (result.hadFallback) {
+                    android.util.Log.w("ChatViewModel", "⚠️ Fallback utilisé (moteur principal indisponible)")
+                }
+                
+                val response = result.response
                 
                 // Add AI response
                 chatRepository.addMessage(
@@ -225,199 +262,12 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         _error.value = null
     }
     
-    // Méthodes AIEngine et LocalAI supprimées
     
-    private suspend fun initializeGroqEngine() {
-        try {
-            val apiKey = preferencesManager.groqApiKey.first()
-            val modelId = preferencesManager.groqModelId.first()
-            val nsfwMode = preferencesManager.nsfwMode.first()
-            
-            android.util.Log.d("ChatViewModel", "===== Initialisation Groq Engine =====")
-            android.util.Log.d("ChatViewModel", "Modèle sélectionné: $modelId")
-            android.util.Log.d("ChatViewModel", "NSFW mode: $nsfwMode")
-            android.util.Log.d("ChatViewModel", "Clé API présente: ${apiKey.isNotBlank()}")
-            
-            if (apiKey.isBlank()) {
-                _error.value = "Clé API Groq manquante. Configurez-la dans Paramètres."
-                return
-            }
-            
-            // TOUJOURS recréer l'engine pour prendre en compte les nouveaux paramètres
-            groqAIEngine = GroqAIEngine(
-                apiKey = apiKey,
-                model = modelId,
-                nsfwMode = nsfwMode
-            )
-            
-            android.util.Log.i("ChatViewModel", "✅ Groq Engine initialisé avec modèle: $modelId")
-        } catch (e: Exception) {
-            android.util.Log.e("ChatViewModel", "❌ Erreur initialisation Groq", e)
-            _error.value = "Erreur d'initialisation de Groq: ${e.message}"
-        }
-    }
-    
-    /**
-     * STRATÉGIE 1 : Tenter Groq avec rotation automatique de clés
-     */
-    private suspend fun tryGroqWithFallback(
-        character: com.roleplayai.chatbot.data.model.Character,
-        messages: List<Message>,
-        username: String,
-        userGender: String,
-        memoryContext: String
-    ): String {
-        // Récupérer la clé actuelle du gestionnaire
-        val apiKey = groqKeyManager.getCurrentKey()
-        
-        if (apiKey == null) {
-            android.util.Log.w("ChatViewModel", "⚠️ Aucune clé Groq disponible, fallback Together AI...")
-            return tryFallbackEngines(character, messages, username, userGender, memoryContext)
-        }
-        
-        return try {
-            val modelId = preferencesManager.groqModelId.first()
-            val nsfwMode = preferencesManager.nsfwMode.first()
-            
-            // Réinitialiser le moteur avec la clé actuelle
-            groqAIEngine = GroqAIEngine(
-                apiKey = apiKey,
-                model = modelId.takeIf { it.isNotBlank() } ?: "llama-3.1-70b-versatile",
-                nsfwMode = nsfwMode
-            )
-            
-            val response = groqAIEngine!!.generateResponse(character, messages, username, userGender, memoryContext)
-            android.util.Log.i("ChatViewModel", "✅ Réponse Groq (${groqKeyManager.getAvailableKeysCount()}/${groqKeyManager.getTotalKeysCount()} clés dispo)")
-            response
-            
-        } catch (e: Exception) {
-            // Vérifier si c'est un rate limit (429)
-            if (e.message?.contains("429") == true || e.message?.contains("rate") == true) {
-                android.util.Log.w("ChatViewModel", "⚠️ Clé Groq rate limitée, rotation...")
-                groqKeyManager.markCurrentKeyAsRateLimited()
-                
-                // Réessayer avec la clé suivante si disponible
-                val nextKey = groqKeyManager.getCurrentKey()
-                if (nextKey != null) {
-                    android.util.Log.d("ChatViewModel", "🔄 Réessai avec clé suivante...")
-                    return tryGroqWithFallback(character, messages, username, userGender, memoryContext)
-                }
-            }
-            
-            // Fallback vers Together AI
-            android.util.Log.w("ChatViewModel", "⚠️ Groq indisponible (${e.message}), fallback Together AI...")
-            tryFallbackEngines(character, messages, username, userGender, memoryContext)
-        }
-    }
-    
-    /**
-     * STRATÉGIE 2 : Utiliser directement les fallbacks (Groq désactivé)
-     * CASCADE : Together AI → SmartLocalAI (toujours disponible)
-     */
-    private suspend fun tryFallbackEngines(
-        character: com.roleplayai.chatbot.data.model.Character,
-        messages: List<Message>,
-        username: String,
-        userGender: String,
-        memoryContext: String
-    ): String {
-        // ÉTAPE 1 : Tenter Together AI (API gratuite rapide)
-        try {
-            android.util.Log.d("ChatViewModel", "1️⃣ Tentative Together AI...")
-            return tryTogetherAI(character, messages, username, userGender, memoryContext)
-        } catch (e: Exception) {
-            android.util.Log.w("ChatViewModel", "⚠️ Together AI indisponible (${e.message})")
-        }
-        
-        // ÉTAPE 2 : SmartLocalAI (ne peut jamais échouer)
-        android.util.Log.d("ChatViewModel", "2️⃣ Utilisation SmartLocalAI...")
-        return trySmartLocalAI(character, messages, username, userGender)
-    }
-    
-    /**
-     * Tenter de générer avec Together AI (API GRATUITE rapide)
-     */
-    private suspend fun tryTogetherAI(
-        character: com.roleplayai.chatbot.data.model.Character,
-        messages: List<Message>,
-        username: String,
-        userGender: String,
-        memoryContext: String
-    ): String {
-        val nsfwMode = preferencesManager.nsfwMode.first()
-        
-        if (togetherAIEngine == null) {
-            android.util.Log.d("ChatViewModel", "🤝 Initialisation Together AI Engine...")
-            togetherAIEngine = TogetherAIEngine(
-                apiKey = "",  // Gratuit sans clé
-                model = "mistralai/Mistral-7B-Instruct-v0.2",
-                nsfwMode = nsfwMode
-            )
-        }
-        
-        val response = togetherAIEngine!!.generateResponse(character, messages, username, userGender, memoryContext, maxRetries = 2)
-        android.util.Log.i("ChatViewModel", "✅ Réponse générée avec Together AI")
-        return response
-    }
-    
-    /**
-     * Utilise SmartLocalAI (IA locale avec mémoire - NE PEUT JAMAIS ÉCHOUER)
-     */
-    private suspend fun trySmartLocalAI(
-        character: com.roleplayai.chatbot.data.model.Character,
-        messages: List<Message>,
-        username: String,
-        userGender: String
-    ): String {
-        val nsfwMode = preferencesManager.nsfwMode.first()
-        
-        try {
-            android.util.Log.d("ChatViewModel", "🧠 Génération avec SmartLocalAI...")
-            
-            // Obtenir ou créer SmartLocalAI pour ce personnage
-            val smartAI = smartLocalAIs.getOrPut(character.id) {
-                SmartLocalAI(
-                    context = getApplication(),
-                    character = character,
-                    characterId = character.id,
-                    nsfwMode = nsfwMode
-                )
-            }
-            
-            // Extraire le dernier message utilisateur
-            val userMessage = messages.lastOrNull { it.isUser }?.content ?: ""
-            val response = smartAI.generateResponse(userMessage, messages, username)
-            android.util.Log.i("ChatViewModel", "✅ Réponse SmartLocalAI (avec mémoire)")
-            return response
-            
-        } catch (e: Exception) {
-            android.util.Log.e("ChatViewModel", "❌ Erreur SmartLocalAI", e)
-            // Fallback absolu
-            return "*sourit* Désolé(e), j'ai eu un petit bug. Tu peux répéter ?"
-        }
-    }
-    
-    /**
-     * Tenter de générer avec LocalAI (llama.cpp ou templates intelligents)
-     * NE PEUT JAMAIS ÉCHOUER - dernier fallback absolu
-     */
-    private suspend fun tryLocalAI(
-        character: com.roleplayai.chatbot.data.model.Character,
-        messages: List<Message>,
-        username: String
-    ): String {
-        val nsfwMode = preferencesManager.nsfwMode.first()
-        
-        // Cette fonction a été supprimée - utilisation uniquement d'APIs externes
-        throw Exception("LocalAI supprimé - utilisez Groq, Together AI ou HuggingFace")
-    }
     
     override fun onCleared() {
         super.onCleared()
         // Nettoyer tous les moteurs d'IA
         groqAIEngine = null
-        togetherAIEngine = null
-        smartLocalAIs.clear()
         conversationMemories.clear()
         android.util.Log.d("ChatViewModel", "🧹 Moteurs d'IA nettoyés")
     }

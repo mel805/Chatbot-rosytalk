@@ -20,12 +20,14 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.roleplayai.chatbot.data.ai.GroqAIEngine
+import com.roleplayai.chatbot.data.ai.AIOrchestrator
 import com.roleplayai.chatbot.data.model.ModelConfig
 import com.roleplayai.chatbot.data.model.ModelState
 import com.roleplayai.chatbot.ui.viewmodel.AuthViewModel
 import com.roleplayai.chatbot.ui.viewmodel.ModelViewModel
 import com.roleplayai.chatbot.ui.viewmodel.SettingsViewModel
 import kotlinx.coroutines.launch
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,6 +55,11 @@ fun SettingsScreen(
     val groqModelId by settingsViewModel.groqModelId.collectAsState()
     val nsfwMode by settingsViewModel.nsfwMode.collectAsState()
     
+    // AI Engine settings
+    val selectedAIEngine by settingsViewModel.selectedAIEngine.collectAsState()
+    val enableAIFallbacks by settingsViewModel.enableAIFallbacks.collectAsState()
+    val llamaCppModelPath by settingsViewModel.llamaCppModelPath.collectAsState()
+    
     // Clés partagées
     val sharedGroqKeys by settingsViewModel.sharedGroqKeys.collectAsState()
     val isLoading by settingsViewModel.isLoading.collectAsState()
@@ -64,6 +71,8 @@ fun SettingsScreen(
     var showAddKeyDialog by remember { mutableStateOf(false) }
     var newApiKeyInput by remember { mutableStateOf("") }
     var keyToDelete by remember { mutableStateOf<String?>(null) }
+    var showAIEngineSelection by remember { mutableStateOf(false) }
+    var showLlamaCppModelSelection by remember { mutableStateOf(false) }
     
     Column(
         modifier = Modifier
@@ -179,8 +188,144 @@ fun SettingsScreen(
                 }
             }
             
+            // === SECTION MOTEUR IA (TOUS) ===
+            item {
+                Text(
+                    "🤖 Moteur d'Intelligence Artificielle",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            
+            item {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            "Choisissez le moteur IA pour générer les réponses des personnages.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+            
+            // Sélection du moteur IA
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showAIEngineSelection = true }
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Moteur actuel",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            val engineEnum = try {
+                                AIOrchestrator.AIEngine.valueOf(selectedAIEngine)
+                            } catch (e: Exception) {
+                                AIOrchestrator.AIEngine.GROQ
+                            }
+                            Text(
+                                engineEnum.getDisplayName(),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                engineEnum.getDescription(),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Icon(Icons.Default.ChevronRight, null)
+                    }
+                }
+            }
+            
+            // Fallbacks automatiques
+            item {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Fallbacks automatiques",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                if (enableAIFallbacks) "Si le moteur principal échoue, essayer d'autres moteurs" else "Utiliser uniquement le moteur sélectionné",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = enableAIFallbacks,
+                            onCheckedChange = { scope.launch { settingsViewModel.setEnableAIFallbacks(it) } }
+                        )
+                    }
+                }
+            }
+            
+            // Configuration llama.cpp si sélectionné
+            if (selectedAIEngine == "LLAMA_CPP") {
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showLlamaCppModelSelection = true }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "Modèle llama.cpp",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    if (llamaCppModelPath.isNotBlank()) {
+                                        File(llamaCppModelPath).name
+                                    } else {
+                                        "Aucun modèle sélectionné"
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (llamaCppModelPath.isNotBlank()) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.error
+                                    }
+                                )
+                            }
+                            Icon(Icons.Default.ChevronRight, null)
+                        }
+                    }
+                }
+            }
+            
             // Mode NSFW (accessible à TOUS)
             item {
+                Spacer(Modifier.height(8.dp))
                 Text(
                     "Préférences",
                     style = MaterialTheme.typography.titleMedium,
@@ -925,6 +1070,188 @@ fun SettingsScreen(
             dismissButton = {
                 TextButton(onClick = { keyToDelete = null }) {
                     Text("Annuler")
+                }
+            }
+        )
+    }
+    
+    // Dialog de sélection du moteur IA
+    if (showAIEngineSelection) {
+        AlertDialog(
+            onDismissRequest = { showAIEngineSelection = false },
+            title = { Text("Choisir le moteur IA") },
+            text = {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(AIOrchestrator.AIEngine.values().toList()) { engine ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    scope.launch {
+                                        settingsViewModel.setSelectedAIEngine(engine.name)
+                                    }
+                                    showAIEngineSelection = false
+                                },
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (engine.name == selectedAIEngine) {
+                                    MaterialTheme.colorScheme.primaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.surface
+                                }
+                            )
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                engine.getDisplayName(),
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Spacer(Modifier.width(8.dp))
+                                            if (engine.isLocal()) {
+                                                Text(
+                                                    "📱 Local",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                            } else {
+                                                Text(
+                                                    "☁️ Cloud",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.secondary
+                                                )
+                                            }
+                                        }
+                                        Spacer(Modifier.height(4.dp))
+                                        Text(
+                                            engine.getDescription(),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    if (engine.name == selectedAIEngine) {
+                                        Icon(
+                                            Icons.Default.CheckCircle,
+                                            "Sélectionné",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAIEngineSelection = false }) {
+                    Text("Fermer")
+                }
+            }
+        )
+    }
+    
+    // Dialog de sélection du modèle llama.cpp
+    if (showLlamaCppModelSelection) {
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val modelsDir = File(context.getExternalFilesDir(null), "models")
+        val availableModels = remember {
+            if (modelsDir.exists()) {
+                modelsDir.listFiles { file -> file.extension == "gguf" }?.toList() ?: emptyList()
+            } else {
+                emptyList()
+            }
+        }
+        
+        AlertDialog(
+            onDismissRequest = { showLlamaCppModelSelection = false },
+            title = { Text("Sélectionner un modèle GGUF") },
+            text = {
+                Column {
+                    if (availableModels.isEmpty()) {
+                        Text(
+                            "Aucun modèle trouvé dans:",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            modelsDir.absolutePath,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            "Téléchargez un modèle .gguf (Phi-3, Gemma, TinyLlama) et placez-le dans ce dossier.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    } else {
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(availableModels) { modelFile ->
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            scope.launch {
+                                                settingsViewModel.setLlamaCppModelPath(modelFile.absolutePath)
+                                            }
+                                            showLlamaCppModelSelection = false
+                                        },
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = if (modelFile.absolutePath == llamaCppModelPath) {
+                                            MaterialTheme.colorScheme.primaryContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.surface
+                                        }
+                                    )
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                modelFile.name,
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Text(
+                                                "${modelFile.length() / (1024 * 1024)} MB",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        if (modelFile.absolutePath == llamaCppModelPath) {
+                                            Icon(
+                                                Icons.Default.CheckCircle,
+                                                "Sélectionné",
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showLlamaCppModelSelection = false }) {
+                    Text("Fermer")
                 }
             }
         )

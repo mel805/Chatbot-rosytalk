@@ -24,11 +24,25 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     val groqModelId = preferencesManager.groqModelId
         .stateIn(viewModelScope, SharingStarted.Eagerly, "llama-3.1-70b-versatile")
     
+        .stateIn(viewModelScope, SharingStarted.Eagerly, "")
+    
+        .stateIn(viewModelScope, SharingStarted.Eagerly, "gemini-1.5-flash")
+    
     val nsfwMode = preferencesManager.nsfwMode
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
     
     val useGroqApi = preferencesManager.useGroqApi
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    
+    // AI Engine selection
+    val selectedAIEngine = preferencesManager.selectedAIEngine
+        .stateIn(viewModelScope, SharingStarted.Eagerly, "GROQ")
+    
+    val enableAIFallbacks = preferencesManager.enableAIFallbacks
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+    
+    val llamaCppModelPath = preferencesManager.llamaCppModelPath
+        .stateIn(viewModelScope, SharingStarted.Eagerly, "")
     
     // Clés partagées (temps réel depuis Firebase)
     val sharedGroqKeys: StateFlow<List<String>> = sharedKeysManager
@@ -96,6 +110,30 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setUseGroqApi(use: Boolean) {
         viewModelScope.launch {
             preferencesManager.setUseGroqApi(use)
+        }
+    }
+    
+    fun setSelectedAIEngine(engine: String) {
+        viewModelScope.launch {
+            preferencesManager.setSelectedAIEngine(engine)
+            _statusMessage.value = "✅ Moteur IA changé"
+            kotlinx.coroutines.delay(2000)
+            _statusMessage.value = null
+        }
+    }
+    
+    fun setEnableAIFallbacks(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesManager.setEnableAIFallbacks(enabled)
+        }
+    }
+    
+    fun setLlamaCppModelPath(path: String) {
+        viewModelScope.launch {
+            preferencesManager.setLlamaCppModelPath(path)
+            _statusMessage.value = "✅ Modèle llama.cpp configuré"
+            kotlinx.coroutines.delay(2000)
+            _statusMessage.value = null
         }
     }
     

@@ -13,17 +13,40 @@ android {
         applicationId = "com.roleplayai.chatbot"
         minSdk = 24
         targetSdk = 34
-        versionCode = 55
-        versionName = "2.3.1"
+        versionCode = 71
+        versionName = "5.5.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
         }
+        
+        ndk {
+            // Compiler seulement pour ARM 64-bit (téléphones modernes)
+            abiFilters += listOf("arm64-v8a")
+        }
+        
+        externalNativeBuild {
+            cmake {
+                arguments += listOf(
+                    "-DANDROID_STL=c++_shared",
+                    "-DANDROID_PLATFORM=android-24"
+                )
+                cppFlags += listOf("-std=c++17", "-frtti", "-fexceptions")
+            }
+        }
     }
 
     signingConfigs {
+        getByName("debug") {
+            // Keystore stable pour permettre les mises à jour
+            storeFile = file("../debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
         create("release") {
+            // Même keystore pour release = compatibilité mise à jour
             storeFile = file("../debug.keystore")
             storePassword = "android"
             keyAlias = "androiddebugkey"
@@ -32,13 +55,17 @@ android {
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("release")
+            // Utiliser la même signature que debug pour permettre les mises à jour
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     
@@ -68,34 +95,14 @@ android {
         }
     }
     
-    // NDK configuration for llama.cpp (désactivé temporairement pour build rapide)
-    // ndkVersion = "26.1.10909125"
+    // NDK configuration for llama.cpp
+    ndkVersion = "26.1.10909125"
     
-    // externalNativeBuild {
-    //     cmake {
-    //         path = file("CMakeLists.txt")
-    //         version = "3.22.1"
-    //     }
-    // }
-    
-    defaultConfig {
-        // ... other configs ...
-        
-        // ndk {
-        //     // Compiler seulement pour ARM 64-bit (téléphones modernes)
-        //     // armeabi-v7a, x86, x86_64 exclus pour simplifier llama.cpp
-        //     abiFilters += listOf("arm64-v8a")
-        // }
-        
-        // externalNativeBuild {
-        //     cmake {
-        //         arguments += listOf(
-        //             "-DANDROID_STL=c++_shared",
-        //             "-DANDROID_PLATFORM=android-24"
-        //         )
-        //         cppFlags += listOf("-std=c++17", "-frtti", "-fexceptions")
-        //     }
-        // }
+    externalNativeBuild {
+        cmake {
+            path = file("../CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 }
 
@@ -122,7 +129,7 @@ dependencies {
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     
-    // Gemini Nano (AI on-device)
+    // Google Gemini AI (version stable avec bons modèles)
     implementation("com.google.ai.client.generativeai:generativeai:0.1.2")
     
     // Networking
