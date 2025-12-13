@@ -112,6 +112,17 @@ android {
     assetPacks += listOf(":llama_models")
 }
 
+// Si on demande un modèle bundlé, préparer l'asset-pack avant build.
+// Ex: ./gradlew bundleRelease -PbundledModel=tinyllama -PdownloadBundledModel=true
+afterEvaluate {
+    val bundledModel = (findProperty("bundledModel") as String?)?.trim()?.ifBlank { null }
+    if (bundledModel != null) {
+        tasks.matching { it.name == "preBuild" }.configureEach {
+            dependsOn(":llama_models:prepareBundledModel")
+        }
+    }
+}
+
 dependencies {
     // Core Android
     implementation("androidx.core:core-ktx:1.12.0")
