@@ -95,7 +95,12 @@ class LlamaNativeClient(private val context: Context) {
             suspend fun callOnce(): String {
                 val api = getApi()
                 val loaded = api.loadModel(modelPath, threads, contextSize)
-                if (!loaded) return ""
+                if (!loaded) {
+                    val reason = runCatching { api.getLastError() }.getOrNull().orEmpty().ifBlank {
+                        "Échec chargement modèle local."
+                    }
+                    throw IllegalStateException(reason)
+                }
                 val res = api.generateChat(
                     roles.toTypedArray(),
                     contents.toTypedArray(),

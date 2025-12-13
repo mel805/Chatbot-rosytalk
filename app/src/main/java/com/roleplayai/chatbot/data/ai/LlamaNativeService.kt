@@ -19,11 +19,13 @@ class LlamaNativeService : Service() {
     private var loadedModelPath: String? = null
     private var loadedThreads: Int = 0
     private var loadedCtx: Int = 0
+    @Volatile private var lastError: String = ""
 
     private val binder = object : ILlamaNativeService.Stub() {
         override fun isLoaded(): Boolean = engine.isModelLoaded()
 
         override fun loadModel(modelPath: String, threads: Int, contextSize: Int): Boolean {
+            lastError = ""
             // Si un autre modèle est déjà chargé, on décharge pour éviter une accumulation mémoire.
             val shouldReload =
                 loadedModelPath != modelPath ||
@@ -32,17 +34,25 @@ class LlamaNativeService : Service() {
                     !engine.isModelLoaded()
 
             if (shouldReload && engine.isModelLoaded()) {
-                engine.unloadModel()
+                runCatching { engine.unloadModel() }.onFailure {
+                    lastError = "Erreur unload modèle: ${it.message ?: it.javaClass.simpleName}"
+                }
             }
 
-            val ok = engine.ensureModelLoaded(modelPath, threads, contextSize)
+            val ok = runCatching { engine.ensureModelLoaded(modelPath, threads, contextSize) }
+                .onFailure { lastError = "Erreur chargement modèle: ${it.message ?: it.javaClass.simpleName}" }
+                .getOrDefault(false)
             if (ok) {
                 loadedModelPath = modelPath
                 loadedThreads = threads
                 loadedCtx = contextSize
+            } else if (lastError.isBlank()) {
+                lastError = "Échec chargement modèle (lib native indisponible, fichier invalide ou mémoire insuffisante)."
             }
             return ok
         }
+
+        override fun getLastError(): String = lastError
 
         override fun generateChat(
             roles: Array<out String>,
@@ -53,15 +63,20 @@ class LlamaNativeService : Service() {
             topK: Int,
             repeatPenalty: Float
         ): String {
-            return engine.generateChat(
-                roles = roles.toList(),
-                contents = contents.toList(),
-                maxTokens = maxTokens,
-                temperature = temperature,
-                topP = topP,
-                topK = topK,
-                repeatPenalty = repeatPenalty
-            )
+            lastError = ""
+            return runCatching {
+                engine.generateChat(
+                    roles = roles.toList(),
+                    contents = contents.toList(),
+                    maxTokens = maxTokens,
+                    temperature = temperature,
+                    topP = topP,
+                    topK = topK,
+                    repeatPenalty = repeatPenalty
+                )
+            }.onFailure {
+                lastError = "Erreur génération: ${it.message ?: it.javaClass.simpleName}"
+            }.getOrDefault("")
         }
     }
 

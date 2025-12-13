@@ -8,6 +8,11 @@ interface ILlamaNativeService {
 
     boolean loadModel(String modelPath, int threads, int contextSize);
 
+    /**
+     * Dernière erreur côté process natif (chargement/génération), vide si aucune.
+     */
+    String getLastError();
+
     String generateChat(in String[] roles,
                         in String[] contents,
                         int maxTokens,
