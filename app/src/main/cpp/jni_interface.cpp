@@ -135,6 +135,9 @@ Java_com_roleplayai_chatbot_data_ai_LocalAIEngine_nativeGenerate(
          maxTokens, temperature, topP, topK);
     
     try {
+        // Important: reset KV cache entre générations, sinon on peut finir par générer vide (EOS immédiat)
+        llama_kv_cache_clear(g_model_ctx->ctx);
+
         // Mettre à jour les paramètres du sampler
         llama_sampler_free(g_model_ctx->sampler);
         

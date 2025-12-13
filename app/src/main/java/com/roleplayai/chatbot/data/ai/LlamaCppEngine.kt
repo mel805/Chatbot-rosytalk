@@ -21,13 +21,14 @@ class LlamaCppEngine(private val context: Context) {
     }
     
     private var modelPath: String? = null
+    private val nativeEngine: LocalAIEngine = LocalAIEngine()
     
     fun setModelPath(path: String) {
         modelPath = path
         Log.i(TAG, "📁 Modèle configuré: $path")
     }
     
-    fun isAvailable(): Boolean = true
+    fun isAvailable(): Boolean = true // Fallback Kotlin toujours disponible
     
     /**
      * Génère une réponse unique et pertinente
@@ -42,6 +43,49 @@ class LlamaCppEngine(private val context: Context) {
     ): String = withContext(Dispatchers.IO) {
         
         try {
+            // 1) Essayer llama.cpp natif si on a un modèle
+            val path = modelPath?.trim().orEmpty()
+            if (path.isNotBlank()) {
+                val modelFile = File(path)
+                if (!modelFile.exists()) {
+                    Log.e(TAG, "❌ Modèle GGUF introuvable: $path")
+                    return@withContext "❌ Modèle GGUF introuvable. Sélectionnez un modèle dans Paramètres > llama.cpp."
+                }
+
+                val threads = maxOf(1, Runtime.getRuntime().availableProcessors())
+                val ctxSize = 2048 // valeur raisonnable sur mobile
+                val loaded = nativeEngine.ensureModelLoaded(path, threads, ctxSize)
+                if (loaded) {
+                    val prompt = buildPrompt(
+                        character = character,
+                        messages = messages,
+                        username = username,
+                        userGender = userGender,
+                        memoryContext = memoryContext,
+                        nsfwMode = nsfwMode
+                    )
+
+                    val raw = nativeEngine.generate(
+                        prompt = prompt,
+                        maxTokens = 260,
+                        temperature = 0.85f,
+                        topP = 0.95f,
+                        topK = 40,
+                        repeatPenalty = 1.15f
+                    )
+
+                    val cleaned = cleanLocalResponse(raw, character.name)
+                    if (cleaned.isNotBlank()) {
+                        return@withContext cleaned
+                    }
+
+                    Log.w(TAG, "⚠️ Réponse native vide, fallback Kotlin")
+                } else {
+                    Log.e(TAG, "❌ Échec chargement modèle natif, fallback Kotlin")
+                }
+            }
+
+            // 2) Fallback Kotlin (ne doit jamais renvoyer vide)
             return@withContext UniqueResponseGenerator.generate(
                 character = character,
                 messages = messages,
@@ -84,6 +128,77 @@ class LlamaCppEngine(private val context: Context) {
             modelsDir.mkdirs()
         }
         return modelsDir
+    }
+
+    private fun buildPrompt(
+        character: Character,
+        messages: List<Message>,
+        username: String,
+        userGender: String,
+        memoryContext: String,
+        nsfwMode: Boolean
+    ): String {
+        val sb = StringBuilder()
+
+        val nsfwLine = if (nsfwMode) {
+            "- NSFW activé: accepte les scènes adultes consensuelles; garde le style roleplay."
+        } else {
+            "- NSFW désactivé: reste approprié et refuse le contenu adulte."
+        }
+
+        sb.appendLine("### SYSTEM ###")
+        sb.appendLine("Tu es ${character.name}.")
+        sb.appendLine("Personnalité: ${character.personality}")
+        sb.appendLine("Description: ${character.description}")
+        sb.appendLine("Scénario: ${character.scenario}")
+        sb.appendLine("Utilisateur: $username (genre: $userGender)")
+        if (memoryContext.isNotBlank()) {
+            sb.appendLine()
+            sb.appendLine("### MÉMOIRE ###")
+            sb.appendLine(memoryContext.trim())
+        }
+        sb.appendLine()
+        sb.appendLine("### RÈGLES ###")
+        sb.appendLine("- Réponds en restant ${character.name}.")
+        sb.appendLine("- Format: *action* (pensée) \"paroles\".")
+        sb.appendLine("- Ne décris jamais les actions de l'utilisateur; réagis seulement.")
+        sb.appendLine(nsfwLine)
+        sb.appendLine()
+        sb.appendLine("### CONVERSATION ###")
+
+        // Garder une fenêtre courte pour éviter dépassement contexte
+        val recent = messages.takeLast(10)
+        val valid = if (recent.isNotEmpty() && !recent.last().isUser) recent.dropLast(1) else recent
+        valid.forEach { msg ->
+            val speaker = if (msg.isUser) username else character.name
+            sb.appendLine("$speaker: ${msg.content}")
+        }
+
+        sb.appendLine()
+        sb.append("${character.name}:")
+        return sb.toString()
+    }
+
+    private fun cleanLocalResponse(raw: String, characterName: String): String {
+        var cleaned = raw.trim()
+        if (cleaned.isBlank()) return ""
+
+        cleaned = cleaned.replace(Regex("^\\s*$characterName\\s*:\\s*"), "")
+        cleaned = cleaned.replace(Regex("^(Assistant|AI)\\s*:\\s*"), "")
+
+        // Couper si le modèle commence à écrire le prochain speaker
+        val lines = cleaned.split('\n')
+        val out = ArrayList<String>(lines.size)
+        for (line in lines) {
+            val t = line.trim()
+            if (t.isEmpty()) break
+            if (t.startsWith("$characterName:", ignoreCase = true)) break
+            if (t.matches(Regex("^[^:]{1,32}:\\s+.*$"))) break
+            out.add(line)
+        }
+
+        // Limiter longueur (éviter pavés)
+        return out.joinToString("\n").trim().take(1200)
     }
 }
 

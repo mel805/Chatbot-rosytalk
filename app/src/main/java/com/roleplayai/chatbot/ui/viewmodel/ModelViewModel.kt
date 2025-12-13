@@ -110,6 +110,8 @@ class ModelViewModel(application: Application) : AndroidViewModel(application) {
                 val path = modelDownloader.getModelPath(model)
                 if (path != null) {
                     preferencesManager.setModelPath(path)
+                        // Garder llama.cpp en sync : sinon le moteur LLAMA_CPP n'a aucun modèle configuré
+                        preferencesManager.setLlamaCppModelPath(path)
                 }
             } else {
                 _modelState.value = ModelState.NotDownloaded
@@ -135,6 +137,8 @@ class ModelViewModel(application: Application) : AndroidViewModel(application) {
                         val path = modelDownloader.getModelPath(model)
                         if (path != null) {
                             preferencesManager.setModelPath(path)
+                            // Sync vers le moteur LLAMA_CPP
+                            preferencesManager.setLlamaCppModelPath(path)
                         }
                     }
                 }
@@ -224,6 +228,7 @@ class ModelViewModel(application: Application) : AndroidViewModel(application) {
                 val path = modelDownloader.getModelPath(model)
                 if (path != null) {
                     preferencesManager.setModelPath(path)
+                    preferencesManager.setLlamaCppModelPath(path)
                 }
             } else {
                 _modelState.value = ModelState.NotDownloaded
