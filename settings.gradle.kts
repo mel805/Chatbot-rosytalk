@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "RolePlayAI"
 include(":app")
+include(":llama_models")

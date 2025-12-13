@@ -83,6 +83,7 @@ android {
     
     buildFeatures {
         compose = true
+        aidl = true
     }
     
     composeOptions {
@@ -100,8 +101,24 @@ android {
     
     externalNativeBuild {
         cmake {
-            path = file("../CMakeLists.txt")
+            // Utiliser le CMake du module app (compile llama.cpp + JNI)
+            path = file("CMakeLists.txt")
             version = "3.22.1"
+        }
+    }
+
+    // Play Asset Delivery: modèle(s) livrés via asset pack (AAB / Play Store).
+    // Pour l'instant, on prépare le projet; le fichier GGUF n'est pas committé ici (trop volumineux).
+    assetPacks += listOf(":llama_models")
+}
+
+// Si on demande un modèle bundlé, préparer l'asset-pack avant build.
+// Ex: ./gradlew bundleRelease -PbundledModel=tinyllama -PdownloadBundledModel=true
+afterEvaluate {
+    val bundledModel = (findProperty("bundledModel") as String?)?.trim()?.ifBlank { null }
+    if (bundledModel != null) {
+        tasks.matching { it.name == "preBuild" }.configureEach {
+            dependsOn(":llama_models:prepareBundledModel")
         }
     }
 }
@@ -151,6 +168,9 @@ dependencies {
     
     // DataStore
     implementation("androidx.datastore:datastore-preferences:1.0.0")
+
+    // Play Asset Delivery (pour fournir le modèle dans un asset pack Play Store)
+    implementation("com.google.android.play:asset-delivery-ktx:2.2.2")
     
     // Room Database (désactivé, on utilise SharedPreferences)
     // implementation("androidx.room:room-runtime:2.6.1")

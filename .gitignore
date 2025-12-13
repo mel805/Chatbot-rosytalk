@@ -1,3 +1,8 @@
+# Modèles LLM (trop volumineux pour git)
+**/*.gguf
+llama_models/src/main/assets/models/model.gguf
+app/src/main/assets/models/model.gguf
+
 *.iml
 .gradle
 /local.properties

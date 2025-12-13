@@ -13,13 +13,15 @@ mkdir -p app/src/main/cpp
 # Aller dans le répertoire cpp
 cd app/src/main/cpp
 
-# Télécharger llama.cpp si pas déjà présent
-if [ ! -d "llama.cpp" ]; then
-    echo "📥 Téléchargement de llama.cpp..."
-    git clone --depth 1 https://github.com/ggerganov/llama.cpp.git
-    echo "✅ llama.cpp téléchargé"
+# Télécharger llama.cpp si absent OU si le dossier est vide / incomplet (ex: sous-module cassé)
+NEEDED_FILE="llama.cpp/include/llama.h"
+if [ ! -f "$NEEDED_FILE" ]; then
+    echo "📥 Téléchargement (ou réparation) de llama.cpp..."
+    rm -rf llama.cpp
+    git clone --depth 1 https://github.com/ggerganov/llama.cpp.git llama.cpp
+    echo "✅ llama.cpp prêt"
 else
-    echo "✅ llama.cpp déjà présent"
+    echo "✅ llama.cpp déjà présent (OK)"
 fi
 
 # Retour à la racine

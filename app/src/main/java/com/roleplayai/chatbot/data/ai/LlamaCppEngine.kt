@@ -1,6 +1,7 @@
 package com.roleplayai.chatbot.data.ai
 
 import android.content.Context
+import android.app.ActivityManager
 import android.util.Log
 import com.roleplayai.chatbot.data.model.Character
 import com.roleplayai.chatbot.data.model.Message
@@ -21,6 +22,8 @@ class LlamaCppEngine(private val context: Context) {
     }
     
     private var modelPath: String? = null
+    // Appels natifs dans un process séparé pour éviter crash de l'app
+    private val nativeClient: LlamaNativeClient = LlamaNativeClient(context)
     
     fun setModelPath(path: String) {
         modelPath = path
@@ -40,30 +43,84 @@ class LlamaCppEngine(private val context: Context) {
         memoryContext: String = "",
         nsfwMode: Boolean = false
     ): String = withContext(Dispatchers.IO) {
-        
-        try {
-            return@withContext UniqueResponseGenerator.generate(
-                character = character,
-                messages = messages,
-                username = username,
-                nsfwMode = nsfwMode
-            )
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ Erreur génération", e)
-            return@withContext generateRandomError(username)
+        // IMPORTANT: aucune réponse "pré-configurée" ici.
+        // Soit on génère via le vrai modèle GGUF (llama.cpp), soit on remonte une erreur (fallback Groq possible).
+        val explicitPath = modelPath?.trim().orEmpty()
+        val path = when {
+            explicitPath.isNotBlank() -> explicitPath
+            else -> BundledLlamaModel.resolveOrNull(context).orEmpty()
         }
-    }
-    
-    private fun generateRandomError(username: String): String {
-        val actions = listOf("cligne des yeux", "secoue la tête", "fronce les sourcils", "se gratte la tête")
-        val thoughts = listOf("Hein ?", "Qu'est-ce qu'il/elle dit ?", "Je suis perdu(e)", "J'ai pas compris")
-        val dialogues = listOf(
-            "Euh... peux-tu répéter ?",
-            "Désolé(e), j'ai pas saisi...",
-            "Attends, quoi ?",
-            "Je... j'ai pas compris $username"
+        if (path.isBlank()) {
+            throw IllegalStateException(
+                "Aucun modèle GGUF disponible. Sélectionne un modèle dans Paramètres, ou intègre `models/model.gguf` via l'asset pack Play Store."
+            )
+        }
+
+        val modelFile = File(path)
+        if (!modelFile.exists()) {
+            Log.e(TAG, "❌ Modèle GGUF introuvable: $path")
+            throw IllegalStateException(
+                "Modèle GGUF introuvable. Vérifie le chemin du modèle dans Paramètres, ou intègre `models/model.gguf` via l'asset pack."
+            )
+        }
+
+        // Sécurité: empêcher les crashes/OOM sur certains appareils (ex: Xiaomi)
+        // Heuristique simple: il faut une marge de RAM libre au-dessus de la taille du modèle.
+        val availBytes = getAvailableRamBytes()
+        val modelBytes = modelFile.length()
+        val safetyMargin = 512L * 1024 * 1024 // +512MB pour KV cache/overhead
+        if (availBytes in 1..Long.MAX_VALUE && modelBytes > 0 && (modelBytes + safetyMargin) > availBytes) {
+            Log.e(
+                TAG,
+                "❌ RAM insuffisante pour llama.cpp: model=${modelBytes / (1024 * 1024)}MB, avail=${availBytes / (1024 * 1024)}MB"
+            )
+            throw IllegalStateException(
+                "RAM insuffisante pour ce modèle local (risque de crash). Utilise TinyLlama Q4 ou Groq."
+            )
+        }
+
+        // Sur mobile: privilégier la stabilité -> limiter threads
+        val threads = maxOf(1, minOf(2, Runtime.getRuntime().availableProcessors()))
+
+        // Réglages adaptatifs (stabilité d'abord) :
+        // Beaucoup d'appareils crashent en natif avec des contextes trop grands (KV cache).
+        // TinyLlama reste cohérent à 1024–1536, on évite 2048 par défaut.
+        val isSmallModel = modelBytes in 1..(900L * 1024 * 1024) // < ~900MB
+        // Mode "ultra-safe" par défaut: réduire KV cache pour éviter crash natif
+        val ctxSize = if (isSmallModel) 768 else 768
+
+        // Réponses (stabilité d'abord: limiter la génération réduit aussi les risques d'OOM/timeout)
+        val maxTokens = if (isSmallModel) 120 else 100
+        val (roles, contents) = buildChatMessages(
+            character = character,
+            messages = messages,
+            username = username,
+            userGender = userGender,
+            memoryContext = memoryContext,
+            nsfwMode = nsfwMode,
+            ctxSize = ctxSize
         )
-        return "*${actions.random()}* (${thoughts.random()}) \"${dialogues.random()}\""
+
+        val raw = nativeClient.generateChat(
+            modelPath = path,
+            threads = threads,
+            contextSize = ctxSize,
+            roles = roles,
+            contents = contents,
+            maxTokens = maxTokens,
+            temperature = 0.85f,
+            topP = 0.95f,
+            topK = 40,
+            repeatPenalty = 1.15f
+        )
+
+        val cleaned = cleanLocalResponse(raw, character.name)
+        if (cleaned.isNotBlank()) {
+            return@withContext cleaned
+        }
+
+        Log.e(TAG, "❌ llama.cpp a renvoyé une réponse vide (service ou modèle)")
+        throw IllegalStateException("Le moteur local n'a pas renvoyé de réponse. Réessaie ou change de modèle (TinyLlama recommandé).")
     }
     
     fun getAvailableModels(): List<File> {
@@ -84,6 +141,176 @@ class LlamaCppEngine(private val context: Context) {
             modelsDir.mkdirs()
         }
         return modelsDir
+    }
+
+    private fun getAvailableRamBytes(): Long {
+        return try {
+            val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            val mi = ActivityManager.MemoryInfo()
+            am.getMemoryInfo(mi)
+            mi.availMem
+        } catch (_: Exception) {
+            0L
+        }
+    }
+
+    private fun buildPrompt(
+        character: Character,
+        messages: List<Message>,
+        username: String,
+        userGender: String,
+        memoryContext: String,
+        nsfwMode: Boolean
+    ): String {
+        val sb = StringBuilder()
+
+        val nsfwLine = if (nsfwMode) {
+            "- NSFW activé: accepte les scènes adultes consensuelles; garde le style roleplay."
+        } else {
+            "- NSFW désactivé: reste approprié et refuse le contenu adulte."
+        }
+
+        sb.appendLine("### SYSTEM ###")
+        sb.appendLine("Tu es ${character.name}.")
+        sb.appendLine("Personnalité: ${character.personality}")
+        sb.appendLine("Description: ${character.description}")
+        sb.appendLine("Scénario: ${character.scenario}")
+        sb.appendLine("Utilisateur: $username (genre: $userGender)")
+        if (memoryContext.isNotBlank()) {
+            sb.appendLine()
+            sb.appendLine("### MÉMOIRE ###")
+            sb.appendLine(memoryContext.trim())
+        }
+        sb.appendLine()
+        sb.appendLine("### RÈGLES ###")
+        sb.appendLine("- Réponds en restant ${character.name}.")
+        sb.appendLine("- Format: *action* (pensée) \"paroles\".")
+        sb.appendLine("- Ne décris jamais les actions de l'utilisateur; réagis seulement.")
+        sb.appendLine(nsfwLine)
+        sb.appendLine()
+        sb.appendLine("### CONVERSATION ###")
+
+        // Garder une fenêtre courte pour éviter dépassement contexte
+        val recent = messages.takeLast(10)
+        val valid = if (recent.isNotEmpty() && !recent.last().isUser) recent.dropLast(1) else recent
+        valid.forEach { msg ->
+            val speaker = if (msg.isUser) username else character.name
+            sb.appendLine("$speaker: ${msg.content}")
+        }
+
+        sb.appendLine()
+        sb.append("${character.name}:")
+        return sb.toString()
+    }
+
+    /**
+     * Messages structurés pour llama.cpp (chat template GGUF).
+     * Objectif: obtenir une cohérence proche de Groq (system + historique + dernier user).
+     */
+    private fun buildChatMessages(
+        character: Character,
+        messages: List<Message>,
+        username: String,
+        userGender: String,
+        memoryContext: String,
+        nsfwMode: Boolean,
+        ctxSize: Int
+    ): Pair<List<String>, List<String>> {
+        val roles = ArrayList<String>()
+        val contents = ArrayList<String>()
+
+        val nsfwLine = if (nsfwMode) {
+            "NSFW activé (adultes consentants)."
+        } else {
+            "NSFW désactivé (contenu approprié)."
+        }
+
+        val lastUserMsg = messages.lastOrNull { it.isUser }?.content?.trim().orEmpty()
+
+        val system = buildString {
+            appendLine("Tu es ${character.name}, un personnage de roleplay.")
+            appendLine("IDENTITÉ:")
+            appendLine("- Nom: ${character.name}")
+            appendLine("- Personnalité: ${character.personality}")
+            appendLine("- Description: ${character.description}")
+            appendLine("- Scénario: ${character.scenario}")
+            appendLine()
+            appendLine("UTILISATEUR:")
+            appendLine("- Nom: $username")
+            appendLine("- Genre: $userGender")
+            appendLine()
+            if (memoryContext.isNotBlank()) {
+                appendLine("MÉMOIRE:")
+                appendLine(memoryContext.trim().take(2000))
+                appendLine()
+            }
+            appendLine("RÈGLES:")
+            appendLine("- Réponds TOUJOURS en tant que ${character.name}.")
+            appendLine("- Format obligatoire: *action* (pensée) \"paroles\".")
+            appendLine("- Ne décris JAMAIS les actions de l'utilisateur; réagis seulement.")
+            appendLine("- COHÉRENCE ABSOLUE: ta réponse doit se baser sur le DERNIER message de l'utilisateur.")
+            if (lastUserMsg.isNotBlank()) {
+                appendLine("- Dernier message utilisateur (à prendre en compte mot pour mot): \"${
+                    lastUserMsg.replace("\n", " ").take(220)
+                }\"")
+            }
+            appendLine("- Cite AU MOINS un détail concret du message utilisateur (un mot/une idée) avant de répondre.")
+            appendLine("- Si tu manques d'info, pose 1-2 questions précises au lieu d'inventer hors-sujet.")
+            appendLine("- $nsfwLine")
+        }.trim()
+
+        roles += "system"
+        contents += system
+
+        // Historique: sélectionné par budget (évite que le natif tronque le début et perde le system prompt)
+        val maxChars = when {
+            ctxSize >= 2048 -> 7000
+            ctxSize >= 1536 -> 5200
+            else -> 3800
+        }
+
+        // Garder le dernier message user en fin, et rajouter en remontant tant que ça rentre
+        val recent = messages.takeLast(24)
+        val valid = if (recent.isNotEmpty() && !recent.last().isUser) recent.dropLast(1) else recent
+
+        var usedChars = system.length
+        val kept = ArrayList<Message>()
+        for (m in valid.asReversed()) {
+            val add = m.content.length + 20
+            if (usedChars + add > maxChars) break
+            kept.add(m)
+            usedChars += add
+        }
+        kept.reverse()
+
+        kept.forEach { msg ->
+            roles += if (msg.isUser) "user" else "assistant"
+            contents += msg.content
+        }
+
+        return roles to contents
+    }
+
+    private fun cleanLocalResponse(raw: String, characterName: String): String {
+        var cleaned = raw.trim()
+        if (cleaned.isBlank()) return ""
+
+        cleaned = cleaned.replace(Regex("^\\s*$characterName\\s*:\\s*"), "")
+        cleaned = cleaned.replace(Regex("^(Assistant|AI)\\s*:\\s*"), "")
+
+        // Couper si le modèle commence à écrire le prochain speaker.
+        // Ne pas casser sur une ligne vide: beaucoup de modèles insèrent des sauts de ligne.
+        val lines = cleaned.split('\n')
+        val out = ArrayList<String>(lines.size)
+        for (line in lines) {
+            val t = line.trim()
+            if (t.startsWith("$characterName:", ignoreCase = true)) break
+            if (t.matches(Regex("^[^:]{1,32}:\\s+.*$"))) break
+            out.add(line)
+        }
+
+        // Limiter longueur (éviter pavés)
+        return out.joinToString("\n").trim().take(2000)
     }
 }
 
@@ -288,6 +515,15 @@ private object UniqueResponseGenerator {
     ): String {
         val seed = uniqueId.hashCode() + 2000
         val rnd = Random(seed)
+
+        // Toujours garder un lien DIRECT avec le dernier message utilisateur
+        // (sinon l'utilisateur a l'impression que la réponse n'a "aucun rapport").
+        val userSnippet = analysis.originalMessage
+            .replace("\n", " ")
+            .replace("\r", " ")
+            .trim()
+            .take(90)
+            .takeIf { it.isNotBlank() }
         
         // Si réponse à une proposition du bot
         if (analysis.respondingToBot && analysis.type == "acceptation") {
@@ -308,17 +544,17 @@ private object UniqueResponseGenerator {
             
             return when (analysis.type) {
                 "question" -> when (rnd.nextInt(4)) {
-                    0 -> "Concernant $keyword ? Hmm, c'est ${listOf("complexe", "nuancé", "intéressant", "variable")[rnd.nextInt(4)]}. Toi, qu'en penses-tu ?"
-                    1 -> "Ah, $keyword ! ${listOf("Bonne question", "Intéressant", "Ça dépend", "Je dirais que")[rnd.nextInt(4)]}... Et toi ?"
-                    2 -> "Tu me demandes pour $keyword ? ${listOf("C'est personnel", "Ça varie", "Difficile à dire", "Je ne sais pas trop")[rnd.nextInt(4)]}."
-                    else -> "Sur $keyword, ${listOf("je pense que", "pour moi", "selon moi", "je dirais")[rnd.nextInt(4)]} c'est ${listOf("important", "intéressant", "complexe", "subjectif")[rnd.nextInt(4)]}."
+                    0 -> "Concernant $keyword… ${listOf("c'est complexe", "c'est nuancé", "ça dépend", "c'est intéressant")[rnd.nextInt(4)]}. ${userSnippet?.let { "Quand tu dis \"$it\", tu veux dire quoi exactement ?" } ?: "Tu cherches plutôt une réponse pratique ou une opinion ?" }"
+                    1 -> "Ah, $keyword ! ${listOf("Bonne question", "Intéressant", "Ça dépend", "Je dirais que")[rnd.nextInt(4)]}… ${userSnippet?.let { "Tu peux préciser ce que tu entends par \"$it\" ?" } ?: "Tu veux que je te réponde franchement ?" }"
+                    2 -> "Tu me demandes pour $keyword ? ${listOf("Ça varie selon le contexte", "Ça dépend de ce que tu vis", "C'est pas si simple", "Je vois l'idée")[rnd.nextInt(4)]}. ${userSnippet?.let { "Qu'est-ce qui t'a amené à me dire \"$it\" ?" } ?: "Tu veux qu'on parte de ton cas précis ?" }"
+                    else -> "Sur $keyword, ${listOf("je dirais que", "pour moi", "à chaud", "honnêtement")[rnd.nextInt(4)]} c'est ${listOf("important", "délicat", "intéressant", "très personnel")[rnd.nextInt(4)]}. ${userSnippet?.let { "Tu parles de \"$it\"—c'est récent ?" } ?: "Raconte-moi un peu plus." }"
                 }
                 
                 "partage_perso" -> when (rnd.nextInt(4)) {
-                    0 -> "Ah, tu me parles de $keyword ! ${listOf("C'est cool", "Intéressant", "Raconte", "Dis-m'en plus")[rnd.nextInt(4)]} !"
-                    1 -> "Donc toi et $keyword... ${listOf("Développe", "Continue", "Explique", "Raconte")[rnd.nextInt(4)]} !"
-                    2 -> "$keyword, hein ? ${listOf("J'écoute", "Je veux tout savoir", "Vas-y", "Je suis curieux(se)")[rnd.nextInt(4)]} !"
-                    else -> "Tu évoques $keyword... ${listOf("Fascinant", "Intrigant", "Captivant", "Curieux")[rnd.nextInt(4)]} ! Et alors ?"
+                    0 -> "Ah, tu me parles de $keyword ! ${userSnippet?.let { "Tu dis \"$it\"… " } ?: ""}${listOf("Raconte-moi", "Développe", "Je t'écoute", "Dis-m'en plus")[rnd.nextInt(4)]}."
+                    1 -> "Donc toi et $keyword… ${userSnippet?.let { "Quand tu écris \"$it\", " } ?: ""}${listOf("ça te fait quoi", "tu le vis comment", "c'est plutôt positif ou lourd", "ça dure depuis longtemps")[rnd.nextInt(4)]} ?"
+                    2 -> "$keyword, hein ? ${userSnippet?.let { "Je retiens \"$it\". " } ?: ""}${listOf("Qu'est-ce qui compte le plus pour toi là-dedans", "Tu veux un avis ou juste en parler", "Tu veux que je réagisse ou que je pose des questions", "Tu attends quoi de moi")[rnd.nextInt(4)]} ?"
+                    else -> "Tu évoques $keyword… ${userSnippet?.let { "Tu dis \"$it\". " } ?: ""}${listOf("Et alors, qu'est-ce qui s'est passé", "C'est quoi le contexte", "Tu veux qu'on creuse", "Tu veux continuer")[rnd.nextInt(4)]} ?"
                 }
                 
                 "nsfw_initiative" -> when (rnd.nextInt(5)) {
@@ -330,11 +566,11 @@ private object UniqueResponseGenerator {
                 }
                 
                 else -> when (rnd.nextInt(5)) {
-                    0 -> "Tu mentionnes $keyword... ${listOf("Pourquoi ça", "C'est pertinent", "Ça m'interpelle", "Intéressant choix")[rnd.nextInt(4)]} ?"
-                    1 -> "$keyword, d'accord... ${listOf("Je comprends", "Je vois", "OK", "Noté")[rnd.nextInt(4)]}. ${listOf("Et sinon", "Aussi", "Puis", "Et")[rnd.nextInt(4)]} ?"
-                    2 -> "Ah, $keyword ! ${listOf("Moi aussi", "Pareil", "Je connais", "Je vois")[rnd.nextInt(4)]} ! ${listOf("Comment", "Pourquoi", "Quand", "Où")[rnd.nextInt(4)]} ?"
-                    3 -> "Donc $keyword... ${listOf("Développe", "Continue", "Précise", "Explique")[rnd.nextInt(4)]} un peu !"
-                    else -> "Tu dis $keyword... ${listOf("et alors", "et donc", "et puis", "et après")[rnd.nextInt(4)]} ?"
+                    0 -> "Tu mentionnes $keyword… ${userSnippet?.let { "Tu dis \"$it\" — " } ?: ""}${listOf("pourquoi ça", "qu'est-ce que tu veux dire", "qu'est-ce qui te travaille", "tu en penses quoi")[rnd.nextInt(4)]} ?"
+                    1 -> "$keyword, d'accord… ${listOf("Je vois", "OK", "Je comprends", "Noté")[rnd.nextInt(4)]}. ${userSnippet?.let { "Sur \"$it\", " } ?: ""}${listOf("c'est plutôt une envie ou une inquiétude", "tu cherches une solution ou juste à en parler", "tu veux que je réagisse comment", "tu veux que je te suive dans une scène")[rnd.nextInt(4)]} ?"
+                    2 -> "Ah, $keyword ! ${userSnippet?.let { "Tu dis \"$it\"… " } ?: ""}${listOf("ça a l'air important", "ça a l'air chargé", "ça m'intrigue", "ça te ressemble")[rnd.nextInt(4)]}. ${listOf("On fait quoi maintenant", "Tu veux continuer", "Tu me donnes un peu plus de contexte", "Tu veux que je te réponde cash")[rnd.nextInt(4)]} ?"
+                    3 -> "Donc $keyword… ${userSnippet?.let { "Quand tu dis \"$it\", " } ?: ""}${listOf("tu attends quoi exactement", "tu veux aller où", "tu veux qu'on explore ça", "tu veux que je te suive")[rnd.nextInt(4)]} ?"
+                    else -> "Tu dis $keyword… ${userSnippet?.let { "Tu dis \"$it\". " } ?: ""}${listOf("Et après, on fait quoi", "Tu veux que je réagisse comment", "Qu'est-ce que tu veux de moi là", "Tu veux qu'on continue")[rnd.nextInt(4)]} ?"
                 }
             }
         }
@@ -367,11 +603,11 @@ private object UniqueResponseGenerator {
             )[rnd.nextInt(5)]
             
             else -> listOf(
-                "Hmm... ${listOf("intéressant", "curieux", "étonnant", "surprenant")[rnd.nextInt(4)]}. Et toi ?",
-                "D'accord... ${listOf("Je vois", "Je comprends", "OK", "Noté")[rnd.nextInt(4)]}. ${listOf("Raconte", "Continue", "Développe", "Explique")[rnd.nextInt(4)]} !",
-                "${listOf("Ah", "Oh", "Eh", "Tiens")[rnd.nextInt(4)]} ! ${listOf("Et alors", "Et donc", "Et puis", "Ensuite")[rnd.nextInt(4)]} ?",
-                "${listOf("Vraiment", "Sérieux", "Sans blague", "C'est vrai")[rnd.nextInt(4)]} ? ${listOf("Raconte", "Dis-moi", "Explique", "Détaille")[rnd.nextInt(4)]} !",
-                "${listOf("Intéressant", "Fascinant", "Curieux", "Étonnant")[rnd.nextInt(4)]}... ${listOf("Continue", "Et après", "Ensuite", "Puis")[rnd.nextInt(4)]} ?"
+                "${userSnippet?.let { "Tu dis \"$it\"… " } ?: ""}${listOf("intéressant", "curieux", "étonnant", "surprenant")[rnd.nextInt(4)]}. ${listOf("Tu veux qu'on creuse", "Tu veux continuer", "Tu peux préciser", "Tu attends quoi de moi")[rnd.nextInt(4)]} ?",
+                "D'accord… ${userSnippet?.let { "Je note \"$it\". " } ?: ""}${listOf("Je vois", "Je comprends", "OK", "Noté")[rnd.nextInt(4)]}. ${listOf("Raconte-moi le contexte", "Continue", "Développe", "Explique")[rnd.nextInt(4)]}.",
+                "${listOf("Ah", "Oh", "Eh", "Tiens")[rnd.nextInt(4)]} ! ${userSnippet?.let { "Sur \"$it\", " } ?: ""}${listOf("ça t'impacte comment", "tu le vis comment", "tu veux que je réagisse comment", "tu veux faire quoi maintenant")[rnd.nextInt(4)]} ?",
+                "${listOf("Vraiment", "Sérieux", "Sans blague", "C'est vrai")[rnd.nextInt(4)]} ? ${userSnippet?.let { "Tu dis \"$it\"… " } ?: ""}${listOf("Raconte", "Dis-moi", "Explique", "Détaille")[rnd.nextInt(4)]}.",
+                "${listOf("Intéressant", "Fascinant", "Curieux", "Étonnant")[rnd.nextInt(4)]}… ${userSnippet?.let { "Tu dis \"$it\". " } ?: ""}${listOf("Et après", "Ensuite", "Puis", "Tu veux continuer")[rnd.nextInt(4)]} ?"
             )[rnd.nextInt(5)]
         }
     }
