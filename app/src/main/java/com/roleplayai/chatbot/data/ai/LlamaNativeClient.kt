@@ -9,6 +9,8 @@ import android.os.IBinder
 import android.os.RemoteException
 import android.util.Log
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 
 /**
@@ -22,6 +24,8 @@ class LlamaNativeClient(private val context: Context) {
         // Certaines générations (Phi) peuvent dépasser 45s sur mobile
         private const val CALL_TIMEOUT_MS = 90000L
     }
+
+    private val appContext: Context = context.applicationContext
 
     @Volatile private var api: ILlamaNativeService? = null
     @Volatile private var connectDeferred: CompletableDeferred<ILlamaNativeService>? = null
@@ -65,15 +69,24 @@ class LlamaNativeClient(private val context: Context) {
         val deferred = CompletableDeferred<ILlamaNativeService>()
         connectDeferred = deferred
 
-        val ok = context.bindService(
-            Intent(context, LlamaNativeService::class.java),
-            connection,
-            Context.BIND_AUTO_CREATE
-        )
+        val intent = Intent(appContext, LlamaNativeService::class.java)
+
+        // Assurer le démarrage du service (certaines ROM sont capricieuses sur le bind direct).
+        runCatching { appContext.startService(intent) }
+            .onFailure { Log.w(TAG, "startService llama échoué: ${it.message}") }
+
+        // Binder callbacks sont livrés sur le main thread; binder depuis le main évite des cas bizarres.
+        val ok = withContext(Dispatchers.Main) {
+            appContext.bindService(intent, connection, Context.BIND_AUTO_CREATE)
+        }
 
         if (!ok) {
             connectDeferred = null
-            throw IllegalStateException("Impossible de binder le service llama")
+            throw IllegalStateException(
+                "Impossible de binder le service llama.cpp (:llama_native). " +
+                    "Si tu utilises le modèle bundlé, installe l'AAB (pas l'APK). " +
+                    "Sinon vérifie que l'appareil est arm64-v8a."
+            )
         }
 
         return withTimeout(CONNECT_TIMEOUT_MS) { deferred.await() }
