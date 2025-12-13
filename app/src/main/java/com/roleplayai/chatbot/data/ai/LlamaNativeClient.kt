@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.os.DeadObjectException
 import android.os.IBinder
 import android.os.RemoteException
 import android.util.Log
@@ -17,24 +18,24 @@ import kotlinx.coroutines.withTimeout
 class LlamaNativeClient(private val context: Context) {
     companion object {
         private const val TAG = "LlamaNativeClient"
-        private const val CONNECT_TIMEOUT_MS = 1500L
+        private const val CONNECT_TIMEOUT_MS = 2500L
         // Certaines générations (Phi) peuvent dépasser 45s sur mobile
         private const val CALL_TIMEOUT_MS = 90000L
     }
 
-    @Volatile private var api: LlamaNativeService.Api? = null
-    @Volatile private var connectDeferred: CompletableDeferred<LlamaNativeService.Api>? = null
+    @Volatile private var api: ILlamaNativeService? = null
+    @Volatile private var connectDeferred: CompletableDeferred<ILlamaNativeService>? = null
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-            val binder = service as? LlamaNativeService.Api
-            if (binder == null) {
-                connectDeferred?.completeExceptionally(IllegalStateException("Binder invalide"))
+            val remote = service?.let { ILlamaNativeService.Stub.asInterface(it) }
+            if (remote == null) {
+                connectDeferred?.completeExceptionally(IllegalStateException("Binder invalide (AIDL)"))
                 connectDeferred = null
                 return
             }
-            api = binder
-            connectDeferred?.complete(binder)
+            api = remote
+            connectDeferred?.complete(remote)
             connectDeferred = null
             Log.d(TAG, "Service connecté")
         }
@@ -55,13 +56,13 @@ class LlamaNativeClient(private val context: Context) {
         }
     }
 
-    private suspend fun getApi(): LlamaNativeService.Api {
+    private suspend fun getApi(): ILlamaNativeService {
         api?.let { return it }
 
         // Déjà en cours de connexion ?
         connectDeferred?.let { return withTimeout(CONNECT_TIMEOUT_MS) { it.await() } }
 
-        val deferred = CompletableDeferred<LlamaNativeService.Api>()
+        val deferred = CompletableDeferred<ILlamaNativeService>()
         connectDeferred = deferred
 
         val ok = context.bindService(
@@ -91,11 +92,28 @@ class LlamaNativeClient(private val context: Context) {
         repeatPenalty: Float
     ): String {
         return withTimeout(CALL_TIMEOUT_MS) {
-            val api = getApi()
-            try {
+            suspend fun callOnce(): String {
+                val api = getApi()
                 val loaded = api.loadModel(modelPath, threads, contextSize)
-                if (!loaded) return@withTimeout ""
-                api.generateChat(roles, contents, maxTokens, temperature, topP, topK, repeatPenalty)
+                if (!loaded) return ""
+                return api.generateChat(
+                    roles.toTypedArray(),
+                    contents.toTypedArray(),
+                    maxTokens,
+                    temperature,
+                    topP,
+                    topK,
+                    repeatPenalty
+                )
+            }
+
+            try {
+                callOnce()
+            } catch (e: DeadObjectException) {
+                // Le process :llama_native est mort (OOM/SIGSEGV). Rebind + retry une fois.
+                Log.w(TAG, "DeadObject (service mort) -> rebind + retry")
+                api = null
+                callOnce()
             } catch (e: RemoteException) {
                 Log.e(TAG, "RemoteException: ${e.message}")
                 ""

@@ -2,7 +2,6 @@ package com.roleplayai.chatbot.data.ai
 
 import android.app.Service
 import android.content.Intent
-import android.os.Binder
 import android.os.IBinder
 import android.util.Log
 
@@ -21,15 +20,21 @@ class LlamaNativeService : Service() {
     private var loadedThreads: Int = 0
     private var loadedCtx: Int = 0
 
-    inner class Api : Binder() {
-        fun isLoaded(): Boolean = engine.isModelLoaded()
+    private val binder = object : ILlamaNativeService.Stub() {
+        override fun isLoaded(): Boolean = engine.isModelLoaded()
 
-        fun loadModel(modelPath: String, threads: Int, contextSize: Int): Boolean {
+        override fun loadModel(modelPath: String, threads: Int, contextSize: Int): Boolean {
             // Si un autre modèle est déjà chargé, on décharge pour éviter une accumulation mémoire.
-            val shouldReload = loadedModelPath != modelPath || loadedThreads != threads || loadedCtx != contextSize || !engine.isModelLoaded()
+            val shouldReload =
+                loadedModelPath != modelPath ||
+                    loadedThreads != threads ||
+                    loadedCtx != contextSize ||
+                    !engine.isModelLoaded()
+
             if (shouldReload && engine.isModelLoaded()) {
                 engine.unloadModel()
             }
+
             val ok = engine.ensureModelLoaded(modelPath, threads, contextSize)
             if (ok) {
                 loadedModelPath = modelPath
@@ -39,9 +44,9 @@ class LlamaNativeService : Service() {
             return ok
         }
 
-        fun generateChat(
-            roles: List<String>,
-            contents: List<String>,
+        override fun generateChat(
+            roles: Array<out String>,
+            contents: Array<out String>,
             maxTokens: Int,
             temperature: Float,
             topP: Float,
@@ -49,8 +54,8 @@ class LlamaNativeService : Service() {
             repeatPenalty: Float
         ): String {
             return engine.generateChat(
-                roles = roles,
-                contents = contents,
+                roles = roles.toList(),
+                contents = contents.toList(),
                 maxTokens = maxTokens,
                 temperature = temperature,
                 topP = topP,
@@ -59,8 +64,6 @@ class LlamaNativeService : Service() {
             )
         }
     }
-
-    private val binder = Api()
 
     override fun onBind(intent: Intent?): IBinder {
         Log.d(TAG, "onBind()")
