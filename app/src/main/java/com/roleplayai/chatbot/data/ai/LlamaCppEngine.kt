@@ -52,8 +52,10 @@ class LlamaCppEngine(private val context: Context) {
                     return@withContext "❌ Modèle GGUF introuvable. Sélectionnez un modèle dans Paramètres > llama.cpp."
                 }
 
-                val threads = maxOf(1, Runtime.getRuntime().availableProcessors())
-                val ctxSize = 2048 // valeur raisonnable sur mobile
+                // Sur mobile: trop de threads peut être contre-productif (overhead + throttling)
+                val threads = maxOf(1, minOf(4, Runtime.getRuntime().availableProcessors()))
+                // Conserver un contexte modéré pour accélérer l'attention (et éviter OOM)
+                val ctxSize = 1024
                 val loaded = nativeEngine.ensureModelLoaded(path, threads, ctxSize)
                 if (loaded) {
                     val (roles, contents) = buildChatMessages(
@@ -68,7 +70,8 @@ class LlamaCppEngine(private val context: Context) {
                     val raw = nativeEngine.generateChat(
                         roles = roles,
                         contents = contents,
-                        maxTokens = 260,
+                        // Par défaut plus court = beaucoup plus rapide et ressemble à Groq (réponses concises)
+                        maxTokens = 120,
                         temperature = 0.85f,
                         topP = 0.95f,
                         topK = 40,
