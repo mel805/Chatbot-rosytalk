@@ -96,7 +96,7 @@ class LlamaNativeClient(private val context: Context) {
                 val api = getApi()
                 val loaded = api.loadModel(modelPath, threads, contextSize)
                 if (!loaded) return ""
-                return api.generateChat(
+                val res = api.generateChat(
                     roles.toTypedArray(),
                     contents.toTypedArray(),
                     maxTokens,
@@ -105,6 +105,8 @@ class LlamaNativeClient(private val context: Context) {
                     topK,
                     repeatPenalty
                 )
+                // AIDL String peut être null: normaliser.
+                return (res as String?) ?: ""
             }
 
             try {
@@ -113,13 +115,18 @@ class LlamaNativeClient(private val context: Context) {
                 // Le process :llama_native est mort (OOM/SIGSEGV). Rebind + retry une fois.
                 Log.w(TAG, "DeadObject (service mort) -> rebind + retry")
                 api = null
-                callOnce()
+                try {
+                    callOnce()
+                } catch (t: Throwable) {
+                    throw IllegalStateException(
+                        "Service llama.cpp indisponible (crash natif probable). Essayez un modèle plus petit (TinyLlama Q4) ou Groq.",
+                        t
+                    )
+                }
             } catch (e: RemoteException) {
-                Log.e(TAG, "RemoteException: ${e.message}")
-                ""
+                throw IllegalStateException("Erreur IPC llama.cpp: ${e.message ?: "RemoteException"}", e)
             } catch (e: Throwable) {
-                Log.e(TAG, "Erreur appel service: ${e.message}")
-                ""
+                throw IllegalStateException("Erreur llama.cpp: ${e.message ?: e.javaClass.simpleName}", e)
             }
         }
     }

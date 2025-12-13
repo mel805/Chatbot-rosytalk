@@ -239,7 +239,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 
             } catch (e: Exception) {
-                _error.value = "Erreur lors de la génération de la réponse: ${e.message}"
+                val msg = e.message ?: e.localizedMessage ?: e.javaClass.simpleName
+                _error.value = "Erreur lors de la génération de la réponse: $msg"
+                android.util.Log.e("ChatViewModel", "❌ Erreur génération réponse", e)
             } finally {
                 _isGenerating.value = false
             }
