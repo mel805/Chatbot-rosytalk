@@ -31,6 +31,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Process séparé pour isoler llama.cpp (évite crash de l'app si natif plante) -->
+        <service
+            android:name=".data.ai.LlamaNativeService"
+            android:exported="false"
+            android:process=":llama_native" />
     </application>
 
 </manifest>

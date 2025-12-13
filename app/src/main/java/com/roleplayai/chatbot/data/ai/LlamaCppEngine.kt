@@ -22,7 +22,8 @@ class LlamaCppEngine(private val context: Context) {
     }
     
     private var modelPath: String? = null
-    private val nativeEngine: LocalAIEngine = LocalAIEngine()
+    // Appels natifs dans un process séparé pour éviter crash de l'app
+    private val nativeClient: LlamaNativeClient = LlamaNativeClient(context)
     
     fun setModelPath(path: String) {
         modelPath = path
@@ -75,37 +76,35 @@ class LlamaCppEngine(private val context: Context) {
                 val threads = maxOf(1, minOf(4, Runtime.getRuntime().availableProcessors()))
                 // Conserver un contexte modéré pour accélérer l'attention (et éviter OOM)
                 val ctxSize = 1024
-                val loaded = nativeEngine.ensureModelLoaded(path, threads, ctxSize)
-                if (loaded) {
-                    val (roles, contents) = buildChatMessages(
-                        character = character,
-                        messages = messages,
-                        username = username,
-                        userGender = userGender,
-                        memoryContext = memoryContext,
-                        nsfwMode = nsfwMode
-                    )
+                val (roles, contents) = buildChatMessages(
+                    character = character,
+                    messages = messages,
+                    username = username,
+                    userGender = userGender,
+                    memoryContext = memoryContext,
+                    nsfwMode = nsfwMode
+                )
 
-                    val raw = nativeEngine.generateChat(
-                        roles = roles,
-                        contents = contents,
-                        // Par défaut plus court = beaucoup plus rapide et ressemble à Groq (réponses concises)
-                        maxTokens = 120,
-                        temperature = 0.85f,
-                        topP = 0.95f,
-                        topK = 40,
-                        repeatPenalty = 1.15f
-                    )
+                val raw = nativeClient.generateChat(
+                    modelPath = path,
+                    threads = threads,
+                    contextSize = ctxSize,
+                    roles = roles,
+                    contents = contents,
+                    // Par défaut plus court = beaucoup plus rapide et ressemble à Groq (réponses concises)
+                    maxTokens = 120,
+                    temperature = 0.85f,
+                    topP = 0.95f,
+                    topK = 40,
+                    repeatPenalty = 1.15f
+                )
 
-                    val cleaned = cleanLocalResponse(raw, character.name)
-                    if (cleaned.isNotBlank()) {
-                        return@withContext cleaned
-                    }
-
-                    Log.w(TAG, "⚠️ Réponse native vide, fallback Kotlin")
-                } else {
-                    Log.e(TAG, "❌ Échec chargement modèle natif, fallback Kotlin")
+                val cleaned = cleanLocalResponse(raw, character.name)
+                if (cleaned.isNotBlank()) {
+                    return@withContext cleaned
                 }
+
+                Log.w(TAG, "⚠️ Réponse native vide / service indisponible, fallback Kotlin")
             }
 
             // 2) Fallback Kotlin (ne doit jamais renvoyer vide)
