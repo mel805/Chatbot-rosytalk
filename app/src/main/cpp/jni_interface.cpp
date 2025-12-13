@@ -183,10 +183,14 @@ static std::string generate_from_prompt(
 
     std::string response;
     int n_gen = 0;
+    const int min_gen = 80; // évite des réponses trop courtes (EOS trop tôt)
     while (n_gen < maxTokens) {
         llama_token new_token = llama_sampler_sample(g_model_ctx->sampler, g_model_ctx->ctx, -1);
         if (llama_vocab_is_eog(vocab, new_token)) {
-            break;
+            // Certains modèles finissent très tôt; on laisse continuer un peu
+            if (n_gen >= min_gen) {
+                break;
+            }
         }
 
         char buf[256];

@@ -18,7 +18,8 @@ class LlamaNativeClient(private val context: Context) {
     companion object {
         private const val TAG = "LlamaNativeClient"
         private const val CONNECT_TIMEOUT_MS = 1500L
-        private const val CALL_TIMEOUT_MS = 45000L
+        // Certaines générations (Phi) peuvent dépasser 45s sur mobile
+        private const val CALL_TIMEOUT_MS = 90000L
     }
 
     @Volatile private var api: LlamaNativeService.Api? = null

@@ -74,8 +74,18 @@ class LlamaCppEngine(private val context: Context) {
 
                 // Sur mobile: trop de threads peut être contre-productif (overhead + throttling)
                 val threads = maxOf(1, minOf(4, Runtime.getRuntime().availableProcessors()))
-                // Conserver un contexte modéré pour accélérer l'attention (et éviter OOM)
-                val ctxSize = 1024
+
+                // Réglages adaptatifs: TinyLlama peut tenir un contexte plus grand, Phi souvent moins.
+                val isSmallModel = modelBytes in 1..(900L * 1024 * 1024) // < ~900MB
+                val ctxSize = when {
+                    // si on a de la marge RAM, augmenter le contexte => meilleure cohérence
+                    availBytes > (modelBytes + 900L * 1024 * 1024) && isSmallModel -> 2048
+                    availBytes > (modelBytes + 700L * 1024 * 1024) -> 1536
+                    else -> 1024
+                }
+
+                // Réponses plus longues (sans être des pavés)
+                val maxTokens = if (isSmallModel) 220 else 180
                 val (roles, contents) = buildChatMessages(
                     character = character,
                     messages = messages,
@@ -91,8 +101,7 @@ class LlamaCppEngine(private val context: Context) {
                     contextSize = ctxSize,
                     roles = roles,
                     contents = contents,
-                    // Par défaut plus court = beaucoup plus rapide et ressemble à Groq (réponses concises)
-                    maxTokens = 120,
+                    maxTokens = maxTokens,
                     temperature = 0.85f,
                     topP = 0.95f,
                     topK = 40,
@@ -247,22 +256,23 @@ class LlamaCppEngine(private val context: Context) {
             appendLine()
             if (memoryContext.isNotBlank()) {
                 appendLine("MÉMOIRE:")
-                appendLine(memoryContext.trim().take(1200))
+                appendLine(memoryContext.trim().take(2000))
                 appendLine()
             }
             appendLine("RÈGLES:")
             appendLine("- Réponds TOUJOURS en tant que ${character.name}.")
             appendLine("- Format obligatoire: *action* (pensée) \"paroles\".")
             appendLine("- Ne décris JAMAIS les actions de l'utilisateur; réagis seulement.")
-            appendLine("- Réponses courtes et naturelles (2-6 phrases).")
+            appendLine("- Réponses naturelles et développées (4-10 phrases), cohérentes avec le contexte.")
+            appendLine("- Fais avancer la conversation: termine souvent par une relance/question.")
             appendLine("- $nsfwLine")
         }.trim()
 
         roles += "system"
         contents += system
 
-        // Historique: garder court pour mobiles
-        val recent = messages.takeLast(10)
+        // Historique: un peu plus long => meilleure cohérence
+        val recent = messages.takeLast(16)
         val valid = if (recent.isNotEmpty() && !recent.last().isUser) recent.dropLast(1) else recent
         valid.forEach { msg ->
             roles += if (msg.isUser) "user" else "assistant"
@@ -279,19 +289,19 @@ class LlamaCppEngine(private val context: Context) {
         cleaned = cleaned.replace(Regex("^\\s*$characterName\\s*:\\s*"), "")
         cleaned = cleaned.replace(Regex("^(Assistant|AI)\\s*:\\s*"), "")
 
-        // Couper si le modèle commence à écrire le prochain speaker
+        // Couper si le modèle commence à écrire le prochain speaker.
+        // Ne pas casser sur une ligne vide: beaucoup de modèles insèrent des sauts de ligne.
         val lines = cleaned.split('\n')
         val out = ArrayList<String>(lines.size)
         for (line in lines) {
             val t = line.trim()
-            if (t.isEmpty()) break
             if (t.startsWith("$characterName:", ignoreCase = true)) break
             if (t.matches(Regex("^[^:]{1,32}:\\s+.*$"))) break
             out.add(line)
         }
 
         // Limiter longueur (éviter pavés)
-        return out.joinToString("\n").trim().take(1200)
+        return out.joinToString("\n").trim().take(2000)
     }
 }
 
