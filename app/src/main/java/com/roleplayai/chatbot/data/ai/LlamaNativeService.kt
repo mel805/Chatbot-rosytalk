@@ -19,13 +19,15 @@ class LlamaNativeService : Service() {
     private var loadedModelPath: String? = null
     private var loadedThreads: Int = 0
     private var loadedCtx: Int = 0
-    @Volatile private var lastError: String = ""
+    // Ne pas appeler ça "lastError" : AIDL génère un getter getLastError() et Kotlin crée
+    // une propriété synthétique `lastError` (val) dans le Stub -> conflit d'assignation.
+    @Volatile private var lastErrorMessage: String = ""
 
     private val binder = object : ILlamaNativeService.Stub() {
         override fun isLoaded(): Boolean = engine.isModelLoaded()
 
         override fun loadModel(modelPath: String, threads: Int, contextSize: Int): Boolean {
-            lastError = ""
+            lastErrorMessage = ""
             // Si un autre modèle est déjà chargé, on décharge pour éviter une accumulation mémoire.
             val shouldReload =
                 loadedModelPath != modelPath ||
@@ -35,24 +37,24 @@ class LlamaNativeService : Service() {
 
             if (shouldReload && engine.isModelLoaded()) {
                 runCatching { engine.unloadModel() }.onFailure {
-                    lastError = "Erreur unload modèle: ${it.message ?: it.javaClass.simpleName}"
+                    lastErrorMessage = "Erreur unload modèle: ${it.message ?: it.javaClass.simpleName}"
                 }
             }
 
             val ok = runCatching { engine.ensureModelLoaded(modelPath, threads, contextSize) }
-                .onFailure { lastError = "Erreur chargement modèle: ${it.message ?: it.javaClass.simpleName}" }
+                .onFailure { lastErrorMessage = "Erreur chargement modèle: ${it.message ?: it.javaClass.simpleName}" }
                 .getOrDefault(false)
             if (ok) {
                 loadedModelPath = modelPath
                 loadedThreads = threads
                 loadedCtx = contextSize
-            } else if (lastError.isBlank()) {
-                lastError = "Échec chargement modèle (lib native indisponible, fichier invalide ou mémoire insuffisante)."
+            } else if (lastErrorMessage.isBlank()) {
+                lastErrorMessage = "Échec chargement modèle (lib native indisponible, fichier invalide ou mémoire insuffisante)."
             }
             return ok
         }
 
-        override fun getLastError(): String = lastError
+        override fun getLastError(): String = lastErrorMessage
 
         override fun generateChat(
             roles: Array<out String>,
@@ -63,7 +65,7 @@ class LlamaNativeService : Service() {
             topK: Int,
             repeatPenalty: Float
         ): String {
-            lastError = ""
+            lastErrorMessage = ""
             return runCatching {
                 engine.generateChat(
                     roles = roles.toList(),
@@ -75,7 +77,7 @@ class LlamaNativeService : Service() {
                     repeatPenalty = repeatPenalty
                 )
             }.onFailure {
-                lastError = "Erreur génération: ${it.message ?: it.javaClass.simpleName}"
+                lastErrorMessage = "Erreur génération: ${it.message ?: it.javaClass.simpleName}"
             }.getOrDefault("")
         }
     }
