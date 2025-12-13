@@ -45,15 +45,23 @@ class LlamaCppEngine(private val context: Context) {
     ): String = withContext(Dispatchers.IO) {
         // IMPORTANT: aucune réponse "pré-configurée" ici.
         // Soit on génère via le vrai modèle GGUF (llama.cpp), soit on remonte une erreur (fallback Groq possible).
-        val path = modelPath?.trim().orEmpty()
+        val explicitPath = modelPath?.trim().orEmpty()
+        val path = when {
+            explicitPath.isNotBlank() -> explicitPath
+            else -> BundledLlamaModel.resolveOrNull(context).orEmpty()
+        }
         if (path.isBlank()) {
-            throw IllegalStateException("Aucun modèle GGUF sélectionné pour llama.cpp. Choisissez un modèle dans Paramètres.")
+            throw IllegalStateException(
+                "Aucun modèle GGUF disponible. Sélectionne un modèle dans Paramètres, ou intègre `models/model.gguf` via l'asset pack Play Store."
+            )
         }
 
         val modelFile = File(path)
         if (!modelFile.exists()) {
             Log.e(TAG, "❌ Modèle GGUF introuvable: $path")
-            throw IllegalStateException("Modèle GGUF introuvable. Vérifie le chemin du modèle dans Paramètres > llama.cpp.")
+            throw IllegalStateException(
+                "Modèle GGUF introuvable. Vérifie le chemin du modèle dans Paramètres, ou intègre `models/model.gguf` via l'asset pack."
+            )
         }
 
         // Sécurité: empêcher les crashes/OOM sur certains appareils (ex: Xiaomi)

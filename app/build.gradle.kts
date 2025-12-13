@@ -106,6 +106,10 @@ android {
             version = "3.22.1"
         }
     }
+
+    // Play Asset Delivery: modèle(s) livrés via asset pack (AAB / Play Store).
+    // Pour l'instant, on prépare le projet; le fichier GGUF n'est pas committé ici (trop volumineux).
+    assetPacks += listOf(":llama_models")
 }
 
 dependencies {
@@ -153,6 +157,9 @@ dependencies {
     
     // DataStore
     implementation("androidx.datastore:datastore-preferences:1.0.0")
+
+    // Play Asset Delivery (pour fournir le modèle dans un asset pack Play Store)
+    implementation("com.google.android.play:asset-delivery-ktx:2.2.2")
     
     // Room Database (désactivé, on utilise SharedPreferences)
     // implementation("androidx.room:room-runtime:2.6.1")
