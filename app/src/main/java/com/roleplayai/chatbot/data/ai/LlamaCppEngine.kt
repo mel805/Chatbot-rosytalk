@@ -30,7 +30,7 @@ class LlamaCppEngine(private val context: Context) {
         Log.i(TAG, "📁 Modèle configuré: $path")
     }
     
-    fun isAvailable(): Boolean = true // Fallback Kotlin toujours disponible
+    fun isAvailable(): Boolean = true
     
     /**
      * Génère une réponse unique et pertinente
@@ -43,103 +43,78 @@ class LlamaCppEngine(private val context: Context) {
         memoryContext: String = "",
         nsfwMode: Boolean = false
     ): String = withContext(Dispatchers.IO) {
-        
-        try {
-            // 1) Essayer llama.cpp natif si on a un modèle
-            val path = modelPath?.trim().orEmpty()
-            if (path.isNotBlank()) {
-                val modelFile = File(path)
-                if (!modelFile.exists()) {
-                    Log.e(TAG, "❌ Modèle GGUF introuvable: $path")
-                    return@withContext "❌ Modèle GGUF introuvable. Sélectionnez un modèle dans Paramètres > llama.cpp."
-                }
-
-                // Sécurité: empêcher les crashes/OOM sur certains appareils (ex: Xiaomi)
-                // Heuristique simple: il faut une marge de RAM libre au-dessus de la taille du modèle.
-                val availBytes = getAvailableRamBytes()
-                val modelBytes = modelFile.length()
-                val safetyMargin = 512L * 1024 * 1024 // +512MB pour KV cache/overhead
-                if (availBytes in 1..Long.MAX_VALUE && modelBytes > 0 && (modelBytes + safetyMargin) > availBytes) {
-                    Log.e(
-                        TAG,
-                        "❌ RAM insuffisante pour llama.cpp: model=${modelBytes / (1024 * 1024)}MB, avail=${availBytes / (1024 * 1024)}MB"
-                    )
-                    return@withContext buildString {
-                        append("⚠️ Modèle trop lourd pour la RAM libre de l'appareil.\n\n")
-                        append("Pour éviter un crash, llama.cpp est désactivé pour ce modèle.\n")
-                        append("➡️ Choisis un modèle plus petit (ex: TinyLlama 1.1B Q4) ou utilise Groq.\n")
-                        append("Détails: modèle ${modelBytes / (1024 * 1024)} MB, RAM libre ${availBytes / (1024 * 1024)} MB.")
-                    }
-                }
-
-                // Sur mobile: trop de threads peut être contre-productif (overhead + throttling)
-                val threads = maxOf(1, minOf(4, Runtime.getRuntime().availableProcessors()))
-
-                // Réglages adaptatifs: TinyLlama peut tenir un contexte plus grand, Phi souvent moins.
-                val isSmallModel = modelBytes in 1..(900L * 1024 * 1024) // < ~900MB
-                val ctxSize = when {
-                    // si on a de la marge RAM, augmenter le contexte => meilleure cohérence
-                    availBytes > (modelBytes + 900L * 1024 * 1024) && isSmallModel -> 2048
-                    availBytes > (modelBytes + 700L * 1024 * 1024) -> 1536
-                    else -> 1024
-                }
-
-                // Réponses plus longues (sans être des pavés)
-                val maxTokens = if (isSmallModel) 220 else 180
-                val (roles, contents) = buildChatMessages(
-                    character = character,
-                    messages = messages,
-                    username = username,
-                    userGender = userGender,
-                    memoryContext = memoryContext,
-                    nsfwMode = nsfwMode,
-                    ctxSize = ctxSize
-                )
-
-                val raw = nativeClient.generateChat(
-                    modelPath = path,
-                    threads = threads,
-                    contextSize = ctxSize,
-                    roles = roles,
-                    contents = contents,
-                    maxTokens = maxTokens,
-                    temperature = 0.85f,
-                    topP = 0.95f,
-                    topK = 40,
-                    repeatPenalty = 1.15f
-                )
-
-                val cleaned = cleanLocalResponse(raw, character.name)
-                if (cleaned.isNotBlank()) {
-                    return@withContext cleaned
-                }
-
-                Log.w(TAG, "⚠️ Réponse native vide / service indisponible, fallback Kotlin")
-            }
-
-            // 2) Fallback Kotlin (ne doit jamais renvoyer vide)
-            return@withContext UniqueResponseGenerator.generate(
-                character = character,
-                messages = messages,
-                username = username,
-                nsfwMode = nsfwMode
-            )
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ Erreur génération", e)
-            return@withContext generateRandomError(username)
+        // IMPORTANT: aucune réponse "pré-configurée" ici.
+        // Soit on génère via le vrai modèle GGUF (llama.cpp), soit on remonte une erreur (fallback Groq possible).
+        val path = modelPath?.trim().orEmpty()
+        if (path.isBlank()) {
+            throw IllegalStateException("Aucun modèle GGUF sélectionné pour llama.cpp. Choisissez un modèle dans Paramètres.")
         }
-    }
-    
-    private fun generateRandomError(username: String): String {
-        val actions = listOf("cligne des yeux", "secoue la tête", "fronce les sourcils", "se gratte la tête")
-        val thoughts = listOf("Hein ?", "Qu'est-ce qu'il/elle dit ?", "Je suis perdu(e)", "J'ai pas compris")
-        val dialogues = listOf(
-            "Euh... peux-tu répéter ?",
-            "Désolé(e), j'ai pas saisi...",
-            "Attends, quoi ?",
-            "Je... j'ai pas compris $username"
+
+        val modelFile = File(path)
+        if (!modelFile.exists()) {
+            Log.e(TAG, "❌ Modèle GGUF introuvable: $path")
+            throw IllegalStateException("Modèle GGUF introuvable. Vérifie le chemin du modèle dans Paramètres > llama.cpp.")
+        }
+
+        // Sécurité: empêcher les crashes/OOM sur certains appareils (ex: Xiaomi)
+        // Heuristique simple: il faut une marge de RAM libre au-dessus de la taille du modèle.
+        val availBytes = getAvailableRamBytes()
+        val modelBytes = modelFile.length()
+        val safetyMargin = 512L * 1024 * 1024 // +512MB pour KV cache/overhead
+        if (availBytes in 1..Long.MAX_VALUE && modelBytes > 0 && (modelBytes + safetyMargin) > availBytes) {
+            Log.e(
+                TAG,
+                "❌ RAM insuffisante pour llama.cpp: model=${modelBytes / (1024 * 1024)}MB, avail=${availBytes / (1024 * 1024)}MB"
+            )
+            throw IllegalStateException(
+                "RAM insuffisante pour ce modèle local (risque de crash). Utilise TinyLlama Q4 ou Groq."
+            )
+        }
+
+        // Sur mobile: trop de threads peut être contre-productif (overhead + throttling)
+        val threads = maxOf(1, minOf(4, Runtime.getRuntime().availableProcessors()))
+
+        // Réglages adaptatifs: TinyLlama peut tenir un contexte plus grand, Phi souvent moins.
+        val isSmallModel = modelBytes in 1..(900L * 1024 * 1024) // < ~900MB
+        val ctxSize = when {
+            // si on a de la marge RAM, augmenter le contexte => meilleure cohérence
+            availBytes > (modelBytes + 900L * 1024 * 1024) && isSmallModel -> 2048
+            availBytes > (modelBytes + 700L * 1024 * 1024) -> 1536
+            else -> 1024
+        }
+
+        // Réponses plus longues (sans être des pavés)
+        val maxTokens = if (isSmallModel) 220 else 180
+        val (roles, contents) = buildChatMessages(
+            character = character,
+            messages = messages,
+            username = username,
+            userGender = userGender,
+            memoryContext = memoryContext,
+            nsfwMode = nsfwMode,
+            ctxSize = ctxSize
         )
-        return "*${actions.random()}* (${thoughts.random()}) \"${dialogues.random()}\""
+
+        val raw = nativeClient.generateChat(
+            modelPath = path,
+            threads = threads,
+            contextSize = ctxSize,
+            roles = roles,
+            contents = contents,
+            maxTokens = maxTokens,
+            temperature = 0.85f,
+            topP = 0.95f,
+            topK = 40,
+            repeatPenalty = 1.15f
+        )
+
+        val cleaned = cleanLocalResponse(raw, character.name)
+        if (cleaned.isNotBlank()) {
+            return@withContext cleaned
+        }
+
+        Log.e(TAG, "❌ llama.cpp a renvoyé une réponse vide (service ou modèle)")
+        throw IllegalStateException("Le moteur local n'a pas renvoyé de réponse. Réessaie ou change de modèle (TinyLlama recommandé).")
     }
     
     fun getAvailableModels(): List<File> {

@@ -160,21 +160,8 @@ class AIOrchestrator(
             }
         }
         
-        // Dernier recours : llama.cpp en mode Kotlin pur (ne peut jamais échouer)
-        Log.w(TAG, "🆘 Fallback ultime: llama.cpp (IA intelligente Kotlin)")
-        val llamaEngine = LlamaCppEngine(context)
-        if (config.llamaCppModelPath != null) {
-            llamaEngine.setModelPath(config.llamaCppModelPath)
-        }
-        val response = llamaEngine.generateResponse(character, messages, username, userGender, memoryContext, config.nsfwMode)
-        val duration = System.currentTimeMillis() - startTime
-        
-        return@withContext GenerationResult(
-            response = response,
-            usedEngine = AIEngine.LLAMA_CPP,
-            generationTimeMs = duration,
-            hadFallback = true
-        )
+        // Plus de "fallback réponses scriptées" : si tous les moteurs échouent, remonter une erreur claire.
+        throw Exception("Tous les moteurs IA ont échoué. Vérifiez Groq (clé/Internet) ou le modèle local (GGUF/RAM).")
     }
     
     /**
