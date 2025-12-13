@@ -92,7 +92,8 @@ class LlamaCppEngine(private val context: Context) {
                     username = username,
                     userGender = userGender,
                     memoryContext = memoryContext,
-                    nsfwMode = nsfwMode
+                    nsfwMode = nsfwMode,
+                    ctxSize = ctxSize
                 )
 
                 val raw = nativeClient.generateChat(
@@ -231,7 +232,8 @@ class LlamaCppEngine(private val context: Context) {
         username: String,
         userGender: String,
         memoryContext: String,
-        nsfwMode: Boolean
+        nsfwMode: Boolean,
+        ctxSize: Int
     ): Pair<List<String>, List<String>> {
         val roles = ArrayList<String>()
         val contents = ArrayList<String>()
@@ -241,6 +243,8 @@ class LlamaCppEngine(private val context: Context) {
         } else {
             "NSFW désactivé (contenu approprié)."
         }
+
+        val lastUserMsg = messages.lastOrNull { it.isUser }?.content?.trim().orEmpty()
 
         val system = buildString {
             appendLine("Tu es ${character.name}, un personnage de roleplay.")
@@ -263,18 +267,42 @@ class LlamaCppEngine(private val context: Context) {
             appendLine("- Réponds TOUJOURS en tant que ${character.name}.")
             appendLine("- Format obligatoire: *action* (pensée) \"paroles\".")
             appendLine("- Ne décris JAMAIS les actions de l'utilisateur; réagis seulement.")
-            appendLine("- Réponses naturelles et développées (4-10 phrases), cohérentes avec le contexte.")
-            appendLine("- Fais avancer la conversation: termine souvent par une relance/question.")
+            appendLine("- COHÉRENCE ABSOLUE: ta réponse doit se baser sur le DERNIER message de l'utilisateur.")
+            if (lastUserMsg.isNotBlank()) {
+                appendLine("- Dernier message utilisateur (à prendre en compte mot pour mot): \"${
+                    lastUserMsg.replace("\n", " ").take(220)
+                }\"")
+            }
+            appendLine("- Cite AU MOINS un détail concret du message utilisateur (un mot/une idée) avant de répondre.")
+            appendLine("- Si tu manques d'info, pose 1-2 questions précises au lieu d'inventer hors-sujet.")
             appendLine("- $nsfwLine")
         }.trim()
 
         roles += "system"
         contents += system
 
-        // Historique: un peu plus long => meilleure cohérence
-        val recent = messages.takeLast(16)
+        // Historique: sélectionné par budget (évite que le natif tronque le début et perde le system prompt)
+        val maxChars = when {
+            ctxSize >= 2048 -> 7000
+            ctxSize >= 1536 -> 5200
+            else -> 3800
+        }
+
+        // Garder le dernier message user en fin, et rajouter en remontant tant que ça rentre
+        val recent = messages.takeLast(24)
         val valid = if (recent.isNotEmpty() && !recent.last().isUser) recent.dropLast(1) else recent
-        valid.forEach { msg ->
+
+        var usedChars = system.length
+        val kept = ArrayList<Message>()
+        for (m in valid.asReversed()) {
+            val add = m.content.length + 20
+            if (usedChars + add > maxChars) break
+            kept.add(m)
+            usedChars += add
+        }
+        kept.reverse()
+
+        kept.forEach { msg ->
             roles += if (msg.isUser) "user" else "assistant"
             contents += msg.content
         }
