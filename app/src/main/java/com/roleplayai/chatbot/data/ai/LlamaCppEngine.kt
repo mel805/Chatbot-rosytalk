@@ -403,6 +403,15 @@ private object UniqueResponseGenerator {
     ): String {
         val seed = uniqueId.hashCode() + 2000
         val rnd = Random(seed)
+
+        // Toujours garder un lien DIRECT avec le dernier message utilisateur
+        // (sinon l'utilisateur a l'impression que la réponse n'a "aucun rapport").
+        val userSnippet = analysis.originalMessage
+            .replace("\n", " ")
+            .replace("\r", " ")
+            .trim()
+            .take(90)
+            .takeIf { it.isNotBlank() }
         
         // Si réponse à une proposition du bot
         if (analysis.respondingToBot && analysis.type == "acceptation") {
@@ -423,17 +432,17 @@ private object UniqueResponseGenerator {
             
             return when (analysis.type) {
                 "question" -> when (rnd.nextInt(4)) {
-                    0 -> "Concernant $keyword ? Hmm, c'est ${listOf("complexe", "nuancé", "intéressant", "variable")[rnd.nextInt(4)]}. Toi, qu'en penses-tu ?"
-                    1 -> "Ah, $keyword ! ${listOf("Bonne question", "Intéressant", "Ça dépend", "Je dirais que")[rnd.nextInt(4)]}... Et toi ?"
-                    2 -> "Tu me demandes pour $keyword ? ${listOf("C'est personnel", "Ça varie", "Difficile à dire", "Je ne sais pas trop")[rnd.nextInt(4)]}."
-                    else -> "Sur $keyword, ${listOf("je pense que", "pour moi", "selon moi", "je dirais")[rnd.nextInt(4)]} c'est ${listOf("important", "intéressant", "complexe", "subjectif")[rnd.nextInt(4)]}."
+                    0 -> "Concernant $keyword… ${listOf("c'est complexe", "c'est nuancé", "ça dépend", "c'est intéressant")[rnd.nextInt(4)]}. ${userSnippet?.let { "Quand tu dis \"$it\", tu veux dire quoi exactement ?" } ?: "Tu cherches plutôt une réponse pratique ou une opinion ?" }"
+                    1 -> "Ah, $keyword ! ${listOf("Bonne question", "Intéressant", "Ça dépend", "Je dirais que")[rnd.nextInt(4)]}… ${userSnippet?.let { "Tu peux préciser ce que tu entends par \"$it\" ?" } ?: "Tu veux que je te réponde franchement ?" }"
+                    2 -> "Tu me demandes pour $keyword ? ${listOf("Ça varie selon le contexte", "Ça dépend de ce que tu vis", "C'est pas si simple", "Je vois l'idée")[rnd.nextInt(4)]}. ${userSnippet?.let { "Qu'est-ce qui t'a amené à me dire \"$it\" ?" } ?: "Tu veux qu'on parte de ton cas précis ?" }"
+                    else -> "Sur $keyword, ${listOf("je dirais que", "pour moi", "à chaud", "honnêtement")[rnd.nextInt(4)]} c'est ${listOf("important", "délicat", "intéressant", "très personnel")[rnd.nextInt(4)]}. ${userSnippet?.let { "Tu parles de \"$it\"—c'est récent ?" } ?: "Raconte-moi un peu plus." }"
                 }
                 
                 "partage_perso" -> when (rnd.nextInt(4)) {
-                    0 -> "Ah, tu me parles de $keyword ! ${listOf("C'est cool", "Intéressant", "Raconte", "Dis-m'en plus")[rnd.nextInt(4)]} !"
-                    1 -> "Donc toi et $keyword... ${listOf("Développe", "Continue", "Explique", "Raconte")[rnd.nextInt(4)]} !"
-                    2 -> "$keyword, hein ? ${listOf("J'écoute", "Je veux tout savoir", "Vas-y", "Je suis curieux(se)")[rnd.nextInt(4)]} !"
-                    else -> "Tu évoques $keyword... ${listOf("Fascinant", "Intrigant", "Captivant", "Curieux")[rnd.nextInt(4)]} ! Et alors ?"
+                    0 -> "Ah, tu me parles de $keyword ! ${userSnippet?.let { "Tu dis \"$it\"… " } ?: ""}${listOf("Raconte-moi", "Développe", "Je t'écoute", "Dis-m'en plus")[rnd.nextInt(4)]}."
+                    1 -> "Donc toi et $keyword… ${userSnippet?.let { "Quand tu écris \"$it\", " } ?: ""}${listOf("ça te fait quoi", "tu le vis comment", "c'est plutôt positif ou lourd", "ça dure depuis longtemps")[rnd.nextInt(4)]} ?"
+                    2 -> "$keyword, hein ? ${userSnippet?.let { "Je retiens \"$it\". " } ?: ""}${listOf("Qu'est-ce qui compte le plus pour toi là-dedans", "Tu veux un avis ou juste en parler", "Tu veux que je réagisse ou que je pose des questions", "Tu attends quoi de moi")[rnd.nextInt(4)]} ?"
+                    else -> "Tu évoques $keyword… ${userSnippet?.let { "Tu dis \"$it\". " } ?: ""}${listOf("Et alors, qu'est-ce qui s'est passé", "C'est quoi le contexte", "Tu veux qu'on creuse", "Tu veux continuer")[rnd.nextInt(4)]} ?"
                 }
                 
                 "nsfw_initiative" -> when (rnd.nextInt(5)) {
@@ -445,11 +454,11 @@ private object UniqueResponseGenerator {
                 }
                 
                 else -> when (rnd.nextInt(5)) {
-                    0 -> "Tu mentionnes $keyword... ${listOf("Pourquoi ça", "C'est pertinent", "Ça m'interpelle", "Intéressant choix")[rnd.nextInt(4)]} ?"
-                    1 -> "$keyword, d'accord... ${listOf("Je comprends", "Je vois", "OK", "Noté")[rnd.nextInt(4)]}. ${listOf("Et sinon", "Aussi", "Puis", "Et")[rnd.nextInt(4)]} ?"
-                    2 -> "Ah, $keyword ! ${listOf("Moi aussi", "Pareil", "Je connais", "Je vois")[rnd.nextInt(4)]} ! ${listOf("Comment", "Pourquoi", "Quand", "Où")[rnd.nextInt(4)]} ?"
-                    3 -> "Donc $keyword... ${listOf("Développe", "Continue", "Précise", "Explique")[rnd.nextInt(4)]} un peu !"
-                    else -> "Tu dis $keyword... ${listOf("et alors", "et donc", "et puis", "et après")[rnd.nextInt(4)]} ?"
+                    0 -> "Tu mentionnes $keyword… ${userSnippet?.let { "Tu dis \"$it\" — " } ?: ""}${listOf("pourquoi ça", "qu'est-ce que tu veux dire", "qu'est-ce qui te travaille", "tu en penses quoi")[rnd.nextInt(4)]} ?"
+                    1 -> "$keyword, d'accord… ${listOf("Je vois", "OK", "Je comprends", "Noté")[rnd.nextInt(4)]}. ${userSnippet?.let { "Sur \"$it\", " } ?: ""}${listOf("c'est plutôt une envie ou une inquiétude", "tu cherches une solution ou juste à en parler", "tu veux que je réagisse comment", "tu veux que je te suive dans une scène")[rnd.nextInt(4)]} ?"
+                    2 -> "Ah, $keyword ! ${userSnippet?.let { "Tu dis \"$it\"… " } ?: ""}${listOf("ça a l'air important", "ça a l'air chargé", "ça m'intrigue", "ça te ressemble")[rnd.nextInt(4)]}. ${listOf("On fait quoi maintenant", "Tu veux continuer", "Tu me donnes un peu plus de contexte", "Tu veux que je te réponde cash")[rnd.nextInt(4)]} ?"
+                    3 -> "Donc $keyword… ${userSnippet?.let { "Quand tu dis \"$it\", " } ?: ""}${listOf("tu attends quoi exactement", "tu veux aller où", "tu veux qu'on explore ça", "tu veux que je te suive")[rnd.nextInt(4)]} ?"
+                    else -> "Tu dis $keyword… ${userSnippet?.let { "Tu dis \"$it\". " } ?: ""}${listOf("Et après, on fait quoi", "Tu veux que je réagisse comment", "Qu'est-ce que tu veux de moi là", "Tu veux qu'on continue")[rnd.nextInt(4)]} ?"
                 }
             }
         }
@@ -482,11 +491,11 @@ private object UniqueResponseGenerator {
             )[rnd.nextInt(5)]
             
             else -> listOf(
-                "Hmm... ${listOf("intéressant", "curieux", "étonnant", "surprenant")[rnd.nextInt(4)]}. Et toi ?",
-                "D'accord... ${listOf("Je vois", "Je comprends", "OK", "Noté")[rnd.nextInt(4)]}. ${listOf("Raconte", "Continue", "Développe", "Explique")[rnd.nextInt(4)]} !",
-                "${listOf("Ah", "Oh", "Eh", "Tiens")[rnd.nextInt(4)]} ! ${listOf("Et alors", "Et donc", "Et puis", "Ensuite")[rnd.nextInt(4)]} ?",
-                "${listOf("Vraiment", "Sérieux", "Sans blague", "C'est vrai")[rnd.nextInt(4)]} ? ${listOf("Raconte", "Dis-moi", "Explique", "Détaille")[rnd.nextInt(4)]} !",
-                "${listOf("Intéressant", "Fascinant", "Curieux", "Étonnant")[rnd.nextInt(4)]}... ${listOf("Continue", "Et après", "Ensuite", "Puis")[rnd.nextInt(4)]} ?"
+                "${userSnippet?.let { "Tu dis \"$it\"… " } ?: ""}${listOf("intéressant", "curieux", "étonnant", "surprenant")[rnd.nextInt(4)]}. ${listOf("Tu veux qu'on creuse", "Tu veux continuer", "Tu peux préciser", "Tu attends quoi de moi")[rnd.nextInt(4)]} ?",
+                "D'accord… ${userSnippet?.let { "Je note \"$it\". " } ?: ""}${listOf("Je vois", "Je comprends", "OK", "Noté")[rnd.nextInt(4)]}. ${listOf("Raconte-moi le contexte", "Continue", "Développe", "Explique")[rnd.nextInt(4)]}.",
+                "${listOf("Ah", "Oh", "Eh", "Tiens")[rnd.nextInt(4)]} ! ${userSnippet?.let { "Sur \"$it\", " } ?: ""}${listOf("ça t'impacte comment", "tu le vis comment", "tu veux que je réagisse comment", "tu veux faire quoi maintenant")[rnd.nextInt(4)]} ?",
+                "${listOf("Vraiment", "Sérieux", "Sans blague", "C'est vrai")[rnd.nextInt(4)]} ? ${userSnippet?.let { "Tu dis \"$it\"… " } ?: ""}${listOf("Raconte", "Dis-moi", "Explique", "Détaille")[rnd.nextInt(4)]}.",
+                "${listOf("Intéressant", "Fascinant", "Curieux", "Étonnant")[rnd.nextInt(4)]}… ${userSnippet?.let { "Tu dis \"$it\". " } ?: ""}${listOf("Et après", "Ensuite", "Puis", "Tu veux continuer")[rnd.nextInt(4)]} ?"
             )[rnd.nextInt(5)]
         }
     }
