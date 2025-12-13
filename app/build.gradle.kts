@@ -22,8 +22,9 @@ android {
         }
         
         ndk {
-            // Compatibilité large (dont certains Xiaomi / ROMs 32-bit)
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+            // ABI 64-bit (la majorité des appareils Xiaomi récents)
+            // NOTE: armeabi-v7a échoue à compiler avec llama.cpp (FP16 intrinsics) sur le commit pin.
+            abiFilters += listOf("arm64-v8a")
         }
         
         externalNativeBuild {
