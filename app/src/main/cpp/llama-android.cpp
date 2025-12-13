@@ -288,8 +288,24 @@ Java_com_roleplayai_chatbot_data_ai_LlamaCppEngine_generateChat(
         chat.push_back(msg);
     }
 
-    // Appliquer le template chat du modèle (si présent dans le GGUF).
+    // Appliquer le template chat.
+    // ATTENTION: certains GGUF n'embarquent pas de chat template -> tmpl peut être nullptr.
+    // Or llama_chat_apply_template() requiert un template non-null (sinon crash possible).
     const char * tmpl = llama_model_chat_template(context->model, nullptr);
+    if (tmpl == nullptr) {
+        // Fallback: choisir un template builtin (préférer chatml si dispo).
+        const char * builtins[32] = {0};
+        const int32_t n = llama_chat_builtin_templates(builtins, 32);
+        const char * pick = nullptr;
+        for (int i = 0; i < n; i++) {
+            if (builtins[i] && std::strcmp(builtins[i], "chatml") == 0) {
+                pick = builtins[i];
+                break;
+            }
+        }
+        tmpl = pick ? pick : (n > 0 ? builtins[0] : "chatml");
+        LOGI("ℹ️ Chat template absent du GGUF, fallback='%s'", tmpl);
+    }
     int32_t n_prompt_chars = llama_chat_apply_template(
         tmpl,
         chat.data(),
