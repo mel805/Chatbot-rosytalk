@@ -44,6 +44,10 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     
     private val _isGenerating = MutableStateFlow(false)
     val isGenerating: StateFlow<Boolean> = _isGenerating.asStateFlow()
+
+    // Pour éviter que l'indicateur "..." apparaisse sur d'autres chats
+    private val _generatingChatId = MutableStateFlow<String?>(null)
+    val generatingChatId: StateFlow<String?> = _generatingChatId.asStateFlow()
     
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
@@ -124,6 +128,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 
                 // Generate AI response
                 _isGenerating.value = true
+                _generatingChatId.value = chat.id
                 _error.value = null
                 
                 val character = characterRepository.getCharacterById(chat.characterId)
@@ -242,6 +247,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 _error.value = "Erreur lors de la génération de la réponse: ${e.message}"
             } finally {
                 _isGenerating.value = false
+                _generatingChatId.value = null
             }
         }
     }

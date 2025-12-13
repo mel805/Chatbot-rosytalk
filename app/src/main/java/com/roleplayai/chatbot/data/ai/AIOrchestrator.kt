@@ -28,9 +28,25 @@ class AIOrchestrator(
     // Gestion simple de la rotation des clés Groq
     private var currentGroqKeyIndex = 0
     private val failedGroqKeys = mutableSetOf<String>()
+
+    // IMPORTANT: conserver une instance llama.cpp pour éviter de recharger le GGUF à chaque message
+    private val llamaEngine: LlamaCppEngine by lazy { LlamaCppEngine(context) }
+    private var llamaEnginePath: String? = null
     
     companion object {
         private const val TAG = "AIOrchestrator"
+    }
+
+    private fun getOrConfigureLlamaEngine(modelPath: String?): LlamaCppEngine {
+        if (modelPath.isNullOrBlank()) {
+            // L'appelant gère l'erreur "GGUF non configuré"
+            return llamaEngine
+        }
+        if (llamaEnginePath != modelPath) {
+            llamaEngine.setModelPath(modelPath)
+            llamaEnginePath = modelPath
+        }
+        return llamaEngine
     }
     
     /**
@@ -98,8 +114,25 @@ class AIOrchestrator(
         
         val startTime = System.currentTimeMillis()
         
+        fun isUsable(engine: AIEngine): Boolean {
+            return when (engine) {
+                AIEngine.GROQ -> config.groqApiKey?.isNotBlank() == true
+                AIEngine.LLAMA_CPP -> !config.llamaCppModelPath.isNullOrBlank()
+            }
+        }
+
+        var primaryError: Exception? = null
+
         // Essayer le moteur principal
         try {
+            if (!isUsable(config.primaryEngine)) {
+                throw Exception(
+                    when (config.primaryEngine) {
+                        AIEngine.GROQ -> "Aucune clé API Groq configurée."
+                        AIEngine.LLAMA_CPP -> "Aucun modèle GGUF sélectionné pour llama.cpp."
+                    }
+                )
+            }
             val response = generateWithEngine(
                 engine = config.primaryEngine,
                 character = character,
@@ -121,6 +154,7 @@ class AIOrchestrator(
             )
             
         } catch (e: Exception) {
+            primaryError = e
             Log.w(TAG, "⚠️ Échec moteur principal (${config.primaryEngine.name}): ${e.message}")
             
             if (!config.enableFallbacks) {
@@ -130,6 +164,7 @@ class AIOrchestrator(
         
         // Cascade de fallbacks
         val fallbackEngines = getFallbackCascade(config.primaryEngine)
+            .filter { isUsable(it) }
         
         for (fallbackEngine in fallbackEngines) {
             try {
@@ -159,22 +194,9 @@ class AIOrchestrator(
                 Log.w(TAG, "⚠️ Échec fallback ${fallbackEngine.name}: ${e.message}")
             }
         }
-        
-        // Dernier recours : llama.cpp en mode Kotlin pur (ne peut jamais échouer)
-        Log.w(TAG, "🆘 Fallback ultime: llama.cpp (IA intelligente Kotlin)")
-        val llamaEngine = LlamaCppEngine(context)
-        if (config.llamaCppModelPath != null) {
-            llamaEngine.setModelPath(config.llamaCppModelPath)
-        }
-        val response = llamaEngine.generateResponse(character, messages, username, userGender, memoryContext, config.nsfwMode)
-        val duration = System.currentTimeMillis() - startTime
-        
-        return@withContext GenerationResult(
-            response = response,
-            usedEngine = AIEngine.LLAMA_CPP,
-            generationTimeMs = duration,
-            hadFallback = true
-        )
+
+        // Aucun fallback utilisable -> remonter l'erreur primaire (important pour Groq sans GGUF)
+        throw primaryError ?: Exception("Aucun moteur IA utilisable (Groq clé manquante et/ou GGUF non configuré).")
     }
     
     /**
@@ -252,11 +274,8 @@ class AIOrchestrator(
             }
             
             AIEngine.LLAMA_CPP -> {
-                val llamaEngine = LlamaCppEngine(context)
-                if (config.llamaCppModelPath != null) {
-                    llamaEngine.setModelPath(config.llamaCppModelPath)
-                }
-                llamaEngine.generateResponse(character, messages, username, userGender, memoryContext, config.nsfwMode)
+                val engineInstance = getOrConfigureLlamaEngine(config.llamaCppModelPath)
+                engineInstance.generateResponse(character, messages, username, userGender, memoryContext, config.nsfwMode)
             }
         }
     }
@@ -279,8 +298,8 @@ class AIOrchestrator(
             when (engine) {
                 AIEngine.GROQ -> config.groqApiKey?.isNotBlank() == true
                 AIEngine.LLAMA_CPP -> {
-                    val llamaEngine = LlamaCppEngine(context)
-                    llamaEngine.isAvailable()
+                    val engineInstance = getOrConfigureLlamaEngine(config.llamaCppModelPath)
+                    engineInstance.isAvailable()
                 }
             }
         } catch (e: Exception) {

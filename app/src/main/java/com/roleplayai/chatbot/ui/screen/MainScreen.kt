@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.roleplayai.chatbot.ui.viewmodel.ModelViewModel
+import androidx.compose.foundation.layout.Box
 
 sealed class NavigationItem(
     val route: String,
@@ -60,32 +61,34 @@ fun MainScreen(
             }
         }
     ) { paddingValues ->
-        when (selectedTab) {
-            NavigationItem.Explorer.route -> {
-                ExplorerScreen(
-                    onCharacterClick = onCharacterProfileClick // Aller vers le profil au lieu du chat
-                )
-            }
-            NavigationItem.Chats.route -> {
-                ChatsScreen(
-                    onChatClick = { chatId, characterId ->
-                        // Naviguer vers le chat existant
-                        onChatClick(characterId)
-                    },
-                    onCharacterProfileClick = onCharacterProfileClick,
-                    onNewConversation = { characterId ->
-                        // Créer une nouvelle conversation
-                        onCharacterClick(characterId)
-                    }
-                )
-            }
-            NavigationItem.Settings.route -> {
-                SettingsScreen(
-                    viewModel = modelViewModel,
-                    onNavigateToProfile = onNavigateToProfile,
-                    onNavigateToAdminUsers = onNavigateToAdminUsers,
-                    onLogout = onLogout
-                )
+        Box(modifier = Modifier.padding(paddingValues)) {
+            when (selectedTab) {
+                NavigationItem.Explorer.route -> {
+                    ExplorerScreen(
+                        onCharacterClick = onCharacterProfileClick // Aller vers le profil au lieu du chat
+                    )
+                }
+                NavigationItem.Chats.route -> {
+                    ChatsScreen(
+                        onChatClick = { chatId, characterId ->
+                            // Naviguer vers le chat existant
+                            onChatClick(characterId)
+                        },
+                        onCharacterProfileClick = onCharacterProfileClick,
+                        onNewConversation = { characterId ->
+                            // Créer une nouvelle conversation
+                            onCharacterClick(characterId)
+                        }
+                    )
+                }
+                NavigationItem.Settings.route -> {
+                    SettingsScreen(
+                        viewModel = modelViewModel,
+                        onNavigateToProfile = onNavigateToProfile,
+                        onNavigateToAdminUsers = onNavigateToAdminUsers,
+                        onLogout = onLogout
+                    )
+                }
             }
         }
     }

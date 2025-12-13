@@ -73,6 +73,7 @@ fun SettingsScreen(
     var keyToDelete by remember { mutableStateOf<String?>(null) }
     var showAIEngineSelection by remember { mutableStateOf(false) }
     var showLlamaCppModelSelection by remember { mutableStateOf(false) }
+    var showLlamaCppModelDownload by remember { mutableStateOf(false) }
     
     Column(
         modifier = Modifier
@@ -318,6 +319,59 @@ fun SettingsScreen(
                                 )
                             }
                             Icon(Icons.Default.ChevronRight, null)
+                        }
+                    }
+                }
+
+                item {
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text(
+                                "Télécharger un modèle GGUF",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "Le modèle est téléchargé et stocké sur l'appareil (dossier models).",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                FilledTonalButton(
+                                    onClick = { showLlamaCppModelDownload = true },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(Icons.Default.CloudDownload, null, modifier = Modifier.size(18.dp))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Choisir & télécharger")
+                                }
+                                OutlinedButton(
+                                    onClick = { showLlamaCppModelSelection = true },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(Icons.Default.FolderOpen, null, modifier = Modifier.size(18.dp))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Parcourir")
+                                }
+                            }
+
+                            // Afficher l'état du téléchargement du modèle GGUF (réutilise ModelViewModel)
+                            when (modelState) {
+                                is ModelState.Downloading -> {
+                                    val p = (modelState as ModelState.Downloading).progress
+                                    LinearProgressIndicator(progress = p / 100f, modifier = Modifier.fillMaxWidth())
+                                    Text("Téléchargement… ${p.toInt()}%", style = MaterialTheme.typography.bodySmall)
+                                }
+                                is ModelState.Error -> {
+                                    Text(
+                                        (modelState as ModelState.Error).message,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                                else -> Unit
+                            }
                         }
                     }
                 }
@@ -1159,16 +1213,15 @@ fun SettingsScreen(
         )
     }
     
-    // Dialog de sélection du modèle llama.cpp
+    // Dialog de sélection du modèle llama.cpp (fichiers présents sur l'appareil)
     if (showLlamaCppModelSelection) {
         val context = androidx.compose.ui.platform.LocalContext.current
         val modelsDir = File(context.getExternalFilesDir(null), "models")
-        val availableModels = remember {
-            if (modelsDir.exists()) {
-                modelsDir.listFiles { file -> file.extension == "gguf" }?.toList() ?: emptyList()
-            } else {
-                emptyList()
-            }
+        // Recharger la liste à l'ouverture (pour refléter les nouveaux downloads)
+        val availableModels = if (modelsDir.exists()) {
+            modelsDir.listFiles { file -> file.extension == "gguf" }?.toList() ?: emptyList()
+        } else {
+            emptyList()
         }
         
         AlertDialog(
@@ -1251,6 +1304,80 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showLlamaCppModelSelection = false }) {
+                    Text("Fermer")
+                }
+            }
+        )
+    }
+
+    // Dialog de téléchargement GGUF (depuis les URLs configurées dans ModelRepository)
+    if (showLlamaCppModelDownload) {
+        AlertDialog(
+            onDismissRequest = { showLlamaCppModelDownload = false },
+            title = { Text("Télécharger un modèle GGUF") },
+            text = {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(availableModels) { model ->
+                        val isCompatible = model.requiredRam <= availableRam
+                        val isDownloaded = viewModel.isModelDownloaded(model)
+
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .then(if (isCompatible) Modifier.clickable { viewModel.selectModel(model) } else Modifier),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (model == selectedModel) {
+                                    MaterialTheme.colorScheme.primaryContainer
+                                } else if (!isCompatible) {
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                } else {
+                                    MaterialTheme.colorScheme.surface
+                                }
+                            )
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(model.name, fontWeight = FontWeight.Bold)
+                                        Text(
+                                            "${formatBytes(model.size)} • RAM: ${model.requiredRam} MB • ${model.quantization}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        if (!isCompatible) {
+                                            Text(
+                                                "⚠️ RAM insuffisante",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.error
+                                            )
+                                        }
+                                    }
+                                    if (isDownloaded) {
+                                        Icon(Icons.Default.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        // Télécharge le modèle sélectionné; ModelViewModel mettra aussi llamaCppModelPath.
+                        viewModel.downloadSelectedModel()
+                    },
+                    enabled = selectedModel != null
+                ) {
+                    Text("Télécharger")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLlamaCppModelDownload = false }) {
                     Text("Fermer")
                 }
             }

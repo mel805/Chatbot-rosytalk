@@ -1,15 +1,28 @@
 name: Build Android APK
 
+permissions:
+  contents: write
+
 on:
   push:
     branches:
       - main
     tags:
       - 'v*'
+      - 'build-*'
   pull_request:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag/release to upload APKs to (e.g. build-2025-12-12-xxxx or v5.5.1). Leave empty to use current tag ref."
+        required: false
+        default: ""
+      prerelease:
+        description: "Mark GitHub release as prerelease (true/false)."
+        required: false
+        default: "false"
 
 jobs:
   build:
@@ -18,6 +31,25 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Fetch llama.cpp (native local LLM)
+      shell: bash
+      run: |
+        set -euo pipefail
+        LLAMA_DIR="app/src/main/cpp/llama.cpp"
+        LLAMA_COMMIT="7bed317f5351eba037c2e0aa3dce617e277be1c4"
+        if [ ! -d "${LLAMA_DIR}/.git" ]; then
+          echo "Fetching llama.cpp into ${LLAMA_DIR}..."
+          rm -rf "${LLAMA_DIR}"
+          mkdir -p "${LLAMA_DIR}"
+          git init "${LLAMA_DIR}"
+          git -C "${LLAMA_DIR}" remote add origin https://github.com/ggerganov/llama.cpp
+          git -C "${LLAMA_DIR}" fetch --depth 1 origin "${LLAMA_COMMIT}"
+          git -C "${LLAMA_DIR}" checkout --detach FETCH_HEAD
+          echo "llama.cpp checked out at ${LLAMA_COMMIT}"
+        else
+          echo "llama.cpp already present, skipping fetch"
+        fi
       
     - name: Set up JDK 17
       uses: actions/setup-java@v4
@@ -58,18 +90,21 @@ jobs:
     - name: Upload Release APK
       uses: actions/upload-artifact@v4
       with:
-        name: app-release-unsigned
-        path: app/build/outputs/apk/release/app-release-unsigned.apk
+        name: app-release
+        path: |
+          app/build/outputs/apk/release/*.apk
         
     - name: Create Release and Upload APK
-      if: startsWith(github.ref, 'refs/tags/')
-      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.tag != '')
+      uses: softprops/action-gh-release@v2
       with:
+        tag_name: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
+        fail_on_unmatched_files: false
         files: |
           app/build/outputs/apk/debug/app-debug.apk
-          app/build/outputs/apk/release/app-release-unsigned.apk
+          app/build/outputs/apk/release/*.apk
         draft: false
-        prerelease: false
+        prerelease: ${{ (github.ref_type == 'tag' && startsWith(github.ref_name, 'build-')) || inputs.prerelease == 'true' }}
         generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

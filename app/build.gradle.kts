@@ -22,7 +22,8 @@ android {
         }
         
         ndk {
-            // Compiler seulement pour ARM 64-bit (téléphones modernes)
+            // ABI 64-bit (la majorité des appareils Xiaomi récents)
+            // NOTE: armeabi-v7a échoue à compiler avec llama.cpp (FP16 intrinsics) sur le commit pin.
             abiFilters += listOf("arm64-v8a")
         }
         
