@@ -22,8 +22,8 @@ android {
         }
         
         ndk {
-            // Compiler seulement pour ARM 64-bit (téléphones modernes)
-            abiFilters += listOf("arm64-v8a")
+            // Compatibilité large (dont certains Xiaomi / ROMs 32-bit)
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
         }
         
         externalNativeBuild {

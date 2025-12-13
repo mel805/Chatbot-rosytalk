@@ -321,7 +321,8 @@ Java_com_roleplayai_chatbot_data_ai_LlamaCppEngine_generateChat(
     }
 
     std::string prompt_str;
-    prompt_str.resize((size_t) n_prompt_chars);
+    // Allouer 1 byte de plus par sécurité (certaines implémentations peuvent écrire un '\0').
+    prompt_str.resize((size_t) n_prompt_chars + 1);
     const int32_t n_written = llama_chat_apply_template(
         tmpl,
         chat.data(),
@@ -335,6 +336,8 @@ Java_com_roleplayai_chatbot_data_ai_LlamaCppEngine_generateChat(
         LOGE("❌ llama_chat_apply_template (2): n_written=%d", (int) n_written);
         return env->NewStringUTF("Erreur: template chat indisponible");
     }
+    // Ajuster exactement à la taille écrite (évite de tokenizer des bytes non initialisés).
+    prompt_str.resize((size_t) n_written);
 
     // Tokenize le prompt
     const int n_prompt_tokens = -llama_tokenize(
@@ -367,6 +370,22 @@ Java_com_roleplayai_chatbot_data_ai_LlamaCppEngine_generateChat(
     }
 
     LOGI("🔢 Tokens prompt (template): %d", (int) tokens.size());
+
+    // Sécurité: ne jamais dépasser n_ctx (certaines builds / devices peuvent crasher ou OOM).
+    // On conserve le début (spécial tokens + instructions) et la fin (dernier tour utilisateur).
+    const int max_prompt_tokens = context->n_ctx > 8 ? (context->n_ctx - 4) : context->n_ctx;
+    if (max_prompt_tokens > 0 && (int) tokens.size() > max_prompt_tokens) {
+        const int keep_head = std::min(16, max_prompt_tokens);
+        const int keep_tail = std::max(0, max_prompt_tokens - keep_head);
+        std::vector<llama_token> trimmed;
+        trimmed.reserve(max_prompt_tokens);
+        trimmed.insert(trimmed.end(), tokens.begin(), tokens.begin() + keep_head);
+        if (keep_tail > 0) {
+            trimmed.insert(trimmed.end(), tokens.end() - keep_tail, tokens.end());
+        }
+        tokens.swap(trimmed);
+        LOGI("✂️ Prompt trop long, tokens réduits à %d (n_ctx=%d)", (int) tokens.size(), context->n_ctx);
+    }
 
     // Décoder le prompt
     llama_batch batch = llama_batch_get_one(tokens.data(), tokens.size());
