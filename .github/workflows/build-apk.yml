@@ -22,6 +22,11 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
+    - name: Fetch llama.cpp sources (required for local LLM)
+      run: |
+        chmod +x setup_llamacpp.sh
+        ./setup_llamacpp.sh
+      
     - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:

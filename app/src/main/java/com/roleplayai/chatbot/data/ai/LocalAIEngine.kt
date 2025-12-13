@@ -36,6 +36,16 @@ class LocalAIEngine(
         topK: Int,
         repeatPenalty: Float
     ): String
+
+    private external fun nativeGenerateChat(
+        roles: Array<String>,
+        contents: Array<String>,
+        maxTokens: Int,
+        temperature: Float,
+        topP: Float,
+        topK: Int,
+        repeatPenalty: Float
+    ): String
     private external fun nativeUnloadModel()
     private external fun nativeIsLoaded(): Boolean
 
@@ -89,6 +99,32 @@ class LocalAIEngine(
         return runCatching {
             nativeGenerate(
                 prompt = prompt,
+                maxTokens = maxTokens,
+                temperature = temperature,
+                topP = topP,
+                topK = topK,
+                repeatPenalty = repeatPenalty
+            )
+        }.getOrDefault("")
+    }
+
+    fun generateChat(
+        roles: List<String>,
+        contents: List<String>,
+        maxTokens: Int,
+        temperature: Float,
+        topP: Float,
+        topK: Int,
+        repeatPenalty: Float
+    ): String {
+        if (!libraryLoaded) return ""
+        if (!isModelLoaded()) return ""
+        if (roles.isEmpty() || roles.size != contents.size) return ""
+
+        return runCatching {
+            nativeGenerateChat(
+                roles = roles.toTypedArray(),
+                contents = contents.toTypedArray(),
                 maxTokens = maxTokens,
                 temperature = temperature,
                 topP = topP,

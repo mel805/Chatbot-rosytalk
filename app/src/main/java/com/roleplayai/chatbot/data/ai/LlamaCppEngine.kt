@@ -56,7 +56,7 @@ class LlamaCppEngine(private val context: Context) {
                 val ctxSize = 2048 // valeur raisonnable sur mobile
                 val loaded = nativeEngine.ensureModelLoaded(path, threads, ctxSize)
                 if (loaded) {
-                    val prompt = buildPrompt(
+                    val (roles, contents) = buildChatMessages(
                         character = character,
                         messages = messages,
                         username = username,
@@ -65,8 +65,9 @@ class LlamaCppEngine(private val context: Context) {
                         nsfwMode = nsfwMode
                     )
 
-                    val raw = nativeEngine.generate(
-                        prompt = prompt,
+                    val raw = nativeEngine.generateChat(
+                        roles = roles,
+                        contents = contents,
                         maxTokens = 260,
                         temperature = 0.85f,
                         topP = 0.95f,
@@ -177,6 +178,66 @@ class LlamaCppEngine(private val context: Context) {
         sb.appendLine()
         sb.append("${character.name}:")
         return sb.toString()
+    }
+
+    /**
+     * Messages structurés pour llama.cpp (chat template GGUF).
+     * Objectif: obtenir une cohérence proche de Groq (system + historique + dernier user).
+     */
+    private fun buildChatMessages(
+        character: Character,
+        messages: List<Message>,
+        username: String,
+        userGender: String,
+        memoryContext: String,
+        nsfwMode: Boolean
+    ): Pair<List<String>, List<String>> {
+        val roles = ArrayList<String>()
+        val contents = ArrayList<String>()
+
+        val nsfwLine = if (nsfwMode) {
+            "NSFW activé (adultes consentants)."
+        } else {
+            "NSFW désactivé (contenu approprié)."
+        }
+
+        val system = buildString {
+            appendLine("Tu es ${character.name}, un personnage de roleplay.")
+            appendLine("IDENTITÉ:")
+            appendLine("- Nom: ${character.name}")
+            appendLine("- Personnalité: ${character.personality}")
+            appendLine("- Description: ${character.description}")
+            appendLine("- Scénario: ${character.scenario}")
+            appendLine()
+            appendLine("UTILISATEUR:")
+            appendLine("- Nom: $username")
+            appendLine("- Genre: $userGender")
+            appendLine()
+            if (memoryContext.isNotBlank()) {
+                appendLine("MÉMOIRE:")
+                appendLine(memoryContext.trim().take(1200))
+                appendLine()
+            }
+            appendLine("RÈGLES:")
+            appendLine("- Réponds TOUJOURS en tant que ${character.name}.")
+            appendLine("- Format obligatoire: *action* (pensée) \"paroles\".")
+            appendLine("- Ne décris JAMAIS les actions de l'utilisateur; réagis seulement.")
+            appendLine("- Réponses courtes et naturelles (2-6 phrases).")
+            appendLine("- $nsfwLine")
+        }.trim()
+
+        roles += "system"
+        contents += system
+
+        // Historique: garder court pour mobiles
+        val recent = messages.takeLast(10)
+        val valid = if (recent.isNotEmpty() && !recent.last().isUser) recent.dropLast(1) else recent
+        valid.forEach { msg ->
+            roles += if (msg.isUser) "user" else "assistant"
+            contents += msg.content
+        }
+
+        return roles to contents
     }
 
     private fun cleanLocalResponse(raw: String, characterName: String): String {

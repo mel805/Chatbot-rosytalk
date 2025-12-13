@@ -100,7 +100,8 @@ android {
     
     externalNativeBuild {
         cmake {
-            path = file("../CMakeLists.txt")
+            // Utiliser le CMake du module app (compile llama.cpp + JNI)
+            path = file("CMakeLists.txt")
             version = "3.22.1"
         }
     }
