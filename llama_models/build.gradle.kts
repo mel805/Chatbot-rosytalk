@@ -28,7 +28,7 @@ val downloadBundledModel: Boolean =
 val outFile = layout.projectDirectory.file("src/main/assets/models/model.gguf").asFile
 
 val tinyLlamaUrl =
-    "https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.q4_k_m.gguf?download=true"
+    "https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf?download=true"
 
 fun expectedUrlFor(model: String): String = when (model.lowercase()) {
     "tinyllama" -> tinyLlamaUrl
