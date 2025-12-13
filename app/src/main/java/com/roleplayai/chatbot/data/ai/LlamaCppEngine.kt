@@ -82,17 +82,17 @@ class LlamaCppEngine(private val context: Context) {
         // Sur mobile: trop de threads peut être contre-productif (overhead + throttling)
         val threads = maxOf(1, minOf(4, Runtime.getRuntime().availableProcessors()))
 
-        // Réglages adaptatifs: TinyLlama peut tenir un contexte plus grand, Phi souvent moins.
+        // Réglages adaptatifs (stabilité d'abord) :
+        // Beaucoup d'appareils crashent en natif avec des contextes trop grands (KV cache).
+        // TinyLlama reste cohérent à 1024–1536, on évite 2048 par défaut.
         val isSmallModel = modelBytes in 1..(900L * 1024 * 1024) // < ~900MB
         val ctxSize = when {
-            // si on a de la marge RAM, augmenter le contexte => meilleure cohérence
-            availBytes > (modelBytes + 900L * 1024 * 1024) && isSmallModel -> 2048
-            availBytes > (modelBytes + 700L * 1024 * 1024) -> 1536
+            availBytes > (modelBytes + 1200L * 1024 * 1024) && isSmallModel -> 1536
             else -> 1024
         }
 
-        // Réponses plus longues (sans être des pavés)
-        val maxTokens = if (isSmallModel) 220 else 180
+        // Réponses (stabilité d'abord: limiter la génération réduit aussi les risques d'OOM/timeout)
+        val maxTokens = if (isSmallModel) 180 else 160
         val (roles, contents) = buildChatMessages(
             character = character,
             messages = messages,

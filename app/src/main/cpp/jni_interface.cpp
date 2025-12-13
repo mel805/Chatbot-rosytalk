@@ -251,9 +251,9 @@ Java_com_roleplayai_chatbot_data_ai_LocalAIEngine_nativeLoadModel(
         ctx_params.n_ctx = contextSize;
         ctx_params.n_threads = threads;
         ctx_params.n_threads_batch = threads;
-        // Optimisation mobile: batch plus petit (prompt eval plus rapide / moins de RAM)
-        ctx_params.n_batch = 256;
-        ctx_params.n_ubatch = 64;
+        // Optimisation mobile (stabilité): batch plus petit = moins de pics mémoire / crashes
+        ctx_params.n_batch = 128;
+        ctx_params.n_ubatch = 32;
         
         // Créer le contexte
         g_model_ctx->ctx = llama_new_context_with_model(g_model_ctx->model, ctx_params);
