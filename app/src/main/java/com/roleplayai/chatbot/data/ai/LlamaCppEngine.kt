@@ -1,6 +1,7 @@
 package com.roleplayai.chatbot.data.ai
 
 import android.content.Context
+import android.app.ActivityManager
 import android.util.Log
 import com.roleplayai.chatbot.data.model.Character
 import com.roleplayai.chatbot.data.model.Message
@@ -50,6 +51,24 @@ class LlamaCppEngine(private val context: Context) {
                 if (!modelFile.exists()) {
                     Log.e(TAG, "❌ Modèle GGUF introuvable: $path")
                     return@withContext "❌ Modèle GGUF introuvable. Sélectionnez un modèle dans Paramètres > llama.cpp."
+                }
+
+                // Sécurité: empêcher les crashes/OOM sur certains appareils (ex: Xiaomi)
+                // Heuristique simple: il faut une marge de RAM libre au-dessus de la taille du modèle.
+                val availBytes = getAvailableRamBytes()
+                val modelBytes = modelFile.length()
+                val safetyMargin = 512L * 1024 * 1024 // +512MB pour KV cache/overhead
+                if (availBytes in 1..Long.MAX_VALUE && modelBytes > 0 && (modelBytes + safetyMargin) > availBytes) {
+                    Log.e(
+                        TAG,
+                        "❌ RAM insuffisante pour llama.cpp: model=${modelBytes / (1024 * 1024)}MB, avail=${availBytes / (1024 * 1024)}MB"
+                    )
+                    return@withContext buildString {
+                        append("⚠️ Modèle trop lourd pour la RAM libre de l'appareil.\n\n")
+                        append("Pour éviter un crash, llama.cpp est désactivé pour ce modèle.\n")
+                        append("➡️ Choisis un modèle plus petit (ex: TinyLlama 1.1B Q4) ou utilise Groq.\n")
+                        append("Détails: modèle ${modelBytes / (1024 * 1024)} MB, RAM libre ${availBytes / (1024 * 1024)} MB.")
+                    }
                 }
 
                 // Sur mobile: trop de threads peut être contre-productif (overhead + throttling)
@@ -132,6 +151,17 @@ class LlamaCppEngine(private val context: Context) {
             modelsDir.mkdirs()
         }
         return modelsDir
+    }
+
+    private fun getAvailableRamBytes(): Long {
+        return try {
+            val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            val mi = ActivityManager.MemoryInfo()
+            am.getMemoryInfo(mi)
+            mi.availMem
+        } catch (_: Exception) {
+            0L
+        }
     }
 
     private fun buildPrompt(
