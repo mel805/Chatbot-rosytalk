@@ -232,6 +232,9 @@ Java_com_roleplayai_chatbot_data_ai_LocalAIEngine_nativeLoadModel(
         // Paramètres du modèle
         llama_model_params model_params = llama_model_default_params();
         model_params.n_gpu_layers = 0; // CPU uniquement sur Android
+        // Stabilité Android: éviter mmap (certaines ROM/FS déclenchent SIGBUS/SIGSEGV)
+        model_params.use_mmap  = false;
+        model_params.use_mlock = false;
         
         // Charger le modèle
         LOGI("Chargement du modèle depuis %s...", path);
@@ -251,9 +254,9 @@ Java_com_roleplayai_chatbot_data_ai_LocalAIEngine_nativeLoadModel(
         ctx_params.n_ctx = contextSize;
         ctx_params.n_threads = threads;
         ctx_params.n_threads_batch = threads;
-        // Optimisation mobile (stabilité): batch plus petit = moins de pics mémoire / crashes
-        ctx_params.n_batch = 128;
-        ctx_params.n_ubatch = 32;
+        // Optimisation mobile (ultra-stable): batch très petit = moins de pics mémoire / crashes
+        ctx_params.n_batch = 64;
+        ctx_params.n_ubatch = 16;
         
         // Créer le contexte
         g_model_ctx->ctx = llama_new_context_with_model(g_model_ctx->model, ctx_params);
